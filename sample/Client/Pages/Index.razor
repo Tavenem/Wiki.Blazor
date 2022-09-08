@@ -1,0 +1,10 @@
+﻿@page "/"
+
+<PageTitle>Home</PageTitle>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    protected override void OnInitialized()
+        => Navigation.NavigateTo("/wiki", replace: true);
+}

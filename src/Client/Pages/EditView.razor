@@ -1,0 +1,141 @@
+﻿<div class="wiki-edit-terms-notice">
+    @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+    {
+        if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+            </div>
+        }
+        else
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</p>
+            </div>
+        }
+    }
+    else if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+    {
+        <div class="wiki-edit-terms-notice">
+            <p>Content submitted to this wiki is subject to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+        </div>
+    }
+    else
+    {
+        <div class="wiki-edit-terms-notice">
+            <p>Content submitted to this wiki is subject to each of its policies, including but not limited to its copyright policy.</p>
+        </div>
+    }
+</div>
+<TextInput Label="Title"
+           @bind-Value="Title"
+           @bind-Value:after="OnTitleChanged"
+           Required="true"
+           DisplayHelpTextOnFocus="true"
+           HelpText="Move this article by changing its title" />
+@if (RedirectEnabled)
+{
+    <Tooltip TooltipText="You are renaming this article, which changes its URL. Leaving a redirect behind ensures that people who visit the original URL will be redirected to the new page.">
+        <Checkbox @bind-Value="Redirect" Label="Leave a redirect behind" />
+    </Tooltip>
+}
+<Tabs TTabItem="object">
+    <TabPanel Title="Editor">
+        <Editor Height="20rem"
+                Syntax="EditorSyntax.Markdown"
+                Spellcheck="true"
+                @bind-Value="Content"
+                @bind-Value:after="OnContentUpdated" />
+    </TabPanel>
+    @if (!string.IsNullOrEmpty(Preview))
+    {
+        <TabPanel Title="Preview">
+            <div style="height:50rem;overflow:auto;width:100%">
+                @(new MarkupString(Preview))
+            </div>
+        </TabPanel>
+    }
+</Tabs>
+<TextInput Label="Revision comment"
+           @bind-Value="Comment"
+           Spellcheck="true"
+           DisplayHelpTextOnFocus="true"
+           HelpText="Briefly describe your changes" />
+<div class="d-flex flex-wrap gap-3 align-items-start">
+    <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
+    <UserSelector Label="Owner (optional)"
+                  @bind-SelectedUsers="Owner"
+                  AllowGroups="true"
+                  Disabled="OwnerSelf"
+                  DisplayHelpTextOnFocus="true"
+                  HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
+</div>
+<div class="d-flex flex-wrap gap-3 align-items-start">
+    <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
+    <UserSelector Label="Allowed editors (optional)"
+                  @bind-SelectedUsers="Editors"
+                  AllowGroups="true"
+                  Disabled="EditorSelf || NoOwner"
+                  Multiple="true"
+                  DisplayHelpTextOnFocus="true"
+                  HelpText="May be users or groups. The owner is automatically included." />
+</div>
+<div class="d-flex flex-wrap gap-3 align-items-start">
+    <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
+    <UserSelector Label="Allowed viewers (optional)"
+                  @bind-SelectedUsers="Viewers"
+                  AllowGroups="true"
+                  Disabled="ViewerSelf || NoOwner"
+                  Multiple="true"
+                  DisplayHelpTextOnFocus="true"
+                  HelpText="May be users or groups. The owner is automatically included." />
+</div>
+<div class="wiki-edit-terms-notice">
+    @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+    {
+        if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+            </div>
+        }
+        else
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</p>
+            </div>
+        }
+    }
+    else if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+    {
+        <div class="wiki-edit-terms-notice">
+            <p>Content submitted to this wiki is subject to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+        </div>
+    }
+    else
+    {
+        <div class="wiki-edit-terms-notice">
+            <p>Content submitted to this wiki is subject to each of its policies, including but not limited to its copyright policy.</p>
+        </div>
+    }
+</div>
+<div class="d-flex flex-wrap m-3 gap-3">
+    <button class="btn primary" disabled="@SubmitDisabled" @onclick="ReviseAsync">Publish</button>
+    <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
+    <a class="btn" href="@(Article is null ? WikiState.Link() : WikiState.LinkHere())">Cancel</a>
+    @if (Article is not null)
+    {
+        <button class="btn danger" @onclick="DeleteAsync">Delete</button>
+    }
+</div>
+@if (Article?.Transclusions is not null && Article.Transclusions.Count > 0)
+{
+    <Collapse Title="Pages transcluded in the current version of this one:">
+        <ul class="wiki-edit-transclusionlist">
+            @foreach (var transclusion in Article.Transclusions)
+            {
+                <li><a class="wiki-link wiki-link-exists" href="@WikiState.Link(transclusion.Title, transclusion.WikiNamespace)">@Article.GetFullTitle(WikiOptions, transclusion.Title, transclusion.WikiNamespace)</a></li>
+            }
+        </ul>
+    </Collapse>
+}

@@ -1,0 +1,26 @@
+﻿@if (WikiFile is not null)
+{
+    if (WikiFile.FileType.StartsWith("image"))
+    {
+        <div class="wiki-image-link">
+            <a href="@WikiFile.FilePath" title="View this file">
+                <img alt="@WikiFile.Title" src="@WikiFile.FilePath" />
+            </a>
+        </div>
+    }
+    <p class="wiki-file-info">
+        <a href="@WikiFile.FilePath" title="View this file">@WikiFile.Title</a>
+        <span>(file size: @WikiFile.GetFileSizeString(WikiFile.FileSize), MIME type: @WikiFile.FileType)</span>
+    </p>
+    <div class="wiki-parser-output">@Content</div>
+}
+else
+{
+    <div class="wiki-file-missing">
+        <p>The file associated with "@WikiState.WikiTitle" is missing.</p>
+        <p>
+            You can <a href="@WikiState.Link("Upload", WikiOptions.SystemNamespace)"
+            class="wiki-link wiki-link-exists">upload</a> a new file to replace it.
+        </p>
+    </div>
+}

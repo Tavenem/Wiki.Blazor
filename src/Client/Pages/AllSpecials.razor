@@ -1,0 +1,61 @@
+﻿<h2>Lists</h2>
+<div class="wiki-special-group">
+    <ul>
+        <li><a href="@WikiState.Link("All_Categories", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="List all categories">All categories</a></li>
+        <li><a href="@WikiState.Link("All_Files", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="List all files">All files</a></li>
+        <li><a href="@WikiState.Link("All_Pages", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="List all articles">All pages</a></li>
+        <li><a href="@WikiState.Link("All_Redirects", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="List all pages which redirect to another page">All redirects</a></li>
+    </ul>
+</div>
+
+<h2>Maintenance</h2>
+<div class="wiki-special-group">
+    <ul>
+        <li><a href="@WikiState.Link("Broken_Redirects", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Pages which redirect to an article that does not exist">Broken redirects</a></li>
+        <li><a href="@WikiState.Link("Double_Redirects", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Pages which redirect to another redirect">Double redirects</a></li>
+        <li><a href="@WikiState.Link("Missing_Pages", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Pages which are linked but do not exist">Missing pages</a></li>
+        <li><a href="@WikiState.Link("Uncategorized_Articles", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Articles which are not categorized">Uncategorized articles</a></li>
+        <li><a href="@WikiState.Link("Uncategorized_Categories", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Categories which are not categorized">Uncategorized categories</a></li>
+        <li><a href="@WikiState.Link("Uncategorized_Files", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Files which are not categorized">Uncategorized files</a></li>
+        <li><a href="@WikiState.Link("Unused_Categories", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Categories which have no articles or subcategories">Unused categories</a></li>
+    </ul>
+</div>
+
+@if (WikiOptions.MaxFileSize != 0)
+{
+    <h2>Tasks</h2>
+    <div class="wiki-special-group">
+        <ul>
+            <li><a href="@WikiState.Link("Upload", WikiOptions.SystemNamespace)"
+               class="wiki-link wiki-link-exists"
+               title="Upload files">Upload files</a></li>
+        </ul>
+    </div>
+}
+
+@code {
+    [Inject] private WikiState WikiState { get; set; } = default!;
+    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
+}

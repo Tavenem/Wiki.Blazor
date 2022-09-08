@@ -1,0 +1,195 @@
+﻿@if (NotAuthorized)
+{
+    <h2>Not authorized</h2>
+    <p class="warning">You do not have permission to upload files to this wiki.</p>
+    <p>You may need to sign in.</p>
+    @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+    {
+        <p>
+            Please check the <a
+            href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policy
+            page</a> to find information about who is permitted to upload files to this wiki, and
+            how permission is obtained.
+        </p>
+    }
+    <p>
+        Note that it is not necessary to upload image files in order to embed them in articles. It
+        is possible to use an image link to display an image hosted externally. Please ensure that
+        the image has been properly licensed for display on this wiki, and that you have permission
+        to do so.
+    </p>
+    <p>
+        Images in the <a href="https://creativecommons.org">Creative Commons</a> can be easily
+        linked with a special syntax: ![[cc:filename.jpg]] will embed the image file "filename.jpg"
+        from the Creative Commons. The image will also be a link to the image's page on the Creative
+        Commons website, which should satisfy the attribution requirements of most <a
+        href="https://creativecommons.org/licenses/">CC-licensed</a> content.
+    </p>
+}
+else if (InsufficientSpace)
+{
+    <h2>Insufficient space</h2>
+    <p class="warning">The size of this file exceeds your upload limit.</p>
+    <p>
+        You may need to try uploading a smaller file. If you have reached your limit, you may try
+        deleting files you previously uploaded which are no longer in use on the wiki.
+    </p>
+    @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+    {
+        <p>
+            Please check the <a
+            href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policy
+            page</a> to find information about upload limits on this wiki.
+        </p>
+    }
+    <p>
+        Note that it is not necessary to upload image files in order to embed them in articles.
+        It is possible to use an image link to display an image hosted externally. Please ensure
+        that the image has been properly licensed for display on this wiki, and that you have
+        permission to do so.
+    </p>
+    <p>
+        Images in the <a href="https://creativecommons.org">Creative Commons</a> can be easily
+        linked with a special syntax: ![[cc:filename.jpg]] will embed the image file
+        "filename.jpg" from the Creative Commons. The image will also be a link to the image's
+        page on the Creative Commons website, which should satisfy the attribution requirements
+        of most <a href="https://creativecommons.org/licenses/">CC-licensed</a> content.
+    </p>
+}
+else
+{
+    <p>This form allows authorized users to upload files to the wiki.</p>
+    <p>
+        Images will be avilable for embedding in wiki articles. Many common audio/video files can
+        also be embedded. Other file types will only be available as links to their wiki page, where
+        the file can be either downloaded, or viewed in the browser when applicable.
+    </p>
+    <p>
+        @if (!string.IsNullOrWhiteSpace(WikiOptions.CopyrightPageTitle))
+        {
+            <span>Please note that all files submitted to this wiki are implicitly made available under the terms of the site's <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</span>
+            @if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
+            {
+                <span>Other <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to content policies, may also apply.</span>
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
+        {
+            <span>Please note that all files submitted to this wiki are subject to the site's <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</span>
+        }
+        else
+        {
+            <span>Please note that all files submitted to this wiki are subject to the site's copyright and content policies.</span>
+        }
+        <span>
+            If you are not sure whether the work you are submitting is available under the terms of
+            these policies, do not upload the file. In general, a work you have produced yourself
+            should be eligible to made available under the terms of the wiki's policies (but note
+            that you may be revoking certain rights by doing so). Works produced by others may not
+            be appropriate for upload. Consider linking such an item from its original source
+            instead, if its current host's licenses and policies allow this use.
+        </span>
+    </p>
+    <h2>Upload</h2>
+    <div class="@DragAreaClass"
+         style="border-style: dashed; border-width: 2px; height: 10rem"
+         @ondragenter="OnDragEnter"
+         @ondragleave="OnDragEnd"
+         @ondragend="OnDragEnd">
+         <InputFile OnChange="OnInputChanged" style="height: 100%; opacity: 0; overflow: hidden; position: absolute; width: 100%; z-index: 2" />
+         <h6>Drag and drop a file, or click here to browse your device</h6>
+         @if (File is not null)
+         {
+             <span class="chip primary">@(FileName ?? "file")</span>
+         }
+    </div>
+    <div class="d-flex justify-content-center">
+        <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+    </div>
+    <TextInput Label="Title" @bind-Value="Title" Required="true" Validation="TitleValidation" />
+    <Tabs TTabItem="object">
+        <TabPanel Title="Editor">
+            <Editor Height="20rem"
+                    Syntax="EditorSyntax.Markdown"
+                    Spellcheck="true"
+                    @bind-Value="Content"
+                    @bind-Value:after="OnContentUpdated" />
+        </TabPanel>
+        @if (!string.IsNullOrEmpty(Preview))
+        {
+            <TabPanel Title="Preview">
+                <div style="height:50rem;overflow:auto;width:100%">
+                    @(new MarkupString(Preview))
+                </div>
+            </TabPanel>
+        }
+    </Tabs>
+    <TextInput Label="Revision comment"
+               @bind-Value="Comment"
+               Spellcheck="true"
+               DisplayHelpTextOnFocus="true"
+               HelpText="Briefly describe your changes" />
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
+        <UserSelector Label="Owner (optional)"
+                      @bind-SelectedUsers="Owner"
+                      AllowGroups="true"
+                      Disabled="OwnerSelf"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
+        <UserSelector Label="Allowed editors (optional)"
+                      @bind-SelectedUsers="Editors"
+                      AllowGroups="true"
+                      Disabled="EditorSelf || NoOwner"
+                      Multiple="true"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be users or groups. The owner is automatically included." />
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
+        <UserSelector Label="Allowed viewers (optional)"
+                      @bind-SelectedUsers="Viewers"
+                      AllowGroups="true"
+                      Disabled="ViewerSelf || NoOwner"
+                      Multiple="true"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be users or groups. The owner is automatically included." />
+    </div>
+    <div class="wiki-edit-terms-notice">
+        @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+        {
+            if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+            {
+                <div class="wiki-edit-terms-notice">
+                    <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+                </div>
+            }
+            else
+            {
+                <div class="wiki-edit-terms-notice">
+                    <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</p>
+                </div>
+            }
+        }
+        else if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+            </div>
+        }
+        else
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its policies, including but not limited to its copyright policy.</p>
+            </div>
+        }
+    </div>
+    <div class="d-flex flex-wrap m-3 gap-3 justify-content-center">
+        <button class="btn primary" disabled="@SubmitDisabled" @onclick="@(_ => UploadAsync())">Upload</button>
+        <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
+        <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+    </div>
+}

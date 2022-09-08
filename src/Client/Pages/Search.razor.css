@@ -1,0 +1,25 @@
+﻿.wiki-search-resultcount {
+    display: inline-flex;
+    font-size: var(--tavenem-font-size-sm);
+    gap: .5ch;
+    padding: 0.5rem;
+    padding-right: 0.75rem;
+}
+
+.wiki-search-advanced {
+    max-width: 50rem;
+    padding-top: 0.3rem;
+}
+
+.wiki-search-results {
+    margin: 1em 0 1em 0.4em;
+}
+
+.wiki-search-exact-match {
+    margin: 0.5rem 0;
+    font-weight: bold;
+}
+
+.wiki-search-result-title {
+    font-size: 1.1rem;
+}

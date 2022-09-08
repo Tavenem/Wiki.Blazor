@@ -1,0 +1,90 @@
+﻿@if (Items is null)
+{
+    <p>No data</p>
+}
+else
+{
+    <p>@Description</p>
+    @if (!string.IsNullOrEmpty(SecondaryDescription))
+    {
+        <p>@(new MarkupString(SecondaryDescription))</p>
+    }
+    <Collapse Title="Filter">
+        <Select Label="Sort by" @bind-Value="CurrentSort" @bind-Value:after="OnSortChanged">
+            <Option Label="Alphabetical" Value="@("alpha")" />
+            <Option Label="Last revision date/time" Value="@("timestamp")" />
+        </Select>
+        <Switch Label="Descending"
+                UncheckedLabel="Ascending"
+                @bind-Value="CurrentDescending"
+                @bind-Value:after="OnDescendingChanged" />
+        <TextInput Label="Display entries starting with:"
+                   Autocomplete="false"
+                   MaxLength="255"
+                   @bind-Value="CurrentFilter"
+                   @bind-Value:after="OnFilterChanged" />
+    </Collapse>
+    @if (Items?.Count > 0)
+    {
+        @if (Items.TotalPages > 1)
+        {
+            <div class="d-flex flex-wrap align-items-baseline gap-2 mt-3">
+                <Pagination @bind-CurrentPage="CurrentPageNumber"
+                        @bind-CurrentPage:after="OnPageNumberChanged"
+                        NextRequested="OnNextRequested"
+                        PageCount="(ulong?)Items.TotalCount" />
+                <Select Label="Number of results per page:"
+                    @bind-Value="PageSize"
+                    @bind-Value:after="OnPageSizeChanged"
+                    Class="dense">
+                    <Option Label="50" Value="50" />
+                    <Option Label="100" Value="100" />
+                    <Option Label="250" Value="250" />
+                    <Option Label="500" Value="500" />
+                </Select>
+            </div>
+        }
+        <div class="wiki-list-articles">
+            <ul>
+                @foreach (var item in Items)
+                {
+                    <li>
+                        <a href="@WikiState.Link(item.Title, item.WikiNamespace)" class="wiki-link wiki-link-exists">
+                            @if (!string.Equals(item.WikiNamespace, WikiOptions.DefaultNamespace, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="wiki-link-namespace">@item.WikiNamespace</span>
+                            }
+                            <span class="wiki-link-title">@item.Title</span>
+                            @if (item.ChildCount > 0)
+                            {
+                                <span class="wiki-link-details">(@item.ChildCount.ToString("N0") members)</span>
+                            }
+                            else if (item.FileSize > 0)
+                            {
+                                <span class="wiki-link-details">(file size: @(WikiFile.GetFileSizeString(item.FileSize)), MIME type: @(item.FileType ?? "unknown")</span>
+                            }
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+        @if (Items.TotalPages > 1)
+        {
+            <div class="d-flex flex-wrap align-items-baseline gap-2 mt-3">
+                <Pagination @bind-CurrentPage="CurrentPageNumber"
+                        @bind-CurrentPage:after="OnPageNumberChanged"
+                        NextRequested="OnNextRequested"
+                        PageCount="(ulong?)Items.TotalCount" />
+                <Select Label="Number of results per page:"
+                    @bind-Value="PageSize"
+                    @bind-Value:after="OnPageSizeChanged"
+                    Class="dense">
+                    <Option Label="50" Value="50" />
+                    <Option Label="100" Value="100" />
+                    <Option Label="250" Value="250" />
+                    <Option Label="500" Value="500" />
+                </Select>
+            </div>
+        }
+    }
+}

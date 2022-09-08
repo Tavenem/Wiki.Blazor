@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "name": "tavenem.wiki.blazor",
+  "private": true,
+  "devDependencies": {
+    "@picmo/popup-picker": "5.5.2",
+    "@rollup/plugin-node-resolve": "13.3.0",
+    "@rollup/plugin-typescript": "8.3.4",
+    "cssnano": "5.1.12",
+    "picmo": "5.5.2",
+    "postcss": "8.4.16",
+    "postcss-cli": "10.0.0",
+    "postcss-import": "14.1.0",
+    "rollup": "2.78.0",
+    "rollup-plugin-terser": "7.0.2",
+    "sass": "1.54.3",
+    "tslib": "2.4.0"
+  },
+  "scripts": {
+    "build": "npm run build:release",
+    "build:Release": "rollup -c --environment build:Release",
+    "build:Debug": "rollup -c --environment build:Debug",
+    "sass": "sass ./sass/wiki.scss",
+    "postcss": "postcss --config postcss.config.js"
+  }
+}

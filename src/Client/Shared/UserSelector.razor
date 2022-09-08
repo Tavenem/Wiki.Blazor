@@ -1,0 +1,44 @@
+﻿<div class="d-flex flex-column align-self-stretch gap-1">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="@(Disabled ? "text-disabled" : string.Empty)">@Label</span>
+    }
+    @if (SelectedUsers.Count > 0 || DeselectedUsers.Count > 0)
+    {
+        if (AllowToggle)
+        {
+            <ChipSet TChip="WikiUserInfo"
+                     ItemIsDisabled="@(_ => Disabled)"
+                     Items="SelectedUsers"
+                     ItemStyle="@(v => GetItemStyle(v))"
+                     OnChipClosed="@(v => OnRemoveUserAsync(v))"
+                     OnItemClick="@(v => OnItemClickAsync(v))" />
+            <ChipSet TChip="WikiUserInfo"
+                     ItemIsDisabled="@(_ => Disabled)"
+                     Items="DeselectedUsers"
+                     ItemThemeColor="@(_ => ThemeColor.Danger)"
+                     OnChipClosed="@(v => OnRemoveUserAsync(v))"
+                     OnItemClick="@(v => OnItemClickAsync(v))" />
+        }
+        else
+        {
+            <ChipSet TChip="WikiUserInfo"
+                     ItemIsDisabled="@(_ => Disabled)"
+                     Items="SelectedUsers"
+                     ItemStyle="@(v => GetItemStyle(v))"
+                     OnChipClosed="@(v => OnRemoveUserAsync(v))" />
+        }
+    }
+    <TextInput @bind-Value="InputText"
+               @bind-Value:after="OnTextEnteredAsync"
+               Disabled="InputDisabled"
+               DisplayHelpTextOnFocus="DisplayHelpTextOnFocus"
+               HelpText="@HelpText"
+               Class="wiki-user-input">
+        <PostfixContent>
+            <button class="btn btn-icon" disabled="@Disabled">
+                <tf-icon>search</tf-icon>
+            </button>
+        </PostfixContent>
+    </TextInput>
+</div>

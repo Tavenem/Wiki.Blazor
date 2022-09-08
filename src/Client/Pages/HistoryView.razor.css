@@ -1,0 +1,30 @@
+﻿.wiki-history-nocontent {
+    align-self: center;
+}
+
+.wiki-history-instructions {
+    margin-top: 1rem;
+}
+
+.wiki-history-revision {
+    align-items: center;
+    display: flex;
+    gap: .5rem;
+}
+
+.wiki-history-list-diffs:before {
+    content: '(';
+    margin-inline-end: .5ch;
+}
+
+.wiki-history-list-diffs:after {
+    content: ')';
+    margin-inline-start: .5ch;
+}
+
+.wiki-history-list-diffs :is(a, span) + :is(a, span):before {
+    color: var(--tavenem-color-text);
+    content: '|';
+    margin-left: .5ch;
+    margin-right: .5ch;
+}

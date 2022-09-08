@@ -1,0 +1,4 @@
+﻿.wiki-image-link > a > img {
+    float: unset;
+    max-width: 200px;
+}

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Tavenem.Wiki.Blazor.Server</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Wil Stead</Authors>
+    <Description>An implementation of Tavenem.Wiki for Blazor.</Description>
+    <Copyright>Copyright © 2022 Wil Stead</Copyright>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Tavenem/Wiki.Blazor</PackageProjectUrl>
+    <PackageIcon>tavenem_128.png</PackageIcon>
+    <PackageTags>wiki blazor</PackageTags>
+    <RepositoryUrl>https://github.com/Tavenem/Wiki.Blazor.git</RepositoryUrl>
+    <RepositoryBranch>main</RepositoryBranch>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="tavenem_128.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Shared\Tavenem.Wiki.Blazor.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

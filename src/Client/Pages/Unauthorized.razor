@@ -1,0 +1,50 @@
+﻿<h2>Unauthorized</h2>
+@if (Unauthenticated)
+{
+    <p>You must be signed in to access this content.</p>
+    <p>Please sign in to your wiki account.</p>
+}
+else
+{
+    @if (ForCreate)
+    {
+        <p>You cannot create new wiki content with this namespace and title.</p>
+        <p>Some namespaces are reserved for the wiki system, and cannot have articles added to them.</p>
+        <p>Please choose a different namespace and/or title for your content.</p>
+    }
+    else if (ForEdit)
+    {
+        <p>You do not have permission to edit this content.</p>
+        <p>
+            The author and/or most recent editor of wiki content may specify that only certain
+            individuals or groups are permitted to modify their content.
+        </p>
+    }
+    else
+    {
+        <p>You do not have permission to view this content.</p>
+        <p>
+            The author and/or most recent editor of wiki content may specify that only certain
+            individuals or groups are permitted to view their content.
+        </p>
+    }
+    <p>
+        If you believe that you should be allowed to access this content, try signing in. If you
+        are already logged in, you may need to ask the author of the content to add you to the
+        list of people with permission.
+    </p>
+    <p>If you don't know who the author is, then this content probably isn't meant for you.</p>
+    <p>
+        If you were trying to create your own new content with this title, try choosing a
+        different namespace for your content. Content in different namespaces can have the same
+        title.
+    </p>
+}
+
+@code {
+    [Parameter] public bool ForEdit { get; set; }
+
+    [Parameter] public bool ForCreate { get; set; }
+
+    [Parameter] public bool Unauthenticated { get; set; }
+}

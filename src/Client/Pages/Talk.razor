@@ -1,0 +1,34 @@
+﻿<div class="wiki-talk-messages">
+    <ul>
+        @foreach (var message in TalkMessages)
+        {
+            <TalkMessage CanPost="Connected && CanPost"
+                         Message="message"
+                         Post="OnPostAsync"
+                         TimezoneOffset="TimezoneOffset" />
+        }
+    </ul>
+    @if (TalkMessages.Count == 0)
+    {
+        <div class="wiki-talk-nomessages"><p>No messages yet</p></div>
+    }
+</div>
+@if (CanPost)
+{
+    <TalkCompose TopicId="@TopicId" Post="OnPostAsync" />
+}
+else if (!Connected)
+{
+    @if (WikiTalkClient?.State == HubConnectionState.Reconnecting)
+    {
+        <div class="wiki-talk-signin-prompt">Reconnecting...</div>
+    }
+    else
+    {
+        <div class="wiki-talk-signin-prompt">Disconnected</div>
+    }
+}
+else
+{
+    <div class="wiki-talk-signin-prompt">Sign in to post your own messages</div>
+}

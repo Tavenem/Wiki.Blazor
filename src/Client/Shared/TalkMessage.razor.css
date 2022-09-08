@@ -1,0 +1,79 @@
+﻿.wiki-message {
+    background-color: var(--tavenem-color-bg);
+    border: 1px solid var(--tavenem-color-border);
+    border-radius: var(--tavenem-border-radius);
+    margin: .25rem;
+    padding: .25rem;
+}
+    .wiki-message.wiki-message-reply {
+        border: none;
+    }
+
+.wiki-message-reply-emoji {
+    margin-right: 0.5em;
+}
+
+.wiki-message-header {
+    display: flex;
+    flex-wrap: wrap;
+    padding-left: .25em;
+    padding-right: .25em;
+}
+
+.wiki-message-sender {
+    font-size: small;
+    font-weight: bold;
+}
+
+.wiki-message-timestamp {
+    font-size: smaller;
+    margin-left: 1em;
+}
+
+.wiki-message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    font-size: larger;
+    margin-left: 1em;
+    margin-bottom: -.5em;
+}
+
+.wiki-message-reaction-icon {
+    vertical-align: text-bottom;
+}
+
+.wiki-message-body {
+    border-bottom: 1px solid var(--tavenem-color-border);
+    padding: .25em;
+    padding-left: 1.25em;
+    padding-top: 0;
+}
+    .collapse.closed .wiki-message-body {
+        max-height: 11em;
+        overflow: hidden;
+    }
+
+.wiki-message-reply .wiki-message-body {
+    border-bottom: none;
+}
+
+.wiki-message-body.wiki-message-readonly {
+    border-bottom: none;
+}
+
+.wiki-message-replies {
+    padding-left: 1.25em;
+}
+
+.wiki-message-footer {
+    padding-left: 1.25em;
+    padding-right: 0.25em;
+}
+
+.wiki-talk-reply {
+    display: flex;
+    flex-flow: column nowrap;
+    margin-bottom: .25em;
+    margin-top: .25em;
+    padding: .25rem;
+}

@@ -1,0 +1,112 @@
+﻿@if (Message is not null)
+{
+    <li class="@(IsReply ? "wiki-message wiki-message-reply" : "wiki-message")">
+        <div class="wiki-message-header">
+            <span class="wiki-message-sender">
+                @if (Message.Message.SenderExists)
+                {
+                    var classList = "wiki-username wiki-username-link";
+                    if (Message.Message.SenderIsAdmin)
+                    {
+                        classList += " wiki-username-admin";
+                    }
+                    if (!Message.Message.SenderPageExists)
+                    {
+                        classList += " wiki-link-missing";
+                    }
+                    <a class="@classList"
+                       href="@WikiState.Link(Message.Message.SenderId, WikiOptions.UserNamespace)"
+                       title="@($"Visit the user page for {Message.Message.SenderName}")">@Message.Message.SenderName</a>
+                }
+                else
+                {
+                    <span class="wiki-username wiki-username-nolink">@Message.Message.SenderName</span>
+                }
+            </span>
+            <span class="wiki-message-timestamp">@Message.Message.GetTimestamp(TimezoneOffset)</span>
+            @if (Message.Reactions is not null)
+            {
+                <span class="wiki-message-reactions">
+                    @foreach (var emoji in Message.Reactions.Keys)
+                    {
+                        <Tooltip>
+                            <TooltipContent>
+                                <ul class="wiki-message-reaction-list">
+                                    @foreach (var reaction in Message.Reactions[emoji])
+                                    {
+                                        <li>
+                                            <span class="wiki-reaction-sender">
+                                                @if (reaction.SenderExists)
+                                                {
+                                                    var classList = "wiki-username wiki-username-link";
+                                                    if (reaction.SenderIsAdmin)
+                                                    {
+                                                        classList += " wiki-username-admin";
+                                                    }
+                                                    if (!reaction.SenderPageExists)
+                                                    {
+                                                        classList += " wiki-link-missing";
+                                                    }
+                                                    <a class="@classList"
+                                                       href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
+                                                       title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="wiki-username wiki-username-nolink">@reaction.SenderName</span>
+                                                }
+                                            </span>
+                                            <span class="wiki-reaction-timestamp">@reaction.GetTimestamp(TimezoneOffset)</span>
+                                        </li>
+                                    }
+                                </ul>
+                            </TooltipContent>
+                            <ChildContent>
+                                <span class="wiki-message-reaction-icon" @onclick="@(_ => OnReactionAsync(emoji))">@emoji</span>
+                                @if (Message.Reactions[emoji].Count > 1)
+                                {
+                                    <span class="wiki-message-reaction-count">@Message.Reactions[emoji].Count.ToString("N0")</span>
+                                }
+                            </ChildContent>
+                        </Tooltip>
+                    }
+                </span>
+            }
+        </div>
+        <Collapse>
+            <TitleContent>
+                <div class="@(CanPost ? "wiki-message-body" : "wiki-message-body wiki-message-readonly")">
+                    @(new MarkupString(Message.Message.Content))
+                </div>
+            </TitleContent>
+            <ChildContent>
+                @if (Message.Replies is not null)
+                {
+                    <div class="wiki-message-replies">
+                        @foreach (var reply in Message.Replies)
+                        {
+                            <TalkMessage CanPost="CanPost"
+                                         Message="reply"
+                                         Post="OnPost"
+                                         TimezoneOffset="TimezoneOffset" />
+                        }
+                    </div>
+                }
+                @if (CanPost && !IsReply)
+                {
+                    <div class="wiki-message-footer">
+                        <button class="btn small" @onclick="@(_ => ShowReply = !ShowReply)">Reply</button>
+                        @if (ShowReply)
+                        {
+                            <div class="wiki-talk-reply">
+                                <TalkCompose TopicId="@Message.Message.TopicId"
+                                             MessageId="@Message.Message.Id"
+                                             Post="OnPost" />
+                            </div>
+                        }
+                    </div>
+                }
+            </ChildContent>
+        </Collapse>
+    </li>
+}

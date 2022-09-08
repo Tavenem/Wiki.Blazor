@@ -1,0 +1,21 @@
+﻿.wiki-parser-output.wiki-parser-output-category {
+    flex-grow: 0;
+}
+
+.wiki-category-list {
+    column-count: 3;
+    column-gap: 2rem;
+    column-width: 24rem;
+    flex-grow: 1;
+    orphans: 2;
+    widows: 2;
+}
+.wiki-category-group h3 {
+    break-after: avoid;
+}
+.wiki-category-group ul {
+    break-before: avoid;
+}
+.wiki-category-group li {
+    break-inside: avoid;
+}

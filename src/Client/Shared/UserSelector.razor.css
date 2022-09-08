@@ -1,0 +1,6 @@
+﻿::deep .wiki-user-input {
+    margin-top: 3px;
+}
+    ::deep .wiki-user-input .input {
+        margin-top: 0;
+    }

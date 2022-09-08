@@ -1,0 +1,80 @@
+﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
+@if (CategoryInfo is not null)
+{
+    <div class="wiki-parser-output wiki-parser-output-category">@Content</div>
+    if (CategoryInfo.Subcategories is not null
+        && CategoryInfo.Subcategories.Count > 0)
+    {
+        <h2>Subcategories</h2>
+        <p>This category has the following @CategoryInfo.Subcategories.Count.ToString("N0") subcategories.</p>
+        <div class="wiki-category-list">
+            @foreach (var group in CategoryInfo.Subcategories.OrderBy(x => x.Key))
+            {
+                <div class="wiki-category-group">
+                    <h3>@group.Key</h3>
+                    <ul>
+                        @foreach (var item in group.Value)
+                        {
+                            <li>
+                                <a href="@WikiState.Link(item.Title, WikiOptions.CategoryNamespace)">@item.Title</a>
+                                <span>(@item.Count.ToString("N0") members)</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+    if (CategoryInfo.Articles is not null
+        && CategoryInfo.Articles.Count > 0)
+    {
+        <h2>Pages in @(CategoryInfo.Item?.Title ?? WikiState.DisplayTitle)</h2>
+        <p>The following @CategoryInfo.Articles.Count.ToString("N0") pages are in this category.</p>
+        <div class="wiki-category-list">
+            @foreach (var group in CategoryInfo.Articles.OrderBy(x => x.Key))
+            {
+                <div class="wiki-category-group">
+                    <h3>@group.Key</h3>
+                    <ul>
+                        @foreach (var item in group.Value)
+                        {
+                            <li>
+                                <a href="@WikiState.Link(item.Title, item.WikiNamespace)">@Article.GetFullTitle(WikiOptions, item.Title, item.WikiNamespace)</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+    if (CategoryInfo.Files is not null
+        && CategoryInfo.Files.Count > 0)
+    {
+        <h2>Files in @(CategoryInfo.Item?.Title ?? WikiState.DisplayTitle)</h2>
+        <p>The following @CategoryInfo.Files.Count.ToString("N0") files are in this category.</p>
+        <div class="wiki-category-list">
+            @foreach (var group in CategoryInfo.Files.OrderBy(x => x.Key))
+            {
+                <div class="wiki-category-group">
+                    <h3>@group.Key</h3>
+                    <ul>
+                        @foreach (var item in group.Value)
+                        {
+                            <li>
+                                <a href="@WikiState.Link(item.Title, WikiOptions.FileNamespace)">@item.Title</a>
+                                <span>(@WikiFile.GetFileSizeString(item.Size))</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+    @if ((CategoryInfo.Subcategories?.Count ?? 0) == 0
+        && (CategoryInfo.Articles?.Count ?? 0) == 0
+        && (CategoryInfo.Files?.Count ?? 0) == 0)
+    {
+        <h2>Empty Category</h2>
+        <p>There is nothing in this category.</p>
+    }
+}

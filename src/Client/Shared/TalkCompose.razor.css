@@ -1,0 +1,94 @@
+﻿.wiki-message-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-top: .25rem;
+}
+
+.wiki-talk-gif {
+    align-items: stretch;
+    background-color: var(--tavenem-color-bg);
+    border: 1px solid var(--tavenem-color-border);
+    border-radius: var(--tavenem-border-radius);
+    flex-flow: column nowrap;
+    height: 26rem;
+    max-width: 100%;
+    padding: .25rem;
+    width: 20rem;
+}
+
+.wiki-talk-gif-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .5rem;
+    margin-bottom: .5rem;
+}
+
+.wiki-talk-gif-content {
+    display: flex;
+    flex-wrap: wrap;
+    flex-grow: 1;
+    justify-content: space-evenly;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.wiki-talk-gif-item {
+    align-items: center;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    max-height: 9em;
+    max-width: 9em;
+    position: relative;
+    text-align: center;
+}
+
+    .wiki-talk-gif-item img {
+        max-width: inherit;
+    }
+
+    .wiki-talk-gif-item span {
+        background-color: #000;
+        background-color: rgba(0,0,0,0.5);
+        border-radius: var(--tavenem-border-radius);
+        left: 50%;
+        padding-left: .25rem;
+        padding-right: .25rem;
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+div.tavenem-emoji-picker {
+    --accent-color: var(--tavenem-color-primary);
+    --background-color: var(--tavenem-color-bg-surface);
+    --border-color: var(--tavenem-color-border);
+    --border-radius: var(--tavenem-border-radius);
+    --category-name-background-color: var(--tavenem-color-bg-surface);
+    --category-name-text-color: var(--tavenem-color-text);
+    --category-tab-color: var(--tavenem-color-text);
+    --category-tab-active-background-color: var(--tavenem-color-bg-alt);
+    --category-tab-highlight-background-color: var(--tavenem-color-default-hover);
+    --error-color: var(--tavenem-color-danger);
+    --error-color-dark: var(--tavenem-color-bg-alt);
+    --focus-indicator-background-color: var(--tavenem-color-primary-hover);
+    --focus-indicator-color: var(--tavenem-color-primary);
+    --hover-background-color: var(--tavenem-color-primary-hover);
+    --image-placeholder-color: var(--tavenem-color-text);
+    --placeholder-background-color: var(--tavenem-color-bg-surface);
+    --preview-background-color: var(--tavenem-color-bg-alt);
+    --scrollbar-background-color: var(--tavenem-color-bg-surface);
+    --scrollbar-color: var(--tavenem-color-scrollbar);
+    --search-background-color: var(--tavenem-color-bg-alt);
+    --search-focus-background-color: var(--tavenem-color-bg-input);
+    --search-icon-color: var(--tavenem-color-action);
+    --search-placeholder-color: var(--tavenem-color-text-secondary);
+    --secondary-background-color: var(--tavenem-color-bg-alt);
+    --secondary-text-color: var(--tavenem-color-text-secondary);
+    --tag-background-color: var(--tavenem-color-default);
+    --text-color: var(--tavenem-color-text);
+    --ui-font: var(--tavenem-font-family);
+    --variant-popup-background-color: var(--tavenem-color-bg-surface);
+}

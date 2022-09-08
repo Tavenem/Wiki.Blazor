@@ -1,0 +1,29 @@
+﻿.wiki-talk-messages {
+    align-self: stretch;
+    background-color: var(--tavenem-color-bg-alt);
+    border-radius: .5rem;
+    flex-grow: 1;
+    overflow: auto;
+    padding: 1rem;
+    position: relative;
+}
+
+.wiki-talk-nomessages {
+    align-items: center;
+    bottom: 0;
+    display: flex;
+    font-size: 1.5em;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.wiki-talk-signin-prompt {
+    align-items: center;
+    display: flex;
+    justify-content: center;
+    margin-top: .25rem;
+    padding: .25rem;
+}

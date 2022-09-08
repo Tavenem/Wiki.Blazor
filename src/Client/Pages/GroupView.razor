@@ -1,0 +1,21 @@
+﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
+@if (GroupPageInfo is not null)
+{
+    <div class="wiki-parser-output">@Content</div>
+    if (GroupPageInfo.Users is not null
+        && GroupPageInfo.Users.Count > 0)
+    {
+        <h2>Members</h2>
+        <p>This group has the following @GroupPageInfo.Users.Count.ToString("N0") members.</p>
+        <ul class="wiki-group-list">
+            @foreach (var user in GroupPageInfo.Users)
+            {
+                <li>
+                    <a href="@WikiState.Link(user.Id, WikiOptions.UserNamespace)"
+                       class="@(user.PageExists ? "wiki-username wiki-username-link" : "wiki-username wiki-username-link wiki-link-missing")"
+                       title="@($"Visit the user page for {user.Entity?.DisplayName ?? user.Id}")">@(user.Entity?.DisplayName ?? user.Id)</a>
+                </li>
+            }
+        </ul>
+    }
+}

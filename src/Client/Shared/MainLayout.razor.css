@@ -1,0 +1,17 @@
+﻿.wiki-sidebar-logo a {
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    display: block;
+    width: 3em;
+    height: 3em;
+}
+@media screen and (min-width: 992px) {
+    .wiki-sidebar-logo a {
+        width: 10em;
+        height: 10em;
+    }
+        .wiki-sidebar-logo a + .list {
+            margin-top: 1em;
+        }
+}

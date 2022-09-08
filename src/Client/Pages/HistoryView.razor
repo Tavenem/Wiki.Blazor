@@ -1,0 +1,101 @@
+﻿@if (Revisions is null || Revisions.Count == 0)
+{
+    <p class="wiki-history-nocontent">No revisions match the current filter.</p>
+}
+else
+{
+    <Collapse Title="Filter">
+        <DateTimeInput Label="Start date" ShowTime="true" @bind-Value="@CurrentStart" />
+        <DateTimeInput Label="End date" ShowTime="true" @bind-Value="@CurrentEnd" />
+        <UserSelector Label="User" @bind-SelectedUsers="SelectedEditor" />
+        <button class="btn primary" @onclick="OnFilter">Apply filter</button>
+    </Collapse>
+    <p class="wiki-history-instructions">Click on the date/time to view a revision.</p>
+    @if (Revisions.TotalPages > 1)
+    {
+        <div class="d-flex flex-wrap align-items-baseline gap-3 my-3">
+            <Pagination @bind-CurrentPage="CurrentPageNumber"
+                        @bind-CurrentPage:after="OnPageNumberChanged"
+                        NextRequested="OnNextRequested"
+                        PageCount="(ulong?)Revisions.TotalPages" />
+            <Select Label="Number of revisions per page:"
+                    @bind-Value="CurrentPageSize"
+                    @bind-Value:after="OnPageSizeChanged"
+                    Class="dense">
+                <Option Label="50" Value="50" />
+                <Option Label="100" Value="100" />
+                <Option Label="200" Value="200" />
+            </Select>
+        </div>
+    }
+    if (!string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+    {
+        <button class="btn primary outlined my-3" @onclick="OnCompare">Compare selected versions</button>
+    }
+    <ul>
+        @for (int i = 0; i < Revisions.Count; i++)
+        {
+            <li class="wiki-history-revision">
+                @if (!string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+                {
+                    <span class="wiki-history-list-diffs">
+                        @if (Revisions.HasPreviousPage || i > 0)
+                        {
+                            <a href="@GetCompareWithCur(Revisions[i])" title="Compare with the current version">cur</a>
+                        }
+                        else
+                        {
+                            <span class="text-disabled">cur</span>
+                        }
+                        @if (i < Revisions.Count - 1 || Revisions.HasNextPage)
+                        {
+                            <a href="@GetCompareWithPrev(Revisions[i])" title="Compare with the previous version">prev</a>
+                        }
+                        else
+                        {
+                            <span class="text-disabled">prev</span>
+                        }
+                    </span>
+                    <Checkbox TValue="bool"
+                              Value="@(FirstRevision == Revisions[i].Revision.TimestampTicks || SecondRevision == Revisions[i].Revision.TimestampTicks)"
+                              ValueChanged="@(v => OnSelectRevision(Revisions[i], v))" />
+                }
+                <a href="@WikiState.LinkHere(query: $"rev={Revisions[i].Revision.TimestampTicks}")"
+                   class="wiki-history-list-timestamp"
+                   title="@WikiState.PageTitle">@Revisions[i].Revision.GetTimestamp(TimezoneOffset)</a>
+                @if (Revisions[i].Editor.Entity is not null)
+                {
+                    <a href="@WikiState.Link(Revisions[i].Revision.Editor, WikiOptions.UserNamespace)"
+                       class="@(Revisions[i].Editor.PageExists ? "wiki-username wiki-username-link wiki-history-list-editor" : "wiki-username wiki-username-link wiki-history-list-editor wiki-link-missing")"
+                       title="@($"Visit the user page for {Revisions[i].Editor.Entity!.DisplayName ?? Revisions[i].Editor.Entity!.Id}")">@(Revisions[i].Editor.Entity!.DisplayName ?? Revisions[i].Editor.Entity!.Id)</a>
+                }
+                else
+                {
+                    <span class="wiki-username wiki-username-nolink wiki-history-list-editor">@Revisions[i].Editor.Id</span>
+                }
+                <span>@Revisions[i].Revision.Comment</span>
+            </li>
+        }
+    </ul>
+    if (!string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+    {
+        <button class="btn primary outlined my-3" @onclick="OnCompare">Compare selected versions</button>
+    }
+    @if (Revisions.TotalPages > 1)
+    {
+        <div class="d-flex flex-wrap align-items-baseline gap-3 mt-3">
+            <Pagination @bind-CurrentPage="CurrentPageNumber"
+                        @bind-CurrentPage:after="OnPageNumberChanged"
+                        NextRequested="OnNextRequested"
+                        PageCount="(ulong?)Revisions?.TotalPages" />
+            <Select Label="Number of revisions per page:"
+                    @bind-Value="CurrentPageSize"
+                    @bind-Value:after="OnPageSizeChanged"
+                    Class="dense">
+                <Option Label="50" Value="50" />
+                <Option Label="100" Value="100" />
+                <Option Label="200" Value="200" />
+            </Select>
+        </div>
+    }
+}

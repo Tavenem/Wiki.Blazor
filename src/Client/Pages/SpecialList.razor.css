@@ -1,0 +1,6 @@
+﻿.wiki-list-articles {
+    break-inside: avoid-column;
+    columns: 22em 3;
+    margin-top: 1rem;
+    page-break-inside: avoid;
+}
