@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client;
@@ -9,6 +10,14 @@ namespace Tavenem.Wiki.Blazor.Client;
 public class WikiBlazorClientOptions : IWikiBlazorClientOptions
 {
     /// <summary>
+    /// Gets the type of a component for a given wiki article.
+    /// </summary>
+    /// <param name="article">The article for which to get a component type.</param>
+    /// <returns>The type of a component.</returns>
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    public delegate Type? GetArticleComponent(Article article);
+
+    /// <summary>
     /// <para>
     /// The type of an optional component (typically containing an <see
     /// cref="Tavenem.Blazor.Framework.AppBar"/>) which will appear at the top of wiki pages.
@@ -17,6 +26,7 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// The type must implement <see cref="IComponent"/>, and require no parameters.
     /// </para>
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type? AppBar { get; set; }
 
     /// <summary>
@@ -40,13 +50,13 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// A function which gets the type of a component which should be displayed after the content of
     /// the given wiki article (before the category list).
     /// </summary>
-    public Func<Article, Type?>? ArticleEndMatter { get; set; }
+    public GetArticleComponent? ArticleEndMatter { get; set; }
 
     /// <summary>
     /// A function which gets the type of a component which should be displayed before the content
     /// of the given wiki article (after the subtitle).
     /// </summary>
-    public Func<Article, Type?>? ArticleFrontMatter { get; set; }
+    public GetArticleComponent? ArticleFrontMatter { get; set; }
 
     /// <summary>
     /// <para>
@@ -57,6 +67,7 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// If omitted, a default layout will be used.
     /// </para>
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type? CompactLayout { get; set; }
 
     /// <summary>
@@ -125,6 +136,7 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// If omitted, a default layout will be used.
     /// </para>
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type? MainLayout { get; set; }
 
     /// <summary>
@@ -194,6 +206,7 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// </item>
     /// </list>
     /// </remarks>
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type? GetArticleEndMatter(Article article) => ArticleEndMatter?.Invoke(article);
 
     /// <summary>
@@ -233,5 +246,6 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// </item>
     /// </list>
     /// </remarks>
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type? GetArticleFrontMatter(Article article) => ArticleFrontMatter?.Invoke(article);
 }

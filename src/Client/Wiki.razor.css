@@ -161,6 +161,47 @@
     color: var(--tavenem-color-success);
 }
 
+::deep .toc {
+    background-color: var(--tavenem-color-bg-alt);
+    border: 1px solid var(--tavenem-color-border);
+    display: table;
+    float: left;
+    font-size: 95%;
+    margin-bottom: 1.5em;
+    margin-right: 1em;
+    padding: .5rem;
+}
+    ::deep .toc .toc-title {
+        text-align: center;
+        font-family: sans-serif;
+        font-size: 100%;
+    }
+
+    ::deep .toc ul {
+        list-style-type: none;
+        list-style-image: none;
+        margin-left: 0;
+        padding: 0;
+    }
+
+    ::deep .toc ul li {
+        margin-bottom: 0.1em;
+    }
+
+    ::deep .toc ul ul {
+        margin-left: 2em;
+    }
+
+    ::deep .toc .toc-number {
+        color: var(--tavenem-color-text);
+        display: table-cell;
+        padding-right: 0.5em;
+    }
+
+    ::deep .toc .toc-heading {
+        display: table-cell;
+    }
+
 .wiki-category-list-section {
     border: 1px solid var(--tavenem-color-border);
     margin-top: 1em;

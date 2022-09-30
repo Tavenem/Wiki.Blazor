@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client;
@@ -17,6 +18,7 @@ public interface IWikiBlazorClientOptions
     /// The type must implement <see cref="IComponent"/>.
     /// </para>
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     Type? AppBar { get; set; }
 
     /// <summary>
@@ -28,6 +30,7 @@ public interface IWikiBlazorClientOptions
     /// If omitted, a default layout will be used.
     /// </para>
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     Type? CompactLayout { get; set; }
 
     /// <summary>
@@ -97,6 +100,7 @@ public interface IWikiBlazorClientOptions
     /// If omitted, a default layout will be used.
     /// </para>
     /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     Type? MainLayout { get; set; }
 
     /// <summary>
@@ -166,6 +170,7 @@ public interface IWikiBlazorClientOptions
     /// </item>
     /// </list>
     /// </remarks>
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     Type? GetArticleEndMatter(Article article);
 
     /// <summary>
@@ -205,5 +210,6 @@ public interface IWikiBlazorClientOptions
     /// </item>
     /// </list>
     /// </remarks>
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     Type? GetArticleFrontMatter(Article article);
 }

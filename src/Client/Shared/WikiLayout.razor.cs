@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
@@ -9,8 +10,10 @@ public partial class WikiLayout : IDisposable
 {
     private bool _disposedValue;
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private Type ResolvedCompactLayout => WikiBlazorClientOptions.CompactLayout ?? typeof(CompactLayout);
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private Type ResolvedMainLayout => WikiBlazorClientOptions.MainLayout ?? typeof(MainLayout);
 
     [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
