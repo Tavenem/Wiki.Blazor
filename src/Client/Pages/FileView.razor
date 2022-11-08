@@ -12,7 +12,7 @@
         <a href="@WikiFile.FilePath" title="View this file">@WikiFile.Title</a>
         <span>(file size: @WikiFile.GetFileSizeString(WikiFile.FileSize), MIME type: @WikiFile.FileType)</span>
     </p>
-    <div class="wiki-parser-output">@Content</div>
+    <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
 }
 else
 {

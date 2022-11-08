@@ -1,5 +1,5 @@
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Queries;
 
@@ -8,7 +8,7 @@ namespace Tavenem.Wiki.Blazor.Client.Shared;
 /// <summary>
 /// A control to select one or more wiki users and/or groups.
 /// </summary>
-public partial class UserSelector
+public partial class UserSelector : OfflineSupportComponent
 {
     /// <summary>
     /// <para>
@@ -24,6 +24,11 @@ public partial class UserSelector
     /// Whether groups may be selected.
     /// </summary>
     [Parameter] public bool AllowGroups { get; set; }
+
+    /// <summary>
+    /// CSS class(es) to apply to this component.
+    /// </summary>
+    [Parameter] public string? Class { get; set; }
 
     /// <summary>
     /// Whether this control is disabled.
@@ -66,19 +71,22 @@ public partial class UserSelector
     [Parameter] public EventCallback<List<WikiUserInfo>> SelectedUsersChanged { get; set; }
 
     /// <summary>
+    /// CSS style(s) to apply to this component.
+    /// </summary>
+    [Parameter] public string? Style { get; set; }
+
+    /// <summary>
     /// Whether more than one user may be selected.
     /// </summary>
     [Parameter] public bool Multiple { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
+    private string? CssClass => new CssBuilder(Class)
+        .Add("d-flex flex-column align-self-stretch gap-1")
+        .ToString();
 
     private bool InputDisabled => Disabled || (!Multiple && SelectedUsers.Count > 0);
 
     private string? InputText { get; set; }
-
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
-
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
 
     private static string GetItemStyle(WikiUserInfo user)
         => $"background-color:hsl({20 + (user.Id.GetHashCode() % 320)}, --tavenem-color-default-saturation, --tavenem-color-default-lightness)";
@@ -149,25 +157,18 @@ public partial class UserSelector
             return;
         }
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
+        var query = InputText.Trim();
+        var user = await FetchDataAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiuser?query={query}",
+            WikiBlazorJsonSerializerContext.Default.WikiUserInfo,
+            user => WikiDataManager.GetWikiUserAsync(user, query));
+        if (user is null)
         {
-            var response = await HttpClient.GetAsync($"{serverApi}/wikiuser?query={InputText.Trim()}");
-            if (response.IsSuccessStatusCode)
-            {
-                var user = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.WikiUserInfo);
-                await OnAddUserAsync(user);
-            }
-            else
-            {
-                SnackbarService.Add("There was a problem fetching user info", ThemeColor.Danger);
-                return;
-            }
+            SnackbarService.Add("There was a problem fetching user info", ThemeColor.Danger);
         }
-        catch (Exception ex)
+        else
         {
-            Console.WriteLine(ex);
+            await OnAddUserAsync(user);
         }
     }
 }

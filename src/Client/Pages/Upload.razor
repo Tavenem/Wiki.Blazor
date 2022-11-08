@@ -1,4 +1,6 @@
-﻿@if (NotAuthorized)
+﻿@inherits OfflineSupportComponent
+
+@if (NotAuthorized)
 {
     <h2>Not authorized</h2>
     <p class="warning">You do not have permission to upload files to this wiki.</p>

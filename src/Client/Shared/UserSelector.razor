@@ -1,4 +1,6 @@
-﻿<div class="d-flex flex-column align-self-stretch gap-1">
+﻿@inherits OfflineSupportComponent
+
+<div class="@CssClass" style="@Style">
     @if (!string.IsNullOrEmpty(Label))
     {
         <span class="@(Disabled ? "text-disabled" : string.Empty)">@Label</span>

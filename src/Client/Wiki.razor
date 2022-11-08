@@ -1,4 +1,6 @@
-﻿<PageTitle>@WikiState.PageTitle</PageTitle>
+﻿@inherits OfflineSupportComponent
+
+<PageTitle>@WikiState.PageTitle</PageTitle>
 
 <LayoutView Layout="typeof(WikiLayout)">
     <div id="@Id" class="wiki">
@@ -42,10 +44,10 @@
             </nav>
             <div class="flex-grow-1 border-bottom"></div>
             <nav>
-                @if (!WikiState.IsSystem && !WikiState.IsTalk)
+                @if (!IsSpecial && !WikiState.IsTalk)
                 {
                     <ul>
-                        @if (IsEditing || ShowHistory || IsSpecialList)
+                        @if (IsEditing || ShowHistory)
                         {
                             <li>
                                 <a href="@WikiState.LinkHere()">Read</a>
@@ -210,6 +212,7 @@
                             PageNumber="PageNumber"
                             PageSize="PageSize"
                             Query="@Filter"
+                            SearchDomain="@SearchDomain"
                             SearchNamespace="@SearchNamespace"
                             SearchOwner="@SearchOwner"
                             Sort="@Sort" />
@@ -230,6 +233,7 @@
                                  PageSize="PageSize"
                                  Sort="@Sort"
                                  SpecialListType="SpecialListType"
+                                 TargetDomain="@TargetDomain"
                                  TargetNamespace="@TargetNamespace"
                                  TargetTitle="@TargetTitle" />
                 }
@@ -243,7 +247,7 @@
                 }
                 else if (IsEditing && CanEdit)
                 {
-                    <EditView Article="WikiItem" />
+                    <EditView Article="WikiItem" User="User" />
                 }
                 else if (IsCategory && !IsRevisionRequested)
                 {
@@ -331,7 +335,7 @@
                  PopoverOrigin="Origin.Top_Left"
                  PositionX="PreviewX"
                  PositionY="PreviewY"
-                 Class="p-3">
+                 Class="wiki-link-preview p-3">
             @Preview
         </Popover>
     </div>

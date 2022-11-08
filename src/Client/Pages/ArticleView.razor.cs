@@ -38,7 +38,7 @@ public partial class ArticleView
 
     private Dictionary<string, object> FrontEndMatterParamaters { get; set; } = new();
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
 
     [Inject] private WikiOptions WikiOptions { get; set; } = default!;
 

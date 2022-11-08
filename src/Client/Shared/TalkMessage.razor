@@ -5,7 +5,7 @@
             <span class="wiki-message-sender">
                 @if (Message.Message.SenderExists)
                 {
-                    var classList = "wiki-username wiki-username-link";
+                    var classList = $"wiki-username wiki-username-link wiki-username-{Message.Message.SenderId}";
                     if (Message.Message.SenderIsAdmin)
                     {
                         classList += " wiki-username-admin";

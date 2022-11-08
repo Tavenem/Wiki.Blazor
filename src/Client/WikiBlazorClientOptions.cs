@@ -1,22 +1,50 @@
 ﻿using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
+using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
 /// <summary>
+/// Gets the type of a component for a given wiki article.
+/// </summary>
+/// <param name="article">The article for which to get a component type.</param>
+/// <returns>The type of a component.</returns>
+[return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+public delegate Type? GetArticleComponent(Article article);
+
+/// <summary>
+/// Determines whether the given content may be edited locally.
+/// </summary>
+/// <param name="title">The title of the content to be edited.</param>
+/// <param name="wikiNamespace">The namespace of the content to be edited.</param>
+/// <param name="domain">The domain of the content to be edited (if any).</param>
+/// <returns>
+/// <see langword="true"/> if the content can be edited locally; otherwise <see langword="false"/>.
+/// </returns>
+/// <remarks>
+/// Locally means in the local <see cref="WikiBlazorClientOptions.DataStore"/> instance, rather than
+/// via the <see cref="WikiBlazorClientOptions.WikiServerApiRoute"/>.
+/// </remarks>
+public delegate ValueTask<bool> CanEditOfflineFunc(string title, string wikiNamespace, string? domain);
+
+/// <summary>
+/// A function which determines whether the given domain should always be retrieved from the local
+/// <see cref="WikiBlazorClientOptions.DataStore"/>, and never from the server.
+/// </summary>
+/// <param name="domain">A wiki domain name.</param>
+/// <returns>
+/// <see langword="true"/> if the content should always be retrieved from the local <see
+/// cref="WikiBlazorClientOptions.DataStore"/>; <see langword="false"/> if the content should be
+/// retrieved from the server when possible.
+/// </returns>
+public delegate ValueTask<bool> IsOfflineDomainFunc(string domain);
+
+/// <summary>
 /// Options used to configure the wiki system.
 /// </summary>
-public class WikiBlazorClientOptions : IWikiBlazorClientOptions
+public class WikiBlazorClientOptions
 {
-    /// <summary>
-    /// Gets the type of a component for a given wiki article.
-    /// </summary>
-    /// <param name="article">The article for which to get a component type.</param>
-    /// <returns>The type of a component.</returns>
-    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public delegate Type? GetArticleComponent(Article article);
-
     /// <summary>
     /// <para>
     /// The type of an optional component (typically containing an <see
@@ -35,18 +63,6 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     public const string DefaultLinkTemplate = "onmousemove=\"wikiblazor.showPreview(event, '{LINK}');\" onmouseleave=\"wikiblazor.hidePreview();\"";
 
     /// <summary>
-    /// The relative URL of the <see cref="IWikiTalkHub"/> used if <see cref="TalkHubRoute"/> is not
-    /// provided.
-    /// </summary>
-    public const string DefaultTalkHubRoute = "/wikiTalkHub";
-
-    /// <summary>
-    /// The relative URL of the wiki's server API used if <see
-    /// cref="WikiServerApiRoute"/> is not provided.
-    /// </summary>
-    public const string DefaultWikiServerApiRoute = "/wikiapi";
-
-    /// <summary>
     /// A function which gets the type of a component which should be displayed after the content of
     /// the given wiki article (before the category list).
     /// </summary>
@@ -57,6 +73,15 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     /// of the given wiki article (after the subtitle).
     /// </summary>
     public GetArticleComponent? ArticleFrontMatter { get; set; }
+
+    /// <summary>
+    /// Can be set to a function which determines whether content may be edited locally.
+    /// </summary>
+    /// <remarks>
+    /// If this function is not defined, no content may be edited locally (i.e. local content may
+    /// only be viewed).
+    /// </remarks>
+    public CanEditOfflineFunc? CanEditOffline { get; set; }
 
     /// <summary>
     /// <para>
@@ -105,6 +130,38 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     public int? CompactRoutePort { get; set; }
 
     /// <summary>
+    /// An optional data store which the client can access directly (i.e. without reaching the
+    /// server).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// If the <see cref="WikiServerApiRoute"/> has also been defined, the client will try to reach
+    /// the server first for all wiki operations. If the server cannot be reached or the requested
+    /// content is unavailable at the server, the client will fall back to the local data store.
+    /// </para>
+    /// <para>
+    /// If both the server and the local data store are unavailable, the wiki will remain
+    /// operational, but will show no content and will not allow any content to be added.
+    /// </para>
+    /// <para>
+    /// No automatic synchronization occurs from the local data store to the server (for instance
+    /// when an offline client reestablishes network connectivity). If your app model requires
+    /// synchronization of offline content to a server, that logic must be implemented separately.
+    /// </para>
+    /// </remarks>
+    public IDataStore? DataStore { get; set; }
+
+    /// <summary>
+    /// A function which determines whether the given domain should always be retrieved from the
+    /// local <see cref="DataStore"/>, and never from the <see cref="WikiServerApiRoute"/>.
+    /// </summary>
+    /// <remarks>
+    /// This function is ignored if <see cref="DataStore"/> or <see cref="WikiServerApiRoute"/> is
+    /// unset.
+    /// </remarks>
+    public IsOfflineDomainFunc? IsOfflineDomain { get; set; }
+
+    /// <summary>
     /// <para>
     /// The relative path to the site's login page.
     /// </para>
@@ -140,13 +197,13 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     public Type? MainLayout { get; set; }
 
     /// <summary>
-    /// <para>
     /// The relative URL of the <see cref="IWikiTalkHub"/>.
-    /// </para>
-    /// <para>
-    /// If omitted, <see cref="DefaultTalkHubRoute"/> is used.
-    /// </para>
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// If omitted, live chat is disabled for talk pages.
+    /// </para>
+    /// </remarks>
     public string? TalkHubRoute { get; set; }
 
     /// <summary>
@@ -160,13 +217,24 @@ public class WikiBlazorClientOptions : IWikiBlazorClientOptions
     public string? TenorAPIKey { get; set; }
 
     /// <summary>
-    /// <para>
     /// The relative URL of the wiki's server API.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// If the local <see cref="DataStore"/> has also been defined, the client will try to reach the
+    /// server first for all wiki operations. If the server cannot be reached or the requested
+    /// content is unavailable at the server, the client will fall back to the local data store.
     /// </para>
     /// <para>
-    /// If omitted, the path "/wikiapi" will be used.
+    /// If both the server and the local data store are unavailable, the wiki will remain
+    /// operational, but will show no content and will not allow any content to be added.
     /// </para>
-    /// </summary>
+    /// <para>
+    /// No automatic synchronization occurs from the local data store to the server (for instance
+    /// when an offline client reestablishes network connectivity). If your app model requires
+    /// synchronization of offline content to a server, that logic must be implemented separately.
+    /// </para>
+    /// </remarks>
     public string? WikiServerApiRoute { get; set; }
 
     /// <summary>

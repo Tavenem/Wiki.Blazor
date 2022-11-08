@@ -1,4 +1,6 @@
-﻿@if (Revisions is null || Revisions.Count == 0)
+﻿@inherits OfflineSupportComponent
+
+@if (Revisions is null || Revisions.Count == 0)
 {
     <p class="wiki-history-nocontent">No revisions match the current filter.</p>
 }

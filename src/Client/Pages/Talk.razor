@@ -1,8 +1,8 @@
-﻿<div class="wiki-talk-messages">
+﻿<SyntaxHighlighter Class="wiki-talk-messages">
     <ul>
         @foreach (var message in TalkMessages)
         {
-            <TalkMessage CanPost="Connected && CanPost"
+            <TalkMessage CanPost="CanTalk && CanPost"
                          Message="message"
                          Post="OnPostAsync"
                          TimezoneOffset="TimezoneOffset" />
@@ -12,12 +12,12 @@
     {
         <div class="wiki-talk-nomessages"><p>No messages yet</p></div>
     }
-</div>
+</SyntaxHighlighter>
 @if (CanPost)
 {
     <TalkCompose TopicId="@TopicId" Post="OnPostAsync" />
 }
-else if (!Connected)
+else if (WikiTalkClient is not null && !Connected)
 {
     @if (WikiTalkClient?.State == HubConnectionState.Reconnecting)
     {
@@ -28,7 +28,7 @@ else if (!Connected)
         <div class="wiki-talk-signin-prompt">Disconnected</div>
     }
 }
-else
+else if (CanTalk)
 {
     <div class="wiki-talk-signin-prompt">Sign in to post your own messages</div>
 }

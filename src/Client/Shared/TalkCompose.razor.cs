@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Diagnostics.CodeAnalysis;
+using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
 using Tavenem.Wiki.Blazor.SignalR;
 
@@ -55,7 +56,7 @@ public partial class TalkCompose : IAsyncDisposable
 
     private bool ShowGifSearch { get; set; }
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
 
     /// <inheritdoc/>
     protected override async Task OnAfterRenderAsync(bool firstRender)

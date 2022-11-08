@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 using System.Text;
-using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
+using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -10,7 +9,7 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// A common page component which displays system lists.
 /// </summary>
-public partial class SpecialList
+public partial class SpecialList : OfflineSupportComponent
 {
     /// <summary>
     /// Whether a requested sort is descending.
@@ -43,6 +42,11 @@ public partial class SpecialList
     [Parameter] public SpecialListType SpecialListType { get; set; }
 
     /// <summary>
+    /// The target wiki item's domain.
+    /// </summary>
+    [Parameter] public string? TargetDomain { get; set; }
+
+    /// <summary>
     /// The target wiki item's namespace.
     /// </summary>
     [Parameter] public string? TargetNamespace { get; set; }
@@ -64,24 +68,16 @@ public partial class SpecialList
 
     private string? Description { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
-
     private IPagedList<LinkInfo>? Items { get; set; }
-
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private string? SecondaryDescription { get; set; }
 
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
-
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
-
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    /// <inheritdoc/>
+    protected override Task OnParametersSetAsync()
+        => RefreshAsync();
 
     /// <inheritdoc/>
-    protected override async Task OnParametersSetAsync()
+    protected override async Task RefreshAsync()
     {
         CurrentDescending = Descending;
         CurrentFilter = Filter;
@@ -92,37 +88,26 @@ public partial class SpecialList
         Items = null;
         SecondaryDescription = null;
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-
         if (SpecialListType == SpecialListType.What_Links_Here)
         {
-            Description = $"The following pages link to {Article.GetFullTitle(WikiOptions, TargetTitle ?? WikiOptions.MainPageTitle, TargetNamespace)}.";
+            Description = $"The following pages link to {Article.GetFullTitle(WikiOptions, TargetTitle ?? WikiOptions.MainPageTitle, TargetNamespace ?? WikiOptions.DefaultNamespace, TargetDomain)}.";
 
-            try
-            {
-                var response = await HttpClient.PostAsJsonAsync(
-                    $"{serverApi}/whatlinkshere",
-                    new WhatLinksHereRequest(
-                        TargetTitle,
-                        TargetNamespace,
-                        (int)CurrentPageNumber,
-                        CurrentPageSize,
-                        Descending,
-                        Sort,
-                        Filter),
-                    WikiBlazorJsonSerializerContext.Default.WhatLinksHereRequest);
-                if (response.IsSuccessStatusCode)
-                {
-                    var listResponse = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.ListResponse);
-                    Items = listResponse?.Links.ToPagedList();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                SnackbarService.Add("An error occurred", ThemeColor.Danger);
-            }
+            var request = new WhatLinksHereRequest(
+                TargetTitle,
+                TargetNamespace,
+                TargetDomain,
+                (int)CurrentPageNumber,
+                CurrentPageSize,
+                Descending,
+                Sort,
+                Filter);
+            var list = await PostAsync(
+                $"{WikiBlazorClientOptions.WikiServerApiRoute}/whatlinkshere",
+                request,
+                WikiBlazorJsonSerializerContext.Default.WhatLinksHereRequest,
+                WikiBlazorJsonSerializerContext.Default.ListResponse,
+                async user => await WikiDataManager.GetWhatLinksHereAsync(request));
+            Items = list?.Links.ToPagedList();
         }
         else
         {
@@ -143,26 +128,20 @@ public partial class SpecialList
             };
             SecondaryDescription = GetSecondaryDescription();
 
-            try
-            {
-                var response = await HttpClient.PostAsJsonAsync(
-                    $"{serverApi}/list",
-                    new SpecialListRequest(
-                        SpecialListType,
-                        (int)CurrentPageNumber,
-                        CurrentPageSize,
-                        Descending,
-                        Sort,
-                        Filter),
-                    WikiBlazorJsonSerializerContext.Default.SpecialListRequest);
-                var listResponse = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.ListResponse);
-                Items = listResponse?.Links.ToPagedList();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                SnackbarService.Add("An error occurred", ThemeColor.Danger);
-            }
+            var request = new SpecialListRequest(
+                SpecialListType,
+                (int)CurrentPageNumber,
+                CurrentPageSize,
+                Descending,
+                Sort,
+                Filter);
+            var list = await PostAsync(
+                $"{WikiBlazorClientOptions.WikiServerApiRoute}/list",
+                request,
+                WikiBlazorJsonSerializerContext.Default.SpecialListRequest,
+                WikiBlazorJsonSerializerContext.Default.ListResponse,
+                async user => await WikiDataManager.GetListAsync(request));
+            Items = list?.Links.ToPagedList();
         }
     }
 
@@ -207,35 +186,35 @@ public partial class SpecialList
     }
 
     private void OnDescendingChanged()
-        => Navigation.NavigateTo(Navigation.GetUriWithQueryParameter(nameof(Wiki.Descending), CurrentDescending));
+        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Wiki.Descending), CurrentDescending));
 
     private void OnFilterChanged()
-        => Navigation.NavigateTo(Navigation.GetUriWithQueryParameter(nameof(Wiki.Filter), CurrentFilter));
+        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Wiki.Filter), CurrentFilter));
 
     private void OnNextRequested()
     {
         if (Items?.HasNextPage == true)
         {
             CurrentPageNumber++;
-            Navigation.NavigateTo(
-                Navigation.GetUriWithQueryParameter(
+            NavigationManager.NavigateTo(
+                NavigationManager.GetUriWithQueryParameter(
                     nameof(Wiki.PageNumber),
                     (int)(CurrentPageNumber + 1)));
         }
     }
 
-    private void OnPageNumberChanged() => Navigation.NavigateTo(
-        Navigation.GetUriWithQueryParameter(
+    private void OnPageNumberChanged() => NavigationManager.NavigateTo(
+        NavigationManager.GetUriWithQueryParameter(
             nameof(Wiki.PageNumber),
             (int)(CurrentPageNumber + 1)));
 
-    private void OnPageSizeChanged() => Navigation.NavigateTo(
-        Navigation.GetUriWithQueryParameter(
+    private void OnPageSizeChanged() => NavigationManager.NavigateTo(
+        NavigationManager.GetUriWithQueryParameter(
             nameof(Wiki.PageSize),
             CurrentPageSize));
 
     private void OnSortChanged()
-        => Navigation.NavigateTo(Navigation.GetUriWithQueryParameter(
+        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(
             nameof(Wiki.Sort),
             string.Equals(CurrentSort, "timestamp")
                 ? CurrentSort

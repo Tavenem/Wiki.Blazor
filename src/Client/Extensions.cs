@@ -13,16 +13,6 @@ internal static partial class Extensions
 
     public static bool IsEmoji(this string input) => _emojiRegex.IsMatch(input);
 
-    public static string ToHtmlId(this Guid guid)
-    {
-        var str = guid.ToString("N");
-        if (char.IsDigit(str, 0))
-        {
-            return Letters[_Random.Next(Letters.Length)] + str;
-        }
-        return str;
-    }
-
     /// <summary>
     /// Gets a display string for the timestamp.
     /// </summary>

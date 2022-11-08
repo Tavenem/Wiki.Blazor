@@ -3,7 +3,7 @@
 /// <summary>
 /// Options used to configure the wiki system.
 /// </summary>
-public class WikiBlazorServerOptions : IWikiBlazorServerOptions
+public class WikiBlazorServerOptions
 {
     /// <summary>
     /// The link template to be used for the Blazor wiki system.
@@ -21,6 +21,28 @@ public class WikiBlazorServerOptions : IWikiBlazorServerOptions
     /// cref="WikiServerApiRoute"/> is not provided.
     /// </summary>
     public const string DefaultWikiServerApiRoute = "/wikiapi";
+
+    /// <summary>
+    /// <para>
+    /// The minimum permission the user must have in order to create an archive of a domain.
+    /// </para>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This property does not apply when creating an archive for content without a domain, or for
+    /// the entire wiki.
+    /// </para>
+    /// <para>
+    /// Since it would be prohibitive to check individual pages' permission, archiving only requires
+    /// that a user has this level of permission (defaults to <see cref="WikiPermission.Read"/>) for
+    /// the target domain. This could represent a potential security breach, if individual pages
+    /// within the domain are further restricted. It is strongly recommended that the ability to
+    /// create archives is restricted in your client code in a manner specific to your
+    /// implementation's use of domains, which guarantees that only those with the correct
+    /// permissions can create archives.
+    /// </para>
+    /// </remarks>
+    public WikiPermission DomainArchivePermission { get; set; } = WikiPermission.Read;
 
     /// <summary>
     /// <para>

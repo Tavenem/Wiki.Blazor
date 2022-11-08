@@ -28,6 +28,8 @@ internal class WikiState
 
     public string PageTitle { get; private set; }
 
+    public string? WikiDomain { get; set; }
+
     public string? WikiNamespace { get; set; }
 
     public string? WikiTitle { get; set; }
@@ -43,6 +45,7 @@ internal class WikiState
     public string Link(
         string? title = null,
         string? wikiNamespace = null,
+        string? domain = null,
         bool talk = false,
         string? query = null,
         string? route = null)
@@ -53,7 +56,7 @@ internal class WikiState
                 ? "compact=true"
                 : "compact=true&" + query;
         }
-        return _wikiOptions.GetWikiPageUrl(title, wikiNamespace, talk, route, query);
+        return _wikiOptions.GetWikiPageUrl(title, wikiNamespace, domain, talk, route, query);
     }
 
     public string LinkHere(
@@ -85,6 +88,7 @@ internal class WikiState
         return _wikiOptions.GetWikiPageUrl(
             WikiTitle,
             WikiNamespace,
+            WikiDomain,
             talk,
             route,
             query);
@@ -103,7 +107,8 @@ internal class WikiState
         PageTitle = Article.GetFullTitle(
             _wikiOptions,
             DisplayTitle,
-            WikiNamespace,
+            WikiNamespace ?? _wikiOptions.DefaultNamespace,
+            WikiDomain,
             IsTalk);
     }
 }

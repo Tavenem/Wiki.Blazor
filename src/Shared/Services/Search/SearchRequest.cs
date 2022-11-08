@@ -11,6 +11,14 @@ public class SearchRequest : ISearchRequest
     public bool Descending { get; set; }
 
     /// <summary>
+    /// An optional domain within which to search.
+    /// </summary>
+    /// <remarks>
+    /// Only one domain may be searched at a time.
+    /// </remarks>
+    public string? Domain { get; set; }
+
+    /// <summary>
     /// <para>
     /// The current page number in a list of results (1-based).
     /// </para>
@@ -55,6 +63,12 @@ public class SearchRequest : ISearchRequest
     /// </para>
     /// </summary>
     public string? Owner { get; set; }
+
+    /// <summary>
+    /// Whether the query string should only consider matches int he title, rather than in the
+    /// content of the article as well.
+    /// </summary>
+    public bool TitleMatchOnly { get; set; }
 
     /// <summary>
     /// <para>

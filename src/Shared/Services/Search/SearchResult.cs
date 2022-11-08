@@ -13,6 +13,16 @@ public class SearchResult : ISearchResult
     public bool Descending { get; set; }
 
     /// <summary>
+    /// An originally specified wiki domain.
+    /// </summary>
+    public string? Domain { get; set; }
+
+    /// <summary>
+    /// The originally specified owner.
+    /// </summary>
+    public string? Owner { get; set; }
+
+    /// <summary>
     /// The original search query.
     /// </summary>
     public string? Query { get; set; }
@@ -27,11 +37,6 @@ public class SearchResult : ISearchResult
     /// The originally specified sort property.
     /// </summary>
     public string? Sort { get; set; }
-
-    /// <summary>
-    /// The originally specified owner.
-    /// </summary>
-    public string? Owner { get; set; }
 
     /// <summary>
     /// An originally specified wiki namespace.

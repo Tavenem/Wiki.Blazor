@@ -6,6 +6,11 @@
 public interface ISearchHit
 {
     /// <summary>
+    /// The domain of the matching wiki item (if any).
+    /// </summary>
+    string? Domain { get; set; }
+
+    /// <summary>
     /// An excerpt from the matching article (optional).
     /// </summary>
     string? Excerpt { get; set; }
@@ -14,7 +19,7 @@ public interface ISearchHit
     /// Gets the full title of this item (including namespace if the namespace is not
     /// <see cref="WikiOptions.DefaultNamespace"/>).
     /// </summary>
-    public string FullTitle { get; set; }
+    string FullTitle { get; set; }
 
     /// <summary>
     /// The title of the matching wiki item.

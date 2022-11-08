@@ -1,4 +1,6 @@
-﻿<div class="wiki-edit-terms-notice">
+﻿@inherits OfflineSupportComponent
+
+<div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
     {
         if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
@@ -39,56 +41,56 @@
         <Checkbox @bind-Value="Redirect" Label="Leave a redirect behind" />
     </Tooltip>
 }
-<Tabs TTabItem="object">
+<Tabs TTabItem="object" ActivePanelIndexChanged="OnTabChangedAsync" Class="align-self-stretch">
     <TabPanel Title="Editor">
         <Editor Height="20rem"
-                Syntax="EditorSyntax.Markdown"
+                Syntax="IsScript ? EditorSyntax.JavaScript : EditorSyntax.Markdown"
                 Spellcheck="true"
-                @bind-Value="Content"
-                @bind-Value:after="OnContentUpdated" />
+                @bind-Value="Content" />
     </TabPanel>
-    @if (!string.IsNullOrEmpty(Preview))
-    {
-        <TabPanel Title="Preview">
-            <div style="height:50rem;overflow:auto;width:100%">
-                @(new MarkupString(Preview))
-            </div>
-        </TabPanel>
-    }
+    <TabPanel Title="Preview">
+        <SyntaxHighlighter Style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
+            @PreviewContent
+        </SyntaxHighlighter>
+    </TabPanel>
 </Tabs>
 <TextInput Label="Revision comment"
            @bind-Value="Comment"
            Spellcheck="true"
            DisplayHelpTextOnFocus="true"
-           HelpText="Briefly describe your changes" />
-<div class="d-flex flex-wrap gap-3 align-items-start">
-    <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
+           HelpText="Briefly describe your changes"
+           Class="align-self-stretch" />
+<div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
+    <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" Style="flex-basis:20rem" />
     <UserSelector Label="Owner (optional)"
                   @bind-SelectedUsers="Owner"
                   AllowGroups="true"
                   Disabled="OwnerSelf"
                   DisplayHelpTextOnFocus="true"
-                  HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
+                  HelpText="May be a user or a group. Can be left blank to make the article community-owned."
+                  Class="flex-grow-1" />
 </div>
-<div class="d-flex flex-wrap gap-3 align-items-start">
-    <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
+<div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
+    <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" Style="flex-basis:20rem" />
     <UserSelector Label="Allowed editors (optional)"
                   @bind-SelectedUsers="Editors"
                   AllowGroups="true"
                   Disabled="EditorSelf || NoOwner"
                   Multiple="true"
                   DisplayHelpTextOnFocus="true"
-                  HelpText="May be users or groups. The owner is automatically included." />
+                  HelpText="May be users or groups. The owner is automatically included."
+                  Class="flex-grow-1" />
 </div>
-<div class="d-flex flex-wrap gap-3 align-items-start">
-    <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
+<div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
+    <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" Style="flex-basis:20rem" />
     <UserSelector Label="Allowed viewers (optional)"
                   @bind-SelectedUsers="Viewers"
                   AllowGroups="true"
                   Disabled="ViewerSelf || NoOwner"
                   Multiple="true"
                   DisplayHelpTextOnFocus="true"
-                  HelpText="May be users or groups. The owner is automatically included." />
+                  HelpText="May be users or groups. The owner is automatically included."
+                  Class="flex-grow-1" />
 </div>
 <div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
@@ -121,20 +123,30 @@
 </div>
 <div class="d-flex flex-wrap m-3 gap-3">
     <button class="btn primary" disabled="@SubmitDisabled" @onclick="ReviseAsync">Publish</button>
-    <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
     <a class="btn" href="@(Article is null ? WikiState.Link() : WikiState.LinkHere())">Cancel</a>
     @if (Article is not null)
     {
         <button class="btn danger" @onclick="DeleteAsync">Delete</button>
     }
 </div>
+@if (AllowDrafts)
+{
+    <div class="d-flex flex-wrap m-3 gap-3">
+        <button class="btn primary" disabled="@SubmitDisabled" @onclick="SaveDraftAsync">Save Draft</button>
+        @if (HasDraft)
+        {
+            <button class="btn" @onclick="LoadDraftAsync">Load Saved Draft</button>
+            <button class="btn warning" disabled="@SubmitDisabled" @onclick="DeleteDraftAsync">Delete Saved Draft</button>
+        }
+    </div>
+}
 @if (Article?.Transclusions is not null && Article.Transclusions.Count > 0)
 {
     <Collapse Title="Pages transcluded in the current version of this one:">
         <ul class="wiki-edit-transclusionlist">
             @foreach (var transclusion in Article.Transclusions)
             {
-                <li><a class="wiki-link wiki-link-exists" href="@WikiState.Link(transclusion.Title, transclusion.WikiNamespace)">@Article.GetFullTitle(WikiOptions, transclusion.Title, transclusion.WikiNamespace)</a></li>
+                <li><a class="wiki-link wiki-link-exists" href="@WikiState.Link(transclusion.Title, transclusion.WikiNamespace)">@Article.GetFullTitle(WikiOptions, transclusion.Title, transclusion.WikiNamespace, transclusion.Domain)</a></li>
             }
         </ul>
     </Collapse>

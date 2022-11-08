@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 using System.Text;
-using Tavenem.Blazor.Framework;
+using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -9,26 +8,21 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// The group page.
 /// </summary>
-public partial class GroupView
+public partial class GroupView : OfflineSupportComponent
 {
     private GroupPageInfo? GroupPageInfo { get; set; }
 
     private MarkupString? Content { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
-
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
-
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
-
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    /// <inheritdoc/>
+    protected override Task OnParametersSetAsync()
+        => RefreshAsync();
 
     /// <inheritdoc/>
-    protected override async Task OnParametersSetAsync()
+    protected override async Task RefreshAsync()
     {
-        if (!string.Equals(
+        if (string.IsNullOrEmpty(WikiState.WikiTitle)
+            || !string.Equals(
             WikiState.WikiNamespace,
             WikiOptions.GroupNamespace,
             StringComparison.OrdinalIgnoreCase))
@@ -38,38 +32,16 @@ public partial class GroupView
             return;
         }
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
-        {
-            var url = new StringBuilder(serverApi)
+        GroupPageInfo = await FetchDataAsync(
+            new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
                 .Append("/group?title=")
-                .Append(WikiState.WikiTitle);
-            var response = await HttpClient.GetAsync(url.ToString());
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                WikiState.NotAuthorized = true;
-            }
-            else if (response.IsSuccessStatusCode)
-            {
-                GroupPageInfo = await response
-                    .Content
-                    .ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.GroupPageInfo);
-                Content = string.IsNullOrEmpty(GroupPageInfo?.Item?.Html)
-                    ? null
-                    : new MarkupString(GroupPageInfo.Item.Html);
-            }
-            else
-            {
-                WikiState.LoadError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-        }
-
+                .Append(WikiState.WikiTitle)
+                .ToString(),
+            WikiBlazorJsonSerializerContext.Default.GroupPageInfo,
+            user => WikiDataManager.GetGroupPageAsync(user, WikiState.WikiTitle));
+        Content = string.IsNullOrEmpty(GroupPageInfo?.Item?.Html)
+            ? null
+            : new MarkupString(GroupPageInfo.Item.Html);
         if (!string.IsNullOrEmpty(GroupPageInfo?.Group?.Entity?.DisplayName))
         {
             WikiState.UpdateTitle(GroupPageInfo.Group.Entity.DisplayName);

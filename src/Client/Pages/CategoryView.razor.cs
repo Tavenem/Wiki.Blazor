@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
-using System.Net.Http.Json;
 using System.Text;
-using Tavenem.Blazor.Framework;
+using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -9,26 +8,21 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// The category page.
 /// </summary>
-public partial class CategoryView
+public partial class CategoryView : OfflineSupportComponent
 {
     private CategoryInfo? CategoryInfo { get; set; }
 
     private MarkupString? Content { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
-
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
-
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
-
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    /// <inheritdoc/>
+    protected override Task OnParametersSetAsync()
+        => RefreshAsync();
 
     /// <inheritdoc/>
-    protected override async Task OnParametersSetAsync()
+    protected override async Task RefreshAsync()
     {
-        if (!string.Equals(
+        if (string.IsNullOrEmpty(WikiState.WikiTitle)
+            || !string.Equals(
             WikiState.WikiNamespace,
             WikiOptions.CategoryNamespace,
             StringComparison.OrdinalIgnoreCase))
@@ -38,36 +32,18 @@ public partial class CategoryView
             return;
         }
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
-        {
-            var url = new StringBuilder(serverApi)
+        CategoryInfo = await FetchDataAsync(
+            new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
                 .Append("/category?title=")
-                .Append(WikiState.WikiTitle);
-            var response = await HttpClient.GetAsync(url.ToString());
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                WikiState.NotAuthorized = true;
-            }
-            else if (response.IsSuccessStatusCode)
-            {
-                CategoryInfo = await response
-                    .Content
-                    .ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.CategoryInfo);
-                Content = string.IsNullOrEmpty(CategoryInfo?.Item?.Html)
-                    ? null
-                    : new MarkupString(CategoryInfo.Item.Html);
-            }
-            else
-            {
-                WikiState.LoadError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-        }
+                .Append(WikiState.WikiTitle)
+                .ToString(),
+            WikiBlazorJsonSerializerContext.Default.CategoryInfo,
+            user => WikiDataManager.GetCategoryAsync(
+                user,
+                WikiState.WikiTitle,
+                WikiState.WikiDomain));
+        Content = string.IsNullOrEmpty(CategoryInfo?.Item?.Html)
+            ? null
+            : new MarkupString(CategoryInfo.Item.Html);
     }
 }

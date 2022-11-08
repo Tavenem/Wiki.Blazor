@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using System.Net.Http.Json;
-using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
+using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -11,7 +10,7 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// The history view.
 /// </summary>
-public partial class HistoryView : IAsyncDisposable
+public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
 {
     private bool _disposedValue;
     private IJSObjectReference? _module;
@@ -51,11 +50,7 @@ public partial class HistoryView : IAsyncDisposable
 
     private long? FirstRevision { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
-
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private IPagedList<RevisionInfo>? Revisions { get; set; }
 
@@ -63,67 +58,11 @@ public partial class HistoryView : IAsyncDisposable
 
     private List<WikiUserInfo> SelectedEditor { get; set; } = new();
 
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
-
     private TimeSpan TimezoneOffset { get; set; }
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
-
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
-
     /// <inheritdoc/>
-    protected override async Task OnParametersSetAsync()
-    {
-        Revisions = null;
-
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
-        {
-            var response = await HttpClient.PostAsJsonAsync(
-                $"{serverApi}/history",
-                new HistoryRequest(
-                    WikiState.WikiTitle,
-                    WikiState.WikiNamespace,
-                    PageNumber ?? 1,
-                    PageSize ?? 50,
-                    Editor,
-                    Start,
-                    End),
-                WikiBlazorJsonSerializerContext.Default.HistoryRequest);
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                WikiState.NotAuthorized = true;
-            }
-            else if (response.IsSuccessStatusCode)
-            {
-                var history = await response
-                    .Content
-                    .ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.PagedRevisionInfo);
-                Revisions = history?.Revisions is null
-                    ? null
-                    : new PagedList<RevisionInfo>(
-                        history.Revisions.List.Select(x => new RevisionInfo(
-                            x,
-                            history.Editors?.FirstOrDefault(y => string.Equals(y.Id, x.Editor))
-                                ?? new WikiUserInfo(x.Editor, null, false))),
-                        history.Revisions.PageNumber,
-                        history.Revisions.PageSize,
-                        history.Revisions.TotalCount);
-            }
-            else if (response.StatusCode != System.Net.HttpStatusCode.NotFound)
-            {
-                WikiState.LoadError = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-        }
-    }
+    protected override Task OnParametersSetAsync()
+        => RefreshAsync();
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -164,6 +103,38 @@ public partial class HistoryView : IAsyncDisposable
         }
     }
 
+    /// <inheritdoc/>
+    protected override async Task RefreshAsync()
+    {
+        Revisions = null;
+
+        var request = new HistoryRequest(
+            WikiState.WikiTitle,
+            WikiState.WikiNamespace,
+            WikiState.WikiDomain,
+            PageNumber ?? 1,
+            PageSize ?? 50,
+            Editor,
+            Start,
+            End);
+        var history = await PostAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/history",
+            request,
+            WikiBlazorJsonSerializerContext.Default.HistoryRequest,
+            WikiBlazorJsonSerializerContext.Default.PagedRevisionInfo,
+            user => WikiDataManager.GetHistoryAsync(user, request));
+        Revisions = history?.Revisions is null
+            ? null
+            : new PagedList<RevisionInfo>(
+                history.Revisions.List.Select(x => new RevisionInfo(
+                    x,
+                    history.Editors?.FirstOrDefault(y => string.Equals(y.Id, x.Editor))
+                        ?? new WikiUserInfo(x.Editor, null, false))),
+                history.Revisions.PageNumber,
+                history.Revisions.PageSize,
+                history.Revisions.TotalCount);
+    }
+
     private string GetCompareWithCur(RevisionInfo revision) => WikiState.LinkHere(
         query: $"rev={revision.Revision.TimestampTicks}&diff=cur");
 
@@ -183,11 +154,11 @@ public partial class HistoryView : IAsyncDisposable
             (FirstRevision, SecondRevision) = (SecondRevision, FirstRevision);
         }
 
-        Navigation.NavigateTo(WikiState.LinkHere(
+        NavigationManager.NavigateTo(WikiState.LinkHere(
             query: $"rev={FirstRevision.Value}&diff={SecondRevision.Value}"));
     }
 
-    private void OnFilter() => Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(
+    private void OnFilter() => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(
         new Dictionary<string, object?>
         {
             { nameof(Wiki.Editor), SelectedEditor.FirstOrDefault()?.Id },
@@ -200,20 +171,20 @@ public partial class HistoryView : IAsyncDisposable
         if (Revisions?.HasNextPage == true)
         {
             CurrentPageNumber++;
-            Navigation.NavigateTo(
-                Navigation.GetUriWithQueryParameter(
+            NavigationManager.NavigateTo(
+                NavigationManager.GetUriWithQueryParameter(
                     nameof(Wiki.PageNumber),
                     (int)(CurrentPageNumber + 1)));
         }
     }
 
-    private void OnPageNumberChanged() => Navigation.NavigateTo(
-        Navigation.GetUriWithQueryParameter(
+    private void OnPageNumberChanged() => NavigationManager.NavigateTo(
+        NavigationManager.GetUriWithQueryParameter(
             nameof(Wiki.PageNumber),
             (int)(CurrentPageNumber + 1)));
 
-    private void OnPageSizeChanged() => Navigation.NavigateTo(
-        Navigation.GetUriWithQueryParameter(
+    private void OnPageSizeChanged() => NavigationManager.NavigateTo(
+        NavigationManager.GetUriWithQueryParameter(
             nameof(Wiki.PageSize),
             CurrentPageSize));
 

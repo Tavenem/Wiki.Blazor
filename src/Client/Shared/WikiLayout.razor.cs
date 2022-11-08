@@ -16,7 +16,7 @@ public partial class WikiLayout : IDisposable
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private Type ResolvedMainLayout => WikiBlazorClientOptions.MainLayout ?? typeof(MainLayout);
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
 
     [Inject] private WikiState WikiState { get; set; } = default!;
 

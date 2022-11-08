@@ -6,6 +6,11 @@
 public class SearchHit : ISearchHit
 {
     /// <summary>
+    /// The domain of the matching wiki item (if any).
+    /// </summary>
+    public string? Domain { get; set; }
+
+    /// <summary>
     /// An excerpt from the matching article (optional).
     /// </summary>
     public string? Excerpt { get; set; }
@@ -35,17 +40,21 @@ public class SearchHit : ISearchHit
     /// <param name="wikiNamespace">
     /// The namespace of the matching wiki item.
     /// </param>
+    /// <param name="domain">
+    /// The domain of the matching wiki item (if any).
+    /// </param>
     /// <param name="fullTitle">
     /// The full title of the matching wiki item.
     /// </param>
     /// <param name="excerpt">
     /// An excerpt from the matching article (optional).
     /// </param>
-    public SearchHit(string title, string wikiNamespace, string fullTitle, string? excerpt = null)
+    public SearchHit(string title, string wikiNamespace, string? domain, string fullTitle, string? excerpt = null)
     {
         Excerpt = excerpt;
         FullTitle = fullTitle;
         Title = title;
         WikiNamespace = wikiNamespace;
+        Domain = domain;
     }
 }

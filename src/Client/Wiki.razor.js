@@ -1,63 +1,72 @@
-﻿export function initialize(id, dotNetObjectReference) {
-    window.wikiblazor = window.wikiblazor || {};
+﻿const references = {};
 
-    window.wikiblazor.tmr = -1;
+let tmr = -1;
 
-    window.wikiblazor.references = window.wikiblazor.references || {};
-    window.wikiblazor.references[id] = dotNetObjectReference;
+window.wikiblazor = window.wikiblazor || {};
 
-    window.wikiblazor.showPreview = function (e, link) {
-        if (window.wikiblazor.tmr != -1) {
-            clearTimeout(window.wikiblazor.tmr);
-        }
-
-        if (!window.wikiblazor.references) {
-            return;
-        }
-
-        e = e || window.event;
-        if (!(e instanceof MouseEvent)) {
-            return;
-        }
-
-        const target = e.currentTarget;
-        if (!(target instanceof HTMLElement)) {
-            return;
-        }
-
-        const wiki = target.closest(".wiki");
-        if (!wiki) {
-            return;
-        }
-
-        const id = wiki.id;
-        if (id.length == 0) {
-            return;
-        }
-
-        if (!window.wikiblazor.references.hasOwnProperty(id)) {
-            return;
-        }
-        const ref = window.wikiblazor.references[id];
-        if (!ref) {
-            return;
-        }
-
-        window.wikiblazor.tmr = setTimeout(function () {
-            ref.invokeMethodAsync('ShowPreview', link, e.clientX, e.clientY);
-        }, 1500);
+window.wikiblazor.showPreview = function (e, link) {
+    if (tmr != -1) {
+        clearTimeout(tmr);
     }
 
-    window.wikiblazor.hidePreview = function () {
-        if (window.wikiblazor.tmr != -1) {
-            clearTimeout(window.wikiblazor.tmr);
-        }
+    if (!references) {
+        return;
+    }
 
-        for (const id in window.wikiblazor.references) {
-            var ref = window.wikiblazor.references[id];
-            if (ref) {
-                ref.invokeMethodAsync('HidePreview');
-            }
+    e = e || window.event;
+    if (!(e instanceof MouseEvent)) {
+        return;
+    }
+
+    const target = e.currentTarget;
+    if (!(target instanceof HTMLElement)) {
+        return;
+    }
+
+    const wiki = target.closest(".wiki");
+    if (!wiki) {
+        return;
+    }
+
+    const id = wiki.id;
+    if (id.length == 0) {
+        return;
+    }
+
+    const ref = references[id];
+    if (!ref) {
+        return;
+    }
+
+    tmr = setTimeout(function () {
+        ref.invokeMethodAsync('ShowPreview', link, e.clientX, e.clientY);
+    }, 1500);
+}
+
+window.wikiblazor.hidePreview = function () {
+    if (tmr != -1) {
+        clearTimeout(tmr);
+    }
+
+    for (const id in references) {
+        var ref = references[id];
+        if (ref) {
+            ref.invokeMethodAsync('HidePreview');
         }
+    }
+}
+
+export function dispose(id) {
+    delete references[id];
+}
+
+export function initialize(id, dotNetObjectReference) {
+    references[id] = dotNetObjectReference;
+}
+
+export function scrollIntoView(elementId) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
     }
 }

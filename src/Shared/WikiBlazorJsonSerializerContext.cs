@@ -21,6 +21,7 @@ namespace Tavenem.Wiki.Blazor;
 [JsonSerializable(typeof(SearchResponse))]
 [JsonSerializable(typeof(TalkResponse))]
 [JsonSerializable(typeof(UploadRequest))]
+[JsonSerializable(typeof(Archive))]
 [JsonSerializable(typeof(MarkdownItem))]
 [JsonSerializable(typeof(List<MarkdownItem>))]
 [JsonSerializable(typeof(List<Article>))]

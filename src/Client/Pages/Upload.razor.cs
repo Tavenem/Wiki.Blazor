@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
-using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Tavenem.Blazor.Framework;
+using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -14,13 +15,9 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// The upload page.
 /// </summary>
-public partial class Upload : IDisposable
+public partial class Upload : OfflineSupportComponent
 {
     private const string _baseDragAreaClass = "container rounded p-4 my-4";
-
-    private bool _disposedValue;
-
-    private AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
     private string? Comment { get; set; }
 
@@ -38,11 +35,7 @@ public partial class Upload : IDisposable
 
     private string? FileName => File?.Name;
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
-
     private bool InsufficientSpace { get; set; }
-
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
@@ -53,10 +46,6 @@ public partial class Upload : IDisposable
     private bool OwnerSelf { get; set; }
 
     private string? Preview { get; set; }
-
-    [Inject] IServiceProvider ServiceProvider { get; set; } = default!;
-
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
 
     [MemberNotNullWhen(false, nameof(File), nameof(Title))]
     private bool SubmitDisabled => File is null
@@ -69,45 +58,24 @@ public partial class Upload : IDisposable
 
     private bool ViewerSelf { get; set; }
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
-
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
-
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
-        AuthenticationStateProvider = ServiceProvider.GetService<AuthenticationStateProvider>();
-        if (AuthenticationStateProvider is not null)
-        {
-            AuthenticationStateProvider.AuthenticationStateChanged += OnStateChanged;
-        }
+        await base.OnInitializedAsync();
         await RefreshAsync();
     }
 
     /// <inheritdoc/>
-    public void Dispose()
+    protected override async Task RefreshAsync()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
+        NotAuthorized = false;
 
-    /// <summary>
-    /// Performs application-defined tasks associated with freeing, releasing, or resetting
-    /// unmanaged resources.
-    /// </summary>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposedValue)
+        var limit = await FetchIntAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/uploadlimit",
+            WikiDataManager.GetUploadLimitAsync);
+        if (limit == 0)
         {
-            if (disposing && AuthenticationStateProvider is not null)
-            {
-                AuthenticationStateProvider.AuthenticationStateChanged -= OnStateChanged;
-            }
-
-            _disposedValue = true;
+            NotAuthorized = true;
         }
     }
 
@@ -143,8 +111,6 @@ public partial class Upload : IDisposable
         File = e.File;
     }
 
-    private async void OnStateChanged(object? sender) => await RefreshAsync();
-
     private async Task PreviewAsync()
     {
         Preview = null;
@@ -153,66 +119,19 @@ public partial class Upload : IDisposable
             return;
         }
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
+        var (domain, wikiNamespace, title, _, defaultNamespace) = Article.GetTitleParts(WikiOptions, Title);
+        if (!defaultNamespace
+            && !string.Equals(wikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
         {
-            var response = await HttpClient.PostAsJsonAsync(
-                $"{serverApi}/preview",
-                new PreviewRequest(Content, Title, WikiOptions.FileNamespace),
-                WikiBlazorJsonSerializerContext.Default.PreviewRequest);
-            if (response.IsSuccessStatusCode)
-            {
-                Preview = await response.Content.ReadAsStringAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-        }
-    }
-
-    private async Task RefreshAsync()
-    {
-        NotAuthorized = false;
-
-        var state = AuthenticationStateProvider is null
-            ? null
-            : await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (state?.User.Identity?.IsAuthenticated != true)
-        {
-            if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
-            {
-                Navigation.NavigateTo(Navigation.GetUriWithQueryParameter(nameof(Wiki.Unauthenticated), true));
-                return;
-            }
-            var path = new StringBuilder(WikiBlazorClientOptions.LoginPath)
-                .Append(WikiBlazorClientOptions.LoginPath.Contains('?')
-                    ? '&' : '?')
-                .Append("returnUrl=")
-                .Append(Navigation.Uri);
-            Navigation.NavigateTo(path.ToString());
+            return;
         }
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
-        {
-            var response = await HttpClient.GetAsync($"{serverApi}/uploadlimit");
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized
-                || !int.TryParse(await response.Content.ReadAsStringAsync(), out var limit)
-                || limit == 0)
-            {
-                NotAuthorized = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            NotAuthorized = true;
-            Console.WriteLine(ex);
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-        }
+        var request = new PreviewRequest(Content, title, WikiOptions.FileNamespace, domain);
+        Preview = await PostForStringAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
+            request,
+            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
+            user => WikiDataManager.PreviewAsync(user, request));
     }
 
     private async Task UploadAsync(bool confirmOverwrite = false)
@@ -222,103 +141,147 @@ public partial class Upload : IDisposable
             return;
         }
 
+        var (domain, wikiNamespace, title, _, defaultNamespace) = Article.GetTitleParts(WikiOptions, Title);
+        if (!defaultNamespace
+            && !string.Equals(wikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         NotAuthorized = false;
         InsufficientSpace = false;
 
+        IList<string>? allowedEditors = null;
+        IList<string>? allowedEditorGroups = null;
+        if (!EditorSelf && Editors.Count > 0)
+        {
+            allowedEditors = Editors
+                .Where(x => x.Entity is IWikiUser)
+                .Select(x => x.Id)
+                .ToList();
+
+            allowedEditorGroups = Editors
+                .Where(x => x.Entity is IWikiGroup)
+                .Select(x => x.Id)
+                .ToList();
+        }
+
+        IList<string>? allowedViewers = null;
+        IList<string>? allowedViewerGroups = null;
+        if (!ViewerSelf && Viewers.Count > 0)
+        {
+            allowedViewers = Viewers
+                .Where(x => x.Entity is IWikiUser)
+                .Select(x => x.Id)
+                .ToList();
+
+            allowedViewerGroups = Viewers
+                .Where(x => x.Entity is IWikiGroup)
+                .Select(x => x.Id)
+                .ToList();
+        }
+
+        var request = new UploadRequest(
+            Title.Trim(),
+            domain,
+            Content,
+            confirmOverwrite,
+            Comment?.Trim(),
+            OwnerSelf,
+            OwnerSelf || Owner.Count < 1 ? null : Owner[0].Id,
+            EditorSelf,
+            ViewerSelf,
+            allowedEditors,
+            allowedViewers,
+            allowedEditorGroups,
+            allowedViewerGroups);
+
+        ClaimsPrincipal? user = null;
+        AuthenticationState? state = null;
+        if (AuthenticationStateProvider is not null)
+        {
+            state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            user = state.User;
+        }
         try
         {
-            using var request = new MultipartFormDataContent();
+            using var content = new MultipartFormDataContent();
             var fileContent = new StreamContent(File.OpenReadStream(WikiOptions.MaxFileSize));
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(File.ContentType);
-            request.Add(fileContent, "\"file\"", File.Name);
+            content.Add(fileContent, "\"file\"", File.Name);
 
-            IList<string>? allowedEditors = null;
-            IList<string>? allowedEditorGroups = null;
-            if (!EditorSelf && Editors.Count > 0)
-            {
-                allowedEditors = Editors
-                    .Where(x => x.Entity is IWikiUser)
-                    .Select(x => x.Id)
-                    .ToList();
-
-                allowedEditorGroups = Editors
-                    .Where(x => x.Entity is IWikiGroup)
-                    .Select(x => x.Id)
-                    .ToList();
-            }
-
-            IList<string>? allowedViewers = null;
-            IList<string>? allowedViewerGroups = null;
-            if (!ViewerSelf && Viewers.Count > 0)
-            {
-                allowedViewers = Viewers
-                    .Where(x => x.Entity is IWikiUser)
-                    .Select(x => x.Id)
-                    .ToList();
-
-                allowedViewerGroups = Viewers
-                    .Where(x => x.Entity is IWikiGroup)
-                    .Select(x => x.Id)
-                    .ToList();
-            }
-            var json = JsonSerializer.Serialize(new UploadRequest(
-                Title.Trim(),
-                Content,
-                confirmOverwrite,
-                Comment?.Trim(),
-                OwnerSelf,
-                OwnerSelf || Owner.Count < 1 ? null : Owner[0].Id,
-                EditorSelf,
-                ViewerSelf,
-                allowedEditors,
-                allowedViewers,
-                allowedEditorGroups,
-                allowedViewerGroups),
+            var json = JsonSerializer.Serialize(request,
                 WikiBlazorJsonSerializerContext.Default.UploadRequest);
-            request.Add(
+            content.Add(
                 new StringContent(
                     json,
                     new System.Net.Http.Headers.MediaTypeHeaderValue("application/json")),
                 "\"options\"");
 
-            var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-                ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-            var response = await HttpClient.PostAsync($"{serverApi}/upload", request);
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            var isOfflineDomain = false;
+            if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+                && WikiBlazorClientOptions.IsOfflineDomain is not null)
             {
-                NotAuthorized = true;
+                isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
             }
-            else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            if (!isOfflineDomain
+                && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
             {
-                var confirm = await DialogService.ShowMessageBox(
-                    "Confirm overwrite",
-                    MessageBoxOptions.YesNo("A file with this title already exists. Are you sure you want to overwrite the existing file?"));
-                if (confirm == true)
+                var response = await HttpClient.PostAsync(
+                    $"{WikiBlazorClientOptions.WikiServerApiRoute}/upload",
+                    content);
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    await UploadAsync(true);
+                    if (state?.User.Identity?.IsAuthenticated != true)
+                    {
+                        if (state is null
+                            || string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
+                        {
+                            NavigationManager.NavigateTo(
+                                NavigationManager.GetUriWithQueryParameter(
+                                    nameof(Wiki.Unauthenticated),
+                                    true));
+                        }
+                        else
+                        {
+                            var path = new StringBuilder(WikiBlazorClientOptions.LoginPath)
+                                .Append(WikiBlazorClientOptions.LoginPath.Contains('?')
+                                    ? '&' : '?')
+                                .Append("returnUrl=")
+                                .Append(UrlEncoder.Default.Encode(NavigationManager.Uri));
+                            NavigationManager.NavigateTo(path.ToString());
+                        }
+                    }
+                    NotAuthorized = true;
                 }
-            }
-            else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-            {
-                if (response.ReasonPhrase?.Contains("exceeds") == true)
+                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
-                    InsufficientSpace = true;
+                    if (response.ReasonPhrase?.Contains("exceeds") == true)
+                    {
+                        InsufficientSpace = true;
+                    }
+                    else
+                    {
+                        SnackbarService.Add(response.ReasonPhrase ?? "Invalid upload", ThemeColor.Warning);
+                    }
                 }
-                else
+                else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
-                    SnackbarService.Add(response.ReasonPhrase ?? "Invalid upload", ThemeColor.Warning);
+                    var confirm = await DialogService.ShowMessageBox(
+                        "Confirm overwrite",
+                        MessageBoxOptions.YesNo("A file with this title already exists. Are you sure you want to overwrite the existing file?"));
+                    if (confirm == true)
+                    {
+                        await UploadAsync(true);
+                    }
                 }
-            }
-            else if (response.IsSuccessStatusCode)
-            {
-                Navigation.NavigateTo(WikiState.Link(Title, WikiOptions.FileNamespace));
-            }
-            else
-            {
-                Console.WriteLine(response.ReasonPhrase);
-                SnackbarService.Add("An error occurred", ThemeColor.Danger);
+                else if (response.IsSuccessStatusCode)
+                {
+                    NavigationManager.NavigateTo(WikiState.Link(title, WikiOptions.FileNamespace, domain));
+                }
             }
         }
+        catch (HttpRequestException) { }
         catch (Exception ex)
         {
             Console.WriteLine(ex);

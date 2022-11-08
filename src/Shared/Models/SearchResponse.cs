@@ -13,4 +13,5 @@ public record SearchResponse(
     string? Sort,
     string? Owner,
     string? WikiNamespace,
+    string? Domain,
     Article? ExactMatch = null);

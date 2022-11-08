@@ -1,7 +1,9 @@
-﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
+﻿@inherits OfflineSupportComponent
+
+<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
 @if (GroupPageInfo is not null)
 {
-    <div class="wiki-parser-output">@Content</div>
+    <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
     if (GroupPageInfo.Users is not null
         && GroupPageInfo.Users.Count > 0)
     {

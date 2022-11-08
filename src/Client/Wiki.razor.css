@@ -124,6 +124,14 @@
         gap: .25em;
     }
 
+.wiki-main-heading-domain-separator:after {
+    content: ':';
+}
+
+.wiki-main-heading-namespace-separator:after {
+    content: ':';
+}
+
 .wiki-body {
     align-items: start;
     display: flex;
@@ -143,6 +151,7 @@
 }
 
 ::deep .wiki-parser-output {
+    align-self: stretch;
     flex-grow: 1;
 }
 

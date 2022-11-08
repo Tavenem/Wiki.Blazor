@@ -5,6 +5,7 @@
 /// </summary>
 public record UploadRequest(
     string Title,
+    string? Domain = null,
     string? Markdown = null,
     bool OverwriteConfirmed = false,
     string? RevisionComment = null,

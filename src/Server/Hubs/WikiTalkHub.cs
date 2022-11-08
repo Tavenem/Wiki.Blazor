@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Tavenem.DataStorage;
+using Tavenem.Wiki.Blazor.Server.Controllers;
 using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Server.Hubs;
@@ -10,10 +11,8 @@ namespace Tavenem.Wiki.Blazor.Server.Hubs;
 /// </summary>
 public class WikiTalkHub : Hub<IWikiTalkClient>, IWikiTalkHub
 {
-    internal const string PreviewNamespaceTemplate = "<span class=\"wiki-main-heading-namespace\">{0}</span><span class=\"wiki-main-heading-namespace-separator\">:</span>";
-    internal const string PreviewTemplate = "<div class=\"wiki compact preview\"><div><main class=\"wiki-content\" role=\"main\"><div class=\"wiki-heading\" role=\"heading\"><h1 class=\"wiki-main-heading\">{0}<span class=\"wiki-main-heading-title\">{1}</span></h1></div><div class=\"wiki-body\"><div class=\"wiki-parser-output\">{2}</div></div></main></div></div>";
-
     private readonly IDataStore _dataStore;
+    private readonly IWikiGroupManager _groupManager;
     private readonly IWikiUserManager _userManager;
     private readonly WikiOptions _wikiOptions;
 
@@ -28,10 +27,12 @@ public class WikiTalkHub : Hub<IWikiTalkClient>, IWikiTalkHub
     /// </summary>
     public WikiTalkHub(
         IDataStore dataStore,
+        IWikiGroupManager groupManager,
         IWikiUserManager userManager,
         WikiOptions wikiOptions)
     {
         _dataStore = dataStore;
+        _groupManager = groupManager;
         _userManager = userManager;
         _wikiOptions = wikiOptions;
     }
@@ -127,10 +128,18 @@ public class WikiTalkHub : Hub<IWikiTalkClient>, IWikiTalkHub
                 {
                     preview = true;
                     var previewHtml = article.Preview;
+                    var domainStr = string.IsNullOrEmpty(article.Domain)
+                        ? string.Empty
+                        : string.Format(WikiDataManager.PreviewDomainTemplate, article.Domain);
                     var namespaceStr = article.WikiNamespace == _wikiOptions.DefaultNamespace
                         ? string.Empty
-                        : string.Format(PreviewNamespaceTemplate, article.WikiNamespace);
-                    html = string.Format(PreviewTemplate, namespaceStr, article.Title, previewHtml);
+                        : string.Format(WikiDataManager.PreviewNamespaceTemplate, article.WikiNamespace);
+                    html = string.Format(
+                        WikiDataManager.PreviewTemplate,
+                        domainStr,
+                        namespaceStr,
+                        article.Title,
+                        previewHtml);
                 }
             }
         }
@@ -157,44 +166,17 @@ public class WikiTalkHub : Hub<IWikiTalkClient>, IWikiTalkHub
 
     private async ValueTask<bool> GetTopicPermissionAsync(string topicId, IWikiUser? user)
     {
-        if (string.IsNullOrWhiteSpace(topicId)
-            || string.IsNullOrEmpty(topicId))
+        if (string.IsNullOrWhiteSpace(topicId))
         {
             return false;
         }
 
-        var article = await _dataStore.GetItemAsync<Article>(topicId).ConfigureAwait(false);
-        if (article is null)
-        {
-            return false;
-        }
-
-        if (string.IsNullOrEmpty(article.Owner)
-            || article.Owner == user?.Id)
-        {
-            return true;
-        }
-
-        if (article.AllowedViewers is null)
-        {
-            return true;
-        }
-        else if (user is null)
-        {
-            return false;
-        }
-        else if (article.AllowedViewers.Contains(user.Id))
-        {
-            return true;
-        }
-        else if (user.Groups is null)
-        {
-            return false;
-        }
-        else
-        {
-            return user.Groups.Contains(article.Owner)
-                || article.AllowedViewers?.Intersect(user.Groups).Any() != false;
-        }
+        var result = await _dataStore.GetWikiItemAsync(
+            _wikiOptions,
+            _userManager,
+            _groupManager,
+            topicId,
+            user);
+        return result.Permission.HasFlag(WikiPermission.Read);
     }
 }

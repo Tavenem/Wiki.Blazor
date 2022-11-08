@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
+using System.Text;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
 using Tavenem.Wiki.Blazor.SignalR;
@@ -31,6 +33,8 @@ public partial class Talk : IAsyncDisposable
 
     private bool CanPost { get; set; }
 
+    private bool CanTalk { get; set; }
+
     private bool Connected => WikiTalkClient?.IsConnected == true;
 
     [Inject] private HttpClient HttpClient { get; set; } = default!;
@@ -47,7 +51,7 @@ public partial class Talk : IAsyncDisposable
 
     private TimeSpan TimezoneOffset { get; set; }
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
 
     [Inject] private WikiState WikiState { get; set; } = default!;
 
@@ -99,6 +103,9 @@ public partial class Talk : IAsyncDisposable
                 Console.WriteLine(ex);
             }
         }
+
+        CanTalk = WikiTalkClient is not null
+            || !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
 
         await ReloadAsync();
     }
@@ -179,17 +186,23 @@ public partial class Talk : IAsyncDisposable
 
     private async Task ReloadAsync()
     {
-        TalkMessages.Clear();
+        if (string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        {
+            return;
+        }
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
         IList<MessageResponse>? messages = null;
         try
         {
-            var url = string.IsNullOrEmpty(WikiState.WikiNamespace)
-                ? $"{serverApi}/talk?title={WikiState.WikiTitle}"
-                : $"{serverApi}/talk?title={WikiState.WikiTitle}&wikiNamespace={WikiState.WikiNamespace}";
-            var response = await HttpClient.GetAsync(url);
+            var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
+                .Append("/talk?title=")
+                .Append(WikiState.WikiTitle);
+            if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
+            {
+                url.Append("&wikiNamespace=")
+                    .Append(WikiState.WikiNamespace);
+            }
+            var response = await HttpClient.GetAsync(url.ToString());
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 WikiState.NotAuthorized = true;
@@ -214,6 +227,82 @@ public partial class Talk : IAsyncDisposable
             SnackbarService.Add("An error occurred", ThemeColor.Danger);
         }
 
+        UpdateMessages(messages);
+    }
+
+    private TalkMessageModel? FindMessage(List<TalkMessageModel> list, string id)
+    {
+        foreach (var message in list)
+        {
+            if (message.Message.Id == id)
+            {
+                return message;
+            }
+
+            if (message.Replies is not null)
+            {
+                var match = FindMessage(message.Replies, id);
+                if (match is not null)
+                {
+                    return match;
+                }
+            }
+        }
+        return null;
+    }
+
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
+        Justification = "ReplyRequest will not be trimmed if this method is called")]
+    private async Task OnPostAsync(ReplyRequest reply)
+    {
+        if (WikiTalkClient is not null
+            && WikiTalkClient.IsConnected)
+        {
+            await WikiTalkClient.SendAsync(reply);
+            return;
+        }
+
+        IList<MessageResponse>? messages = null;
+        if (!string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        {
+            try
+            {
+                var response = await HttpClient.PostAsJsonAsync(
+                    $"{WikiBlazorClientOptions.WikiServerApiRoute}/talk",
+                    reply);
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    WikiState.NotAuthorized = true;
+                }
+                else if (response.StatusCode is System.Net.HttpStatusCode.BadRequest
+                    or System.Net.HttpStatusCode.NoContent)
+                {
+                    Navigation.NavigateTo(
+                        WikiState.Link(WikiState.WikiTitle, WikiState.WikiNamespace),
+                        replace: true);
+                }
+                else
+                {
+                    var talk = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.TalkResponse);
+                    TopicId = talk?.TopicId;
+                    messages = talk?.Messages;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                SnackbarService.Add("An error occurred", ThemeColor.Danger);
+            }
+        }
+
+        UpdateMessages(messages);
+    }
+
+    private void UpdateMessages(IList<MessageResponse>? messages)
+    {
+        TalkMessages.Clear();
         if (messages is not null)
         {
             foreach (var message in messages)
@@ -265,35 +354,6 @@ public partial class Talk : IAsyncDisposable
         foreach (var message in TalkMessages)
         {
             message.Replies?.Sort((x, y) => x.Message.TimestampTicks.CompareTo(y.Message.TimestampTicks));
-        }
-    }
-
-    private TalkMessageModel? FindMessage(List<TalkMessageModel> list, string id)
-    {
-        foreach (var message in list)
-        {
-            if (message.Message.Id == id)
-            {
-                return message;
-            }
-
-            if (message.Replies is not null)
-            {
-                var match = FindMessage(message.Replies, id);
-                if (match is not null)
-                {
-                    return match;
-                }
-            }
-        }
-        return null;
-    }
-
-    private async Task OnPostAsync(ReplyRequest reply)
-    {
-        if (WikiTalkClient is not null)
-        {
-            await WikiTalkClient.SendAsync(reply);
         }
     }
 }

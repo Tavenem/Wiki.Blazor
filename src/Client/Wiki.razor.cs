@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using System.Diagnostics.CodeAnalysis;
-using System.Net.Http.Json;
 using System.Text;
 using Tavenem.Blazor.Framework;
+using Tavenem.Wiki.Blazor.Client.Shared;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
@@ -20,11 +19,10 @@ namespace Tavenem.Wiki.Blazor.Client;
 /// cref="WikiOptions.WikiLinkPrefix"/> followed by "/{*route}".
 /// </para>
 /// </summary>
-public partial class Wiki : IAsyncDisposable
+public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 {
     private bool _disposedValue;
     private DotNetObjectReference<Wiki>? _dotNetObjectReference;
-    private bool _initialized;
     private IJSObjectReference? _module;
 
     /// <summary>
@@ -50,6 +48,8 @@ public partial class Wiki : IAsyncDisposable
 
     internal int? PageSize { get; set; }
 
+    internal string? SearchDomain { get; set; }
+
     internal string? SearchNamespace { get; set; }
 
     internal string? SearchOwner { get; set; }
@@ -61,8 +61,6 @@ public partial class Wiki : IAsyncDisposable
     internal bool Unauthenticated { get; set; }
 
     private string ArticleType => IsCategory ? "Category" : "Article";
-
-    private AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
     private bool _canCreate;
     private bool CanCreate
@@ -82,7 +80,7 @@ public partial class Wiki : IAsyncDisposable
 
     private string? Diff { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
+    private string? Fragment { get; set; }
 
     private string Id { get; } = Guid.NewGuid().ToHtmlId();
 
@@ -105,6 +103,8 @@ public partial class Wiki : IAsyncDisposable
 
     private bool IsSearch { get; set; }
 
+    private bool IsSpecial { get; set; }
+
     private bool IsSpecialList { get; set; }
 
     private bool IsUpload { get; set; }
@@ -114,8 +114,6 @@ public partial class Wiki : IAsyncDisposable
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
 
     private string? LastPreviewLink { get; set; }
-
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     private bool NoRedirect { get; set; }
 
@@ -141,44 +139,35 @@ public partial class Wiki : IAsyncDisposable
 
     private string? Route { get; set; }
 
-    private string? SearchText { get; set; }
+    [Inject] ISearchClient SearchClient { get; set; } = default!;
 
-    [Inject] IServiceProvider ServiceProvider { get; set; } = default!;
+    private string? SearchText { get; set; }
 
     private bool ShowHistory { get; set; }
 
     private bool ShowWhatLinksHere { get; set; }
 
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
-
     private SpecialListType SpecialListType { get; set; }
+
+    private string? TargetDomain { get; set; }
 
     private string? TargetNamespace { get; set; }
 
     private string? TargetTitle { get; set; }
 
-    [Inject] private IWikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
-
     private Article? WikiItem { get; set; }
-
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
 
     private IWikiUser? User { get; set; }
 
     /// <inheritdoc/>
-    protected override Task OnParametersSetAsync() => ReloadAsync();
+    protected override Task OnParametersSetAsync()
+        => RefreshAsync();
 
     /// <inheritdoc/>
     protected override void OnInitialized()
     {
-        Navigation.LocationChanged += OnLocationChanged;
-        AuthenticationStateProvider = ServiceProvider.GetService<AuthenticationStateProvider>();
-        if (AuthenticationStateProvider is not null)
-        {
-            AuthenticationStateProvider.AuthenticationStateChanged += OnStateChanged;
-        }
+        base.OnInitialized();
+        NavigationManager.LocationChanged += OnLocationChanged;
     }
 
     /// <inheritdoc/>
@@ -191,7 +180,7 @@ public partial class Wiki : IAsyncDisposable
                 "import",
                 "./_content/Tavenem.Wiki.Blazor.Client/Wiki.razor.js");
             await _module.InvokeVoidAsync("initialize", Id, _dotNetObjectReference);
-            _initialized = true;
+            await RefreshAsync();
         }
     }
 
@@ -211,16 +200,14 @@ public partial class Wiki : IAsyncDisposable
     {
         if (!_disposedValue)
         {
+            Dispose(disposing);
+
             if (disposing)
             {
                 _dotNetObjectReference?.Dispose();
                 if (_module is not null)
                 {
                     await _module.DisposeAsync();
-                }
-                if (AuthenticationStateProvider is not null)
-                {
-                    AuthenticationStateProvider.AuthenticationStateChanged -= OnStateChanged;
                 }
             }
 
@@ -265,7 +252,7 @@ public partial class Wiki : IAsyncDisposable
             return;
         }
 
-        var (_, _, isTalk, _) = Article.GetTitleParts(WikiOptions, link);
+        var (_, _, _, isTalk, _) = Article.GetTitleParts(WikiOptions, link);
         if (isTalk)
         {
             return;
@@ -273,14 +260,10 @@ public partial class Wiki : IAsyncDisposable
 
         Preview = new(string.Empty);
 
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
-        {
-            var preview = await HttpClient.GetStringAsync($"{serverApi}/previewlink?link={link}");
-            Preview = new(preview);
-        }
-        catch { }
+        var preview = await FetchStringAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/previewlink?link={link}",
+            user => WikiDataManager.GetPreviewAsync(user, link));
+        Preview = new(preview ?? string.Empty);
 
         if (!PendingPreview
             || string.IsNullOrEmpty(Preview.Value))
@@ -296,158 +279,14 @@ public partial class Wiki : IAsyncDisposable
         StateHasChanged();
     }
 
-    [UnconditionalSuppressMessage(
-        "Trimming",
-        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "List<string> will not be trimmed.")]
-    private async Task<IEnumerable<KeyValuePair<string, object>>> GetSearchSuggestions(string input)
+    /// <inheritdoc/>
+    protected override async Task RefreshAsync()
     {
-        if (string.IsNullOrEmpty(input))
-        {
-            return Enumerable.Empty<KeyValuePair<string, object>>();
-        }
-        var (_, title, _, _) = Article.GetTitleParts(WikiOptions, input);
-        if (string.IsNullOrEmpty(title))
-        {
-            return Enumerable.Empty<KeyValuePair<string, object>>();
-        }
-
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        List<string>? response = null;
-        try
-        {
-            response = await HttpClient.GetFromJsonAsync<List<string>>($"{serverApi}/searchsuggest?input={input}");
-        }
-        catch { }
-        return response?.Select(x => new KeyValuePair<string, object>(x, x))
-            ?? Enumerable.Empty<KeyValuePair<string, object>>();
-    }
-
-    private async Task GetWikiItemAsync()
-    {
-        var serverApi = WikiBlazorClientOptions.WikiServerApiRoute
-            ?? Client.WikiBlazorClientOptions.DefaultWikiServerApiRoute;
-        try
-        {
-            var url = new StringBuilder(serverApi)
-                .Append("/item?title=")
-                .Append(WikiState.WikiTitle);
-            if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
-            {
-                url.Append("&wikiNamespace=")
-                    .Append(WikiState.WikiNamespace);
-            }
-            if (NoRedirect)
-            {
-                url.Append("&noRedirect=true");
-            }
-            if (RequestedDiffCurrent)
-            {
-                url.Append("&requestedDiffCurrent=true");
-            }
-            if (RequestedDiffPrevious)
-            {
-                url.Append("&requestedDiffPrevious");
-            }
-            if (RequestedDiffTimestamp.HasValue)
-            {
-                url.Append("&requestedDiffTimestamp=")
-                    .Append(RequestedDiffTimestamp.Value.ToUniversalTime().Ticks);
-            }
-            if (RequestedTimestamp.HasValue)
-            {
-                url.Append("&requestedTimestamp=")
-                    .Append(RequestedTimestamp.Value.ToUniversalTime().Ticks);
-            }
-            var response = await HttpClient.GetAsync(url.ToString());
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                WikiState.NotAuthorized = true;
-            }
-            else if (response.IsSuccessStatusCode)
-            {
-                var item = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.WikiItemInfo);
-                WikiItem = item?.Item;
-                var permission = item?.Permission ?? WikiPermission.None;
-                CanCreate = permission.HasFlag(WikiPermission.Create);
-                CanEdit = WikiItem is null
-                    ? permission.HasFlag(WikiPermission.Create)
-                    : permission.HasFlag(WikiPermission.Write);
-                if (!CanEdit && IsEditing)
-                {
-                    WikiState.NotAuthorized = true;
-
-                    var state = AuthenticationStateProvider is null
-                        ? null
-                        : await AuthenticationStateProvider.GetAuthenticationStateAsync();
-                    if (state?.User.Identity?.IsAuthenticated != true)
-                    {
-                        if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
-                        {
-                            Navigation.NavigateTo(Navigation.GetUriWithQueryParameter(nameof(Unauthenticated), true));
-                        }
-                        else
-                        {
-                            var path = new StringBuilder(WikiBlazorClientOptions.LoginPath)
-                                .Append(WikiBlazorClientOptions.LoginPath.Contains('?')
-                                    ? '&' : '?')
-                                .Append("returnUrl=")
-                                .Append(Navigation.Uri);
-                            Navigation.NavigateTo(path.ToString());
-                        }
-                    }
-                }
-                Content = string.IsNullOrEmpty(item?.Html)
-                    ? null
-                    : new MarkupString(item.Html);
-                IsDiff = item?.IsDiff == true;
-                WikiState.UpdateTitle(item?.DisplayTitle);
-            }
-            else
-            {
-                CanCreate = false;
-                CanEdit = false;
-                Content = null;
-                WikiItem = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            CanCreate = false;
-            CanEdit = false;
-            Content = null;
-            WikiItem = null;
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-            return;
-        }
-    }
-
-    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-        => await ReloadAsync();
-
-    private void OnSetSearchText()
-    {
-        if (string.IsNullOrWhiteSpace(SearchText))
+        if (_module is null)
         {
             return;
         }
-
-        Navigation.NavigateTo(WikiState.Link(
-            "Search",
-            WikiOptions.SystemNamespace,
-            query: $"filter={SearchText}"));
-    }
-
-    private async void OnStateChanged(object? sender) => await ReloadAsync();
-
-    private async Task ReloadAsync()
-    {
-        if (_initialized)
-        {
-            await JSRuntime.InvokeVoidAsync("wikiblazor.hidePreview");
-        }
+        await JSRuntime.InvokeVoidAsync("wikiblazor.hidePreview");
         Reset();
         SetIsCompact();
         SetRoute();
@@ -463,6 +302,166 @@ public partial class Wiki : IAsyncDisposable
         StateHasChanged();
     }
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
+        Justification = "List<string> will not be trimmed.")]
+    private async Task<IEnumerable<KeyValuePair<string, object>>> GetSearchSuggestions(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return Enumerable.Empty<KeyValuePair<string, object>>();
+        }
+        var (_, _, title, _, _) = Article.GetTitleParts(WikiOptions, input);
+        if (string.IsNullOrEmpty(title))
+        {
+            return Enumerable.Empty<KeyValuePair<string, object>>();
+        }
+
+        var suggestions = await FetchDataAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/searchsuggest?input={input}",
+            async user => await WikiDataManager.GetSearchSuggestionsAsync(
+                SearchClient,
+                user,
+                input));
+        return suggestions?.Select(x => new KeyValuePair<string, object>(x, x))
+            ?? Enumerable.Empty<KeyValuePair<string, object>>();
+    }
+
+    private async Task GetWikiItemAsync()
+    {
+        var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
+            .Append("/item?title=")
+            .Append(WikiState.WikiTitle);
+        if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
+        {
+            url.Append("&wikiNamespace=")
+                .Append(WikiState.WikiNamespace);
+        }
+        if (!string.IsNullOrEmpty(WikiState.WikiDomain))
+        {
+            url.Append("&domain=")
+                .Append(WikiState.WikiDomain);
+        }
+        if (NoRedirect)
+        {
+            url.Append("&noRedirect=true");
+        }
+        if (RequestedDiffCurrent)
+        {
+            url.Append("&requestedDiffCurrent=true");
+        }
+        if (RequestedDiffPrevious)
+        {
+            url.Append("&requestedDiffPrevious");
+        }
+        if (RequestedDiffTimestamp.HasValue)
+        {
+            url.Append("&requestedDiffTimestamp=")
+                .Append(RequestedDiffTimestamp.Value.ToUniversalTime().Ticks);
+        }
+        if (RequestedTimestamp.HasValue)
+        {
+            url.Append("&requestedTimestamp=")
+                .Append(RequestedTimestamp.Value.ToUniversalTime().Ticks);
+        }
+
+        var item = await FetchDataAsync(
+            url.ToString(),
+            WikiBlazorJsonSerializerContext.Default.WikiItemInfo,
+            async user => await WikiDataManager.GetItemAsync(
+                user,
+                WikiState.WikiTitle,
+                WikiState.WikiNamespace,
+                WikiState.WikiDomain,
+                NoRedirect,
+                RequestedDiffCurrent,
+                RequestedDiffPrevious,
+                RequestedDiffTimestamp?.ToUniversalTime().Ticks,
+                RequestedTimestamp?.ToUniversalTime().Ticks));
+        if (item is null)
+        {
+            CanCreate = false;
+            CanEdit = false;
+            Content = null;
+            WikiItem = null;
+            IsDiff = false;
+            WikiState.UpdateTitle(null);
+        }
+        else
+        {
+            WikiItem = item.Item;
+            CanCreate = item.Permission.HasFlag(WikiPermission.Create);
+            CanEdit = WikiItem is null
+                ? item.Permission.HasFlag(WikiPermission.Create)
+                : item.Permission.HasFlag(WikiPermission.Write);
+            if (!CanEdit && IsEditing)
+            {
+                WikiState.NotAuthorized = true;
+
+                var state = AuthenticationStateProvider is null
+                    ? null
+                    : await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                if (state?.User.Identity?.IsAuthenticated != true)
+                {
+                    if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
+                    {
+                        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Unauthenticated), true));
+                    }
+                    else
+                    {
+                        var path = new StringBuilder(WikiBlazorClientOptions.LoginPath)
+                            .Append(WikiBlazorClientOptions.LoginPath.Contains('?')
+                                ? '&' : '?')
+                            .Append("returnUrl=")
+                            .Append(Uri.EscapeDataString(NavigationManager.Uri));
+                        Uri? uri = null;
+                        try
+                        {
+                            uri = new Uri(path.ToString());
+                        }
+                        catch { }
+                        if (uri is null
+                            || uri.IsAbsoluteUri)
+                        {
+                            NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Unauthenticated), true));
+                        }
+                        else
+                        {
+                            NavigationManager.NavigateTo(uri.ToString());
+                        }
+                    }
+                }
+            }
+            Content = string.IsNullOrEmpty(item.Html)
+                ? null
+                : new MarkupString(item.Html);
+            IsDiff = item.IsDiff;
+            WikiState.UpdateTitle(item.DisplayTitle);
+            StateHasChanged();
+            if (_module is not null && !string.IsNullOrEmpty(Fragment))
+            {
+                await _module.InvokeVoidAsync("scrollIntoView", Fragment);
+            }
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        => await RefreshAsync();
+
+    private void OnSetSearchText()
+    {
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo(WikiState.Link(
+            "Search",
+            WikiOptions.SystemNamespace,
+            query: $"filter={SearchText}"));
+    }
+
     private void Reset()
     {
         CanCreate = false;
@@ -473,6 +472,7 @@ public partial class Wiki : IAsyncDisposable
         IsFile = false;
         IsGroupPage = false;
         IsSearch = false;
+        IsSpecial = false;
         IsSpecialList = false;
         IsUserPage = false;
         NoRedirect = false;
@@ -493,10 +493,10 @@ public partial class Wiki : IAsyncDisposable
 
     private void SetIsCompact()
     {
-        WikiState.SetIsCompact(Compact || Navigation.GetQueryParam<bool>("compact"));
+        WikiState.SetIsCompact(Compact || NavigationManager.GetQueryParam<bool>("compact"));
         if (!WikiState.IsCompact)
         {
-            var uri = new Uri(Navigation.Uri);
+            var uri = new Uri(NavigationManager.Uri);
             if (WikiBlazorClientOptions.CompactRoutePort.HasValue
                 && uri.Port == WikiBlazorClientOptions.CompactRoutePort.Value)
             {
@@ -525,7 +525,9 @@ public partial class Wiki : IAsyncDisposable
 
     private void SetRoute()
     {
-        var relativeUri = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Fragment = null;
+
+        var relativeUri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         if (relativeUri.StartsWith(WikiOptions.WikiLinkPrefix, StringComparison.OrdinalIgnoreCase))
         {
             relativeUri = relativeUri[WikiOptions.WikiLinkPrefix.Length..];
@@ -573,25 +575,36 @@ public partial class Wiki : IAsyncDisposable
             }
         }
 
-        Descending = Navigation.GetQueryParam<bool>("descending");
-        Diff = Navigation.GetQueryParam<string>("diff");
-        Editor = Navigation.GetQueryParam<string>("editor");
-        End = Navigation.GetQueryParam<long?>("end");
-        Filter = Navigation.GetQueryParam<string>("filter");
-        NoRedirect = Navigation.GetQueryParam<bool>("noRedirect");
-        PageNumber = Navigation.GetQueryParam<int?>("pageNumber");
-        PageSize = Navigation.GetQueryParam<int?>("pageSize");
-        Revision = Navigation.GetQueryParam<string>("rev");
-        SearchNamespace = Navigation.GetQueryParam<string>("searchNamespace");
-        SearchOwner = Navigation.GetQueryParam<string>("searchOwner");
-        Sort = Navigation.GetQueryParam<string>("sort");
-        Start = Navigation.GetQueryParam<long?>("start");
-        Unauthenticated = Navigation.GetQueryParam<bool>("unauthenticated");
+        if (Route is not null)
+        {
+            index = Route.IndexOf('#');
+            if (index != -1)
+            {
+                Fragment = Route[(index + 1)..];
+                Route = Route[..index];
+            }
+        }
+
+        Descending = NavigationManager.GetQueryParam<bool>("descending");
+        Diff = NavigationManager.GetQueryParam<string>("diff");
+        Editor = NavigationManager.GetQueryParam<string>("editor");
+        End = NavigationManager.GetQueryParam<long?>("end");
+        Filter = NavigationManager.GetQueryParam<string>("filter");
+        NoRedirect = NavigationManager.GetQueryParam<bool>("noRedirect");
+        PageNumber = NavigationManager.GetQueryParam<int?>("pageNumber");
+        PageSize = NavigationManager.GetQueryParam<int?>("pageSize");
+        Revision = NavigationManager.GetQueryParam<string>("rev");
+        SearchNamespace = NavigationManager.GetQueryParam<string>("searchNamespace");
+        SearchOwner = NavigationManager.GetQueryParam<string>("searchOwner");
+        Sort = NavigationManager.GetQueryParam<string>("sort");
+        Start = NavigationManager.GetQueryParam<long?>("start");
+        Unauthenticated = NavigationManager.GetQueryParam<bool>("unauthenticated");
     }
 
-    private void SetRouteProperties()
+    private async void SetRouteProperties()
     {
         (
+            WikiState.WikiDomain,
             WikiState.WikiNamespace,
             WikiState.WikiTitle,
             WikiState.IsTalk,
@@ -620,6 +633,7 @@ public partial class Wiki : IAsyncDisposable
         {
             IsSpecialList = true;
             SpecialListType = SpecialListType.What_Links_Here;
+            TargetDomain = WikiState.WikiDomain;
             TargetNamespace = WikiState.WikiNamespace;
             TargetTitle = WikiState.WikiTitle;
             return;
@@ -630,28 +644,41 @@ public partial class Wiki : IAsyncDisposable
             IsSearch = string.Equals(WikiState.WikiTitle, "Search", StringComparison.OrdinalIgnoreCase);
             if (IsSearch)
             {
+                IsSpecial = true;
                 return;
             }
 
             IsAllSpecials = string.Equals(WikiState.WikiTitle, "Special", StringComparison.OrdinalIgnoreCase);
             if (IsAllSpecials)
             {
+                IsSpecial = true;
                 return;
             }
 
             IsUpload = string.Equals(WikiState.WikiTitle, "Upload", StringComparison.OrdinalIgnoreCase);
             if (IsUpload)
             {
+                IsSpecial = true;
                 return;
             }
 
             if (Enum.TryParse<SpecialListType>(WikiState.WikiTitle, ignoreCase: true, out var type))
             {
+                IsSpecial = true;
                 IsSpecialList = true;
                 SpecialListType = type;
                 WikiState.UpdateTitle(WikiState.WikiTitle.Replace('_', ' '));
                 return;
             }
+        }
+
+        User = await FetchDataAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/currentuser",
+            WikiBlazorJsonSerializerContext.Default.WikiUser,
+            WikiDataManager.GetWikiUserAsync);
+        if (WikiState.IsSystem && User is not null)
+        {
+            CanEdit = User.IsWikiAdmin;
         }
 
         IsFile = !WikiState.DefaultNamespace

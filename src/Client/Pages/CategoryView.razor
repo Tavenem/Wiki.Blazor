@@ -1,7 +1,9 @@
-﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
+﻿@inherits OfflineSupportComponent
+
+<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
 @if (CategoryInfo is not null)
 {
-    <div class="wiki-parser-output wiki-parser-output-category">@Content</div>
+    <SyntaxHighlighter Class="wiki-parser-output wiki-parser-output-category">@Content</SyntaxHighlighter>
     if (CategoryInfo.Subcategories is not null
         && CategoryInfo.Subcategories.Count > 0)
     {
@@ -16,7 +18,7 @@
                         @foreach (var item in group.Value)
                         {
                             <li>
-                                <a href="@WikiState.Link(item.Title, WikiOptions.CategoryNamespace)">@item.Title</a>
+                                <a href="@WikiState.Link(item.Title, WikiOptions.CategoryNamespace, item.Domain)">@item.Title</a>
                                 <span>(@item.Count.ToString("N0") members)</span>
                             </li>
                         }
@@ -39,7 +41,7 @@
                         @foreach (var item in group.Value)
                         {
                             <li>
-                                <a href="@WikiState.Link(item.Title, item.WikiNamespace)">@Article.GetFullTitle(WikiOptions, item.Title, item.WikiNamespace)</a>
+                                <a href="@WikiState.Link(item.Title, item.WikiNamespace)">@Article.GetFullTitle(WikiOptions, item.Title, item.WikiNamespace, item.Domain)</a>
                             </li>
                         }
                     </ul>
@@ -61,7 +63,7 @@
                         @foreach (var item in group.Value)
                         {
                             <li>
-                                <a href="@WikiState.Link(item.Title, WikiOptions.FileNamespace)">@item.Title</a>
+                                <a href="@WikiState.Link(item.Title, WikiOptions.FileNamespace, item.Domain)">@item.Title</a>
                                 <span>(@WikiFile.GetFileSizeString(item.Size))</span>
                             </li>
                         }

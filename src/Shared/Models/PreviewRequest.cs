@@ -6,4 +6,5 @@
 public record PreviewRequest(
     string Content,
     string? Title = null,
-    string? WikiNamespace = null);
+    string? WikiNamespace = null,
+    string? Domain = null);

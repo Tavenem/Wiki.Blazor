@@ -1,11 +1,11 @@
 ﻿using System.Security.Claims;
 
-namespace Tavenem.Wiki.Blazor.Sample.Server.Services;
+namespace Tavenem.Wiki.Blazor.Sample.Services;
 
 /// <summary>
 /// An implementation of <see cref="IWikiUserManager"/> which always returns a static user.
 /// </summary>
-public class WikiUserManager : IWikiUserManager
+public class DefaultUserManager : IWikiUserManager
 {
     public static WikiUser User { get; } = new()
     {

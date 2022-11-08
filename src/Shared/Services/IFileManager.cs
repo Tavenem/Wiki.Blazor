@@ -14,7 +14,7 @@ public interface IFileManager
     /// langword="false"/>. Also returns <see langword="true"/> if the given file does not exist
     /// (to indicate no issues "removing" it).
     /// </returns>
-    public ValueTask<bool> DeleteFileAsync(string? path);
+    ValueTask<bool> DeleteFileAsync(string? path);
 
     /// <summary>
     /// Determine the amount of free storage space (in bytes) for the given <paramref
@@ -33,7 +33,7 @@ public interface IFileManager
     /// the user may upload without limit. Or zero if <paramref name="user"/> is <see
     /// langword="null" />, or an error occurs.
     /// </returns>
-    public ValueTask<long> GetFreeSpaceAsync(IWikiUser? user);
+    ValueTask<long> GetFreeSpaceAsync(IWikiUser? user);
 
     /// <summary>
     /// Gets the total storage size (in bytes) of items owned by the user with the given ID.
@@ -51,7 +51,7 @@ public interface IFileManager
     /// if <see langword="null" /> is given, or an error occurs. Or <see cref="ulong.MaxValue"/>
     /// if the total exceeds that amount.
     /// </returns>
-    public ValueTask<long> GetUsageAsync(string? userId);
+    ValueTask<long> GetUsageAsync(string? userId);
 
     /// <summary>
     /// Determine if the given <paramref name="user"/> has enough free storage space to store a
@@ -73,7 +73,7 @@ public interface IFileManager
     /// Or zero if <paramref name="user"/> is <see langword="null" />, or an error occurs. Or
     /// <see cref="ulong.MaxValue"/> if the total exceeds that amount.
     /// </returns>
-    public ValueTask<bool> HasFreeSpaceAsync(IWikiUser? user, long size);
+    ValueTask<bool> HasFreeSpaceAsync(IWikiUser? user, long size);
 
     /// <summary>
     /// Load the given file from a persistence store.
@@ -83,7 +83,7 @@ public interface IFileManager
     /// A <see cref="byte"/> array containing the file; or <see langword="null"/> if no such
     /// file was found.
     /// </returns>
-    public ValueTask<byte[]?> LoadFileAsync(string? path);
+    ValueTask<byte[]?> LoadFileAsync(string? path);
 
     /// <summary>
     /// Save the given file to a persistence store.
@@ -100,7 +100,7 @@ public interface IFileManager
     /// <remarks>
     /// The returned path is the relative URL to the file.
     /// </remarks>
-    public ValueTask<string?> SaveFileAsync(byte[]? data, string? fileName, string? userId = null);
+    ValueTask<string?> SaveFileAsync(byte[]? data, string? fileName, string? userId = null);
 
     /// <summary>
     /// Save the given file to a persistence store.
@@ -117,7 +117,7 @@ public interface IFileManager
     /// <remarks>
     /// The returned path is the relative URL to the file.
     /// </remarks>
-    public ValueTask<string?> SaveFileAsync(Stream? data, string? fileName, string? userId = null);
+    ValueTask<string?> SaveFileAsync(Stream? data, string? fileName, string? userId = null);
 
     /// <summary>
     /// Load the given file from a persistence store.
@@ -127,5 +127,5 @@ public interface IFileManager
     /// A <see cref="Stream"/> containing the file; or <see langword="null"/> if no such file
     /// was found.
     /// </returns>
-    public ValueTask<Stream?> StreamFileAsync(string? path);
+    ValueTask<Stream?> StreamFileAsync(string? path);
 }

@@ -46,12 +46,13 @@ public static class ServiceExtensions
     /// default client is not recommended for production use.
     /// </para>
     /// </param>
-    public static void AddWiki(
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWiki(
         this IServiceCollection services,
         IWikiUserManager userManager,
         IWikiGroupManager groupManager,
         WikiOptions? wikiOptions = null,
-        IWikiBlazorServerOptions? wikiBlazorOptions = null,
+        WikiBlazorServerOptions? wikiBlazorOptions = null,
         IFileManager? fileManager = null,
         ISearchClient? searchClient = null)
     {
@@ -72,7 +73,7 @@ public static class ServiceExtensions
         }
         else
         {
-            services.AddScoped<IWikiBlazorServerOptions>(_ => new WikiBlazorServerOptions());
+            services.AddScoped(_ => new WikiBlazorServerOptions());
         }
 
         services.AddScoped(_ => userManager);
@@ -99,6 +100,8 @@ public static class ServiceExtensions
         {
             services.AddScoped(_ => searchClient);
         }
+
+        return services;
     }
 
     /// <summary>
@@ -134,14 +137,15 @@ public static class ServiceExtensions
     /// not recommended for production use.
     /// </para>
     /// </param>
-    public static void AddWiki(
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWiki(
         this IServiceCollection services,
         Type userManagerType,
         Type groupManagerType,
+        Type? fileManagerType,
+        Type? searchClientType,
         WikiOptions? wikiOptions = null,
-        IWikiBlazorServerOptions? wikiBlazorOptions = null,
-        Type? fileManagerType = null,
-        Type? searchClientType = null)
+        WikiBlazorServerOptions? wikiBlazorOptions = null)
     {
         if (wikiOptions is not null)
         {
@@ -160,7 +164,7 @@ public static class ServiceExtensions
         }
         else
         {
-            services.AddScoped<IWikiBlazorServerOptions>(_ => new WikiBlazorServerOptions());
+            services.AddScoped(_ => new WikiBlazorServerOptions());
         }
 
         services.AddScoped(typeof(IWikiUserManager), userManagerType);
@@ -184,6 +188,8 @@ public static class ServiceExtensions
         {
             services.AddScoped(typeof(ISearchClient), searchClientType);
         }
+
+        return services;
     }
 
     /// <summary>
@@ -219,12 +225,13 @@ public static class ServiceExtensions
     /// default client is not recommended for production use.
     /// </para>
     /// </param>
-    public static void AddWiki(
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWiki(
         this IServiceCollection services,
         Func<IServiceProvider, IWikiUserManager> userManagerBuilder,
         Func<IServiceProvider, IWikiGroupManager> groupManagerBuilder,
         WikiOptions? wikiOptions = null,
-        IWikiBlazorServerOptions? wikiBlazorOptions = null,
+        WikiBlazorServerOptions? wikiBlazorOptions = null,
         Func<IServiceProvider, IFileManager>? fileManagerBuilder = null,
         Func<IServiceProvider, ISearchClient>? searchClientBuilder = null)
     {
@@ -245,7 +252,7 @@ public static class ServiceExtensions
         }
         else
         {
-            services.AddScoped<IWikiBlazorServerOptions>(_ => new WikiBlazorServerOptions());
+            services.AddScoped(_ => new WikiBlazorServerOptions());
         }
 
         services.AddScoped(userManagerBuilder);
@@ -269,6 +276,8 @@ public static class ServiceExtensions
         {
             services.AddScoped(searchClientBuilder);
         }
+
+        return services;
     }
 
     /// <summary>
@@ -300,12 +309,13 @@ public static class ServiceExtensions
     /// default client is not recommended for production use.
     /// </para>
     /// </param>
-    public static void AddWiki(
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWiki(
         this IServiceCollection services,
         IWikiUserManager userManager,
         IWikiGroupManager groupManager,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
-        Func<IServiceProvider, IWikiBlazorServerOptions> wikiBlazorOptionsBuilder,
+        Func<IServiceProvider, WikiBlazorServerOptions> wikiBlazorOptionsBuilder,
         IFileManager? fileManager = null,
         ISearchClient? searchClient = null)
     {
@@ -336,6 +346,8 @@ public static class ServiceExtensions
         {
             services.AddScoped(_ => searchClient);
         }
+
+        return services;
     }
 
     /// <summary>
@@ -371,14 +383,15 @@ public static class ServiceExtensions
     /// not recommended for production use.
     /// </para>
     /// </param>
-    public static void AddWiki(
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWiki(
         this IServiceCollection services,
         Type userManagerType,
         Type groupManagerType,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
-        Func<IServiceProvider, IWikiBlazorServerOptions> wikiBlazorOptionsBuilder,
-        Type? fileManagerType = null,
-        Type? searchClientType = null)
+        Func<IServiceProvider, WikiBlazorServerOptions> wikiBlazorOptionsBuilder,
+        Type? fileManagerType,
+        Type? searchClientType)
     {
         services
             .AddScoped(wikiOptionsBuilder)
@@ -404,6 +417,8 @@ public static class ServiceExtensions
         {
             services.AddScoped(typeof(ISearchClient), searchClientType);
         }
+
+        return services;
     }
 
     /// <summary>
@@ -439,12 +454,13 @@ public static class ServiceExtensions
     /// default client is not recommended for production use.
     /// </para>
     /// </param>
-    public static void AddWiki(
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWiki(
         this IServiceCollection services,
         Func<IServiceProvider, IWikiUserManager> userManagerBuilder,
         Func<IServiceProvider, IWikiGroupManager> groupManagerBuilder,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
-        Func<IServiceProvider, IWikiBlazorServerOptions> wikiBlazorOptionsBuilder,
+        Func<IServiceProvider, WikiBlazorServerOptions> wikiBlazorOptionsBuilder,
         Func<IServiceProvider, IFileManager>? fileManagerBuilder = null,
         Func<IServiceProvider, ISearchClient>? searchClientBuilder = null)
     {
@@ -472,6 +488,8 @@ public static class ServiceExtensions
         {
             services.AddScoped(searchClientBuilder);
         }
+
+        return services;
     }
 
     /// <summary>
@@ -491,7 +509,7 @@ public static class ServiceExtensions
     public static void MapWiki(this IEndpointRouteBuilder endpoints)
     {
         var provider = endpoints.ServiceProvider.CreateScope().ServiceProvider;
-        var options = provider.GetRequiredService<IWikiBlazorServerOptions>();
+        var options = provider.GetRequiredService<WikiBlazorServerOptions>();
 
         endpoints.MapHub<WikiTalkHub>(options?.TalkHubRoute ?? WikiBlazorServerOptions.DefaultTalkHubRoute);
 
@@ -505,25 +523,16 @@ public static class ServiceExtensions
     public static IServiceCollection AddWikiJsonContext(this IServiceCollection services)
     {
         services.Configure<JsonOptions>(options =>
-        {
-            options
-                .JsonSerializerOptions
-                .AddContext<WikiBlazorJsonSerializerContext>();
-        });
+            options.JsonSerializerOptions.AddContext<WikiBlazorJsonSerializerContext>());
         services
             .AddSignalR()
-            .AddJsonProtocol(options =>
-             {
-                 options
-                    .PayloadSerializerOptions
-                    .AddContext<WikiBlazorJsonSerializerContext>();
-             });
-        services.AddResponseCompression(options =>
-        {
-            options.MimeTypes = ResponseCompressionDefaults
-                .MimeTypes
-                .Concat(new[] { "application/octet-stream" });
-        });
+            .AddJsonProtocol(options => options
+                .PayloadSerializerOptions
+                .AddContext<WikiBlazorJsonSerializerContext>());
+        services.AddResponseCompression(options
+            => options.MimeTypes = ResponseCompressionDefaults
+            .MimeTypes
+            .Concat(new[] { "application/octet-stream" }));
         return services;
     }
 }

@@ -11,6 +11,14 @@ public interface ISearchRequest
     bool Descending { get; set; }
 
     /// <summary>
+    /// An optional domain within which to search.
+    /// </summary>
+    /// <remarks>
+    /// Only one domain may be searched at a time.
+    /// </remarks>
+    string? Domain { get; set; }
+
+    /// <summary>
     /// The current page number in a list of results (1-based).
     /// </summary>
     int PageNumber { get; set; }
@@ -45,6 +53,12 @@ public interface ISearchRequest
     /// </para>
     /// </summary>
     string? Owner { get; set; }
+
+    /// <summary>
+    /// Whether the query string should only consider matches int he title, rather than in the
+    /// content of the article as well.
+    /// </summary>
+    bool TitleMatchOnly { get; set; }
 
     /// <summary>
     /// <para>
