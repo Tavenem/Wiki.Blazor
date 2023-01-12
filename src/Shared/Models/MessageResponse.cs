@@ -1,7 +1,7 @@
-﻿namespace Tavenem.Wiki.Blazor.SignalR;
+﻿namespace Tavenem.Wiki.Blazor.Models;
 
 /// <summary>
-/// A compact form of <see cref="Message"/> suitable for SignalR transport.
+/// A <see cref="Message"/> with its rendered content.
 /// </summary>
 public class MessageResponse
 {
@@ -22,11 +22,6 @@ public class MessageResponse
     public string? ReplyMessageId { get; }
 
     /// <summary>
-    /// Whether the sender of this message exists.
-    /// </summary>
-    public bool SenderExists { get; set; }
-
-    /// <summary>
     /// The ID of the sender of this message.
     /// </summary>
     public string SenderId { get; set; }
@@ -42,19 +37,9 @@ public class MessageResponse
     public string SenderName { get; set; }
 
     /// <summary>
-    /// Whether the sender of this message has a wiki user page.
-    /// </summary>
-    public bool SenderPageExists { get; set; }
-
-    /// <summary>
     /// The timestamp when this message was sent, in UTC Ticks.
     /// </summary>
     public long TimestampTicks { get; set; }
-
-    /// <summary>
-    /// The ID of the topic to which this message was addressed.
-    /// </summary>
-    public string TopicId { get; set; }
 
     /// <summary>
     /// Initialize a new instance of <see cref="MessageResponse"/>.
@@ -65,7 +50,6 @@ public class MessageResponse
         Content = string.Empty;
         SenderId = string.Empty;
         SenderName = string.Empty;
-        TopicId = string.Empty;
     }
 
     /// <summary>
@@ -75,23 +59,14 @@ public class MessageResponse
     /// <param name="html">
     /// The HTML content of the message.
     /// </param>
-    /// <param name="senderExists">
-    /// <see langword="true"/> if the sender of the message still exists as a wiki user.
-    /// </param>
-    /// <param name="senderPageExists">
-    /// <see langword="true"/> if the sender of the message has a wiki user page.
-    /// </param>
-    public MessageResponse(Message message, string html, bool senderExists, bool senderPageExists)
+    public MessageResponse(Message message, string html)
     {
         Content = html;
         Id = message.Id;
         ReplyMessageId = message.ReplyMessageId;
-        SenderExists = senderExists;
         SenderId = message.SenderId;
         SenderIsAdmin = message.SenderIsAdmin;
         SenderName = message.SenderName;
-        SenderPageExists = senderPageExists;
         TimestampTicks = message.TimestampTicks;
-        TopicId = message.TopicId;
     }
 }

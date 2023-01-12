@@ -1,6 +1,4 @@
-﻿using Tavenem.Wiki.Blazor.SignalR;
-
-namespace Tavenem.Wiki.Blazor.Client.Internal.Models;
+﻿namespace Tavenem.Wiki.Blazor.Client.Internal.Models;
 
 /// <summary>
 /// Represents a talk message.

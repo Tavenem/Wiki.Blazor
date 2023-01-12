@@ -37,13 +37,12 @@ public partial class CategoryView : OfflineSupportComponent
                 .Append("/category?title=")
                 .Append(WikiState.WikiTitle)
                 .ToString(),
-            WikiBlazorJsonSerializerContext.Default.CategoryInfo,
-            user => WikiDataManager.GetCategoryAsync(
+            WikiJsonSerializerContext.Default.CategoryInfo,
+            async user => await WikiDataManager.GetCategoryAsync(
                 user,
-                WikiState.WikiTitle,
-                WikiState.WikiDomain));
-        Content = string.IsNullOrEmpty(CategoryInfo?.Item?.Html)
+                new PageTitle(WikiState.WikiTitle, WikiOptions.CategoryNamespace, WikiState.WikiDomain)));
+        Content = string.IsNullOrEmpty(CategoryInfo?.Category?.Html)
             ? null
-            : new MarkupString(CategoryInfo.Item.Html);
+            : new MarkupString(CategoryInfo.Category.Html);
     }
 }

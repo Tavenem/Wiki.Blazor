@@ -123,8 +123,8 @@
 </div>
 <div class="d-flex flex-wrap m-3 gap-3">
     <button class="btn primary" disabled="@SubmitDisabled" @onclick="ReviseAsync">Publish</button>
-    <a class="btn" href="@(Article is null ? WikiState.Link() : WikiState.LinkHere())">Cancel</a>
-    @if (Article is not null)
+    <a class="btn" href="@(Page is null ? WikiState.Link() : WikiState.LinkHere())">Cancel</a>
+    @if (Page is not null)
     {
         <button class="btn danger" @onclick="DeleteAsync">Delete</button>
     }
@@ -140,13 +140,13 @@
         }
     </div>
 }
-@if (Article?.Transclusions is not null && Article.Transclusions.Count > 0)
+@if (Page?.Transclusions is not null && Page.Transclusions.Count > 0)
 {
     <Collapse Title="Pages transcluded in the current version of this one:">
         <ul class="wiki-edit-transclusionlist">
-            @foreach (var transclusion in Article.Transclusions)
+            @foreach (var transclusion in Page.Transclusions)
             {
-                <li><a class="wiki-link wiki-link-exists" href="@WikiState.Link(transclusion.Title, transclusion.WikiNamespace)">@Article.GetFullTitle(WikiOptions, transclusion.Title, transclusion.WikiNamespace, transclusion.Domain)</a></li>
+                <li><a class="wiki-link wiki-link-exists" href="@WikiState.Link(transclusion)">@transclusion.ToString()</a></li>
             }
         </ul>
     </Collapse>

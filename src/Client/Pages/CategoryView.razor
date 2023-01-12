@@ -18,7 +18,7 @@
                         @foreach (var item in group.Value)
                         {
                             <li>
-                                <a href="@WikiState.Link(item.Title, WikiOptions.CategoryNamespace, item.Domain)">@item.Title</a>
+                                <a href="@WikiState.Link(item.Title)">@item.Title</a>
                                 <span>(@item.Count.ToString("N0") members)</span>
                             </li>
                         }
@@ -27,13 +27,13 @@
             }
         </div>
     }
-    if (CategoryInfo.Articles is not null
-        && CategoryInfo.Articles.Count > 0)
+    if (CategoryInfo.Pages is not null
+        && CategoryInfo.Pages.Count > 0)
     {
-        <h2>Pages in @(CategoryInfo.Item?.Title ?? WikiState.DisplayTitle)</h2>
-        <p>The following @CategoryInfo.Articles.Count.ToString("N0") pages are in this category.</p>
+        <h2>Pages in @(CategoryInfo.Category?.Title.Title ?? WikiState.DisplayTitle)</h2>
+        <p>The following @CategoryInfo.Pages.Count.ToString("N0") pages are in this category.</p>
         <div class="wiki-category-list">
-            @foreach (var group in CategoryInfo.Articles.OrderBy(x => x.Key))
+            @foreach (var group in CategoryInfo.Pages.OrderBy(x => x.Key))
             {
                 <div class="wiki-category-group">
                     <h3>@group.Key</h3>
@@ -41,7 +41,7 @@
                         @foreach (var item in group.Value)
                         {
                             <li>
-                                <a href="@WikiState.Link(item.Title, item.WikiNamespace)">@Article.GetFullTitle(WikiOptions, item.Title, item.WikiNamespace, item.Domain)</a>
+                                <a href="@WikiState.Link(item.Title)">@item.ToString()</a>
                             </li>
                         }
                     </ul>
@@ -52,7 +52,7 @@
     if (CategoryInfo.Files is not null
         && CategoryInfo.Files.Count > 0)
     {
-        <h2>Files in @(CategoryInfo.Item?.Title ?? WikiState.DisplayTitle)</h2>
+        <h2>Files in @(CategoryInfo.Category?.Title.Title ?? WikiState.DisplayTitle)</h2>
         <p>The following @CategoryInfo.Files.Count.ToString("N0") files are in this category.</p>
         <div class="wiki-category-list">
             @foreach (var group in CategoryInfo.Files.OrderBy(x => x.Key))
@@ -63,7 +63,7 @@
                         @foreach (var item in group.Value)
                         {
                             <li>
-                                <a href="@WikiState.Link(item.Title, WikiOptions.FileNamespace, item.Domain)">@item.Title</a>
+                                <a href="@WikiState.Link(item.Title)">@item.Title.ToString()</a>
                                 <span>(@WikiFile.GetFileSizeString(item.Size))</span>
                             </li>
                         }
@@ -73,7 +73,7 @@
         </div>
     }
     @if ((CategoryInfo.Subcategories?.Count ?? 0) == 0
-        && (CategoryInfo.Articles?.Count ?? 0) == 0
+        && (CategoryInfo.Pages?.Count ?? 0) == 0
         && (CategoryInfo.Files?.Count ?? 0) == 0)
     {
         <h2>Empty Category</h2>

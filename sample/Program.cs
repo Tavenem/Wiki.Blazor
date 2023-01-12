@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor;
@@ -47,12 +48,15 @@ using (var response = await httpClient.GetAsync("archive.json"))
 {
     var archive = await response.Content.ReadFromJsonAsync<Archive>(new JsonSerializerOptions
     {
-        TypeInfoResolver = WikiBlazorJsonSerializerContext.Default,
-        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+        IgnoreReadOnlyFields = true,
+        IgnoreReadOnlyProperties = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        TypeInfoResolver = WikiArchiveJsonSerializerContext.Default,
     });
     if (archive is not null)
     {
-        await archive.RestoreAsync(dataStore, wikiOptions);
+        await archive.RestoreAsync(dataStore, wikiOptions, "sample");
     }
 }
 

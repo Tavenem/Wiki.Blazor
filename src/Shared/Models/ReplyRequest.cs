@@ -1,7 +1,7 @@
-﻿namespace Tavenem.Wiki.Blazor.SignalR;
+﻿namespace Tavenem.Wiki.Blazor.Models;
 
 /// <summary>
-/// A reply made to an <see cref="IWikiTalkHub"/>
+/// A reply made to a topic.
 /// </summary>
 public class ReplyRequest
 {

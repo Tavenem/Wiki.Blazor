@@ -20,6 +20,18 @@ public class SearchRequest : ISearchRequest
 
     /// <summary>
     /// <para>
+    /// An optional wiki namespace within which to restrict results, or to exclude.
+    /// </para>
+    /// <para>
+    /// Each entry should already be in correct wiki title case (i.e. searching may be exact,
+    /// and can disregard case-insensitive matches). May be a semicolon-delimited list, and any
+    /// entry may be prefixed with an exclamation mark to indicate that it should be excluded.
+    /// </para>
+    /// </summary>
+    public string? Namespace { get; set; }
+
+    /// <summary>
+    /// <para>
     /// The current page number in a list of results (1-based).
     /// </para>
     /// <para>
@@ -83,16 +95,4 @@ public class SearchRequest : ISearchRequest
     /// </para>
     /// </summary>
     public string? Uploader { get; set; }
-
-    /// <summary>
-    /// <para>
-    /// An optional wiki namespace within which to restrict results, or to exclude.
-    /// </para>
-    /// <para>
-    /// Each entry should already be in correct wiki title case (i.e. searching may be exact,
-    /// and can disregard case-insensitive matches). May be a semicolon-delimited list, and any
-    /// entry may be prefixed with an exclamation mark to indicate that it should be excluded.
-    /// </para>
-    /// </summary>
-    public string? WikiNamespace { get; set; }
 }

@@ -6,7 +6,7 @@
 - Built-in support for user domains to make drafts
 - Offline support
 ### Changed
-- Update to .NET 7 RC2
+- Update to .NET 7
 - Extract default left drawer to its own component, for easy re-use
 - Sample project simplified, take advantage of offline support
 

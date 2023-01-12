@@ -3,7 +3,6 @@ using Microsoft.JSInterop;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
-using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 

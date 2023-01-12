@@ -1,17 +1,16 @@
 ﻿using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.DataStorage;
-using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
 /// <summary>
-/// Gets the type of a component for a given wiki article.
+/// Gets the type of a component for a given wiki page.
 /// </summary>
-/// <param name="article">The article for which to get a component type.</param>
+/// <param name="page">The page for which to get a component type.</param>
 /// <returns>The type of a component.</returns>
 [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public delegate Type? GetArticleComponent(Article article);
+public delegate Type? GetArticleComponent(Page page);
 
 /// <summary>
 /// Determines whether the given content may be edited locally.
@@ -197,16 +196,6 @@ public class WikiBlazorClientOptions
     public Type? MainLayout { get; set; }
 
     /// <summary>
-    /// The relative URL of the <see cref="IWikiTalkHub"/>.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// If omitted, live chat is disabled for talk pages.
-    /// </para>
-    /// </remarks>
-    public string? TalkHubRoute { get; set; }
-
-    /// <summary>
     /// <para>
     /// The API key to be used for Tenor GIF integration.
     /// </para>
@@ -275,7 +264,7 @@ public class WikiBlazorClientOptions
     /// </list>
     /// </remarks>
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public Type? GetArticleEndMatter(Article article) => ArticleEndMatter?.Invoke(article);
+    public Type? GetArticleEndMatter(Page article) => ArticleEndMatter?.Invoke(article);
 
     /// <summary>
     /// Gets the type of a component which should be displayed before the content of the given wiki
@@ -315,5 +304,5 @@ public class WikiBlazorClientOptions
     /// </list>
     /// </remarks>
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public Type? GetArticleFrontMatter(Article article) => ArticleFrontMatter?.Invoke(article);
+    public Type? GetArticleFrontMatter(Page article) => ArticleFrontMatter?.Invoke(article);
 }

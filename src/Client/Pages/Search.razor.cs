@@ -69,7 +69,7 @@ public partial class Search : OfflineSupportComponent
 
     private List<WikiUserInfo> DeselectedOwners { get; set; } = new();
 
-    private Article? ExactMatch { get; set; }
+    private Page? ExactMatch { get; set; }
 
     private ISearchResult? Result { get; set; }
 
@@ -108,7 +108,7 @@ public partial class Search : OfflineSupportComponent
             PageSize = CurrentPageSize,
             Query = CurrentQuery,
             Sort = CurrentSort,
-            WikiNamespace = CurrentNamespace,
+            Namespace = CurrentNamespace,
             Domain = CurrentDomain,
         };
         var results = await PostAsync(
@@ -129,7 +129,7 @@ public partial class Search : OfflineSupportComponent
                 Query = results.Query,
                 SearchHits = results.SearchHits.ToPagedList(),
                 Sort = results.Sort,
-                WikiNamespace = results.WikiNamespace,
+                Namespace = results.Namespace,
                 Domain = results.Domain,
             };
     }
@@ -141,11 +141,6 @@ public partial class Search : OfflineSupportComponent
     private async Task<IEnumerable<KeyValuePair<string, object>>> GetSearchSuggestions(string input)
     {
         if (string.IsNullOrEmpty(input))
-        {
-            return Enumerable.Empty<KeyValuePair<string, object>>();
-        }
-        var (_, _, title, _, _) = Article.GetTitleParts(WikiOptions, input);
-        if (string.IsNullOrEmpty(title))
         {
             return Enumerable.Empty<KeyValuePair<string, object>>();
         }

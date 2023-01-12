@@ -160,7 +160,7 @@ public partial class UserSelector : OfflineSupportComponent
         var query = InputText.Trim();
         var user = await FetchDataAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiuser?query={query}",
-            WikiBlazorJsonSerializerContext.Default.WikiUserInfo,
+            WikiJsonSerializerContext.Default.WikiUserInfo,
             user => WikiDataManager.GetWikiUserAsync(user, query));
         if (user is null)
         {

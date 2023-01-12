@@ -4,11 +4,11 @@
 /// The wiki upload request object.
 /// </summary>
 public record UploadRequest(
-    string Title,
-    string? Domain = null,
+    PageTitle Title,
     string? Markdown = null,
     bool OverwriteConfirmed = false,
     string? RevisionComment = null,
+    bool LeaveRedirect = false,
     bool OwnerSelf = false,
     string? Owner = null,
     bool EditorSelf = false,
@@ -16,4 +16,5 @@ public record UploadRequest(
     IList<string>? AllowedEditors = null,
     IList<string>? AllowedViewers = null,
     IList<string>? AllowedEditorGroups = null,
-    IList<string>? AllowedViewerGroups = null);
+    IList<string>? AllowedViewerGroups = null,
+    PageTitle? OriginalTitle = null);

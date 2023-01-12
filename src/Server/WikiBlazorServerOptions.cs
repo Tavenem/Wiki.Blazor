@@ -11,12 +11,6 @@ public class WikiBlazorServerOptions
     public const string DefaultLinkTemplate = "onmousemove=\"wikiblazor.showPreview(event, '{LINK}');\" onmouseleave=\"wikiblazor.hidePreview();\"";
 
     /// <summary>
-    /// The relative URL of the <see cref="Web.SignalR.IWikiTalkHub"/> used if <see
-    /// cref="TalkHubRoute"/> is not provided.
-    /// </summary>
-    public const string DefaultTalkHubRoute = "/wikiTalkHub";
-
-    /// <summary>
     /// The relative URL of the wiki's server API used if <see
     /// cref="WikiServerApiRoute"/> is not provided.
     /// </summary>
@@ -66,16 +60,6 @@ public class WikiBlazorServerOptions
     /// </para>
     /// </summary>
     public string? LoginPath { get; set; }
-
-    /// <summary>
-    /// <para>
-    /// The relative URL of the <see cref="Web.SignalR.IWikiTalkHub"/>.
-    /// </para>
-    /// <para>
-    /// If omitted, <see cref="DefaultTalkHubRoute"/> is used.
-    /// </para>
-    /// </summary>
-    public string? TalkHubRoute { get; set; }
 
     /// <summary>
     /// <para>

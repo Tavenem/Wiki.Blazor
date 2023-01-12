@@ -51,10 +51,10 @@ else
                 @foreach (var item in Items)
                 {
                     <li>
-                        <a href="@WikiState.Link(item.Title, item.WikiNamespace)" class="wiki-link wiki-link-exists">
-                            @if (!string.Equals(item.WikiNamespace, WikiOptions.DefaultNamespace, StringComparison.OrdinalIgnoreCase))
+                        <a href="@WikiState.Link(item.Title)" class="wiki-link wiki-link-exists">
+                            @if (!string.IsNullOrEmpty(item.Title.Namespace))
                             {
-                                <span class="wiki-link-namespace">@item.WikiNamespace</span>
+                                <span class="wiki-link-namespace">@item.Title.Namespace</span>
                             }
                             <span class="wiki-link-title">@item.Title</span>
                             @if (item.ChildCount > 0)

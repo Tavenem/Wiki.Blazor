@@ -37,11 +37,11 @@ public partial class GroupView : OfflineSupportComponent
                 .Append("/group?title=")
                 .Append(WikiState.WikiTitle)
                 .ToString(),
-            WikiBlazorJsonSerializerContext.Default.GroupPageInfo,
+            WikiJsonSerializerContext.Default.GroupPageInfo,
             user => WikiDataManager.GetGroupPageAsync(user, WikiState.WikiTitle));
-        Content = string.IsNullOrEmpty(GroupPageInfo?.Item?.Html)
+        Content = string.IsNullOrEmpty(GroupPageInfo?.Page?.Html)
             ? null
-            : new MarkupString(GroupPageInfo.Item.Html);
+            : new MarkupString(GroupPageInfo.Page.Html);
         if (!string.IsNullOrEmpty(GroupPageInfo?.Group?.Entity?.DisplayName))
         {
             WikiState.UpdateTitle(GroupPageInfo.Group.Entity.DisplayName);

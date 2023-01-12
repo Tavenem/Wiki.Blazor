@@ -56,7 +56,7 @@
     @if (ExactMatch is not null)
     {
         <p class="wiki-search-exact-match">
-            There is an article with the exact name "<a href="@WikiState.Link(ExactMatch.Title, ExactMatch.WikiNamespace)">@ExactMatch.Title</a>."
+            There is an article with the exact name "<a href="@WikiState.Link(ExactMatch.Title)">@ExactMatch.Title.ToString()</a>."
         </p>
     }
     @if (Result?.SearchHits.Count > 0)
@@ -66,8 +66,8 @@
             {
                 <li>
                     <div class="wiki-search-result-title">
-                        <a href="@WikiState.Link(result.Title, result.WikiNamespace)"
-                           class="wiki-link wiki-link-exists">@result.FullTitle</a>
+                        <a href="@WikiState.Link(result.Title)"
+                           class="wiki-link wiki-link-exists">@result.Title.ToString()</a>
                     </div>
                     @if (!string.IsNullOrEmpty(result.Excerpt))
                     {

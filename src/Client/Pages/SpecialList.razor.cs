@@ -90,12 +90,12 @@ public partial class SpecialList : OfflineSupportComponent
 
         if (SpecialListType == SpecialListType.What_Links_Here)
         {
-            Description = $"The following pages link to {Article.GetFullTitle(WikiOptions, TargetTitle ?? WikiOptions.MainPageTitle, TargetNamespace ?? WikiOptions.DefaultNamespace, TargetDomain)}.";
+            var targetTitle = new PageTitle(TargetTitle, TargetNamespace, TargetDomain);
+
+            Description = $"The following pages link to {targetTitle}.";
 
             var request = new WhatLinksHereRequest(
-                TargetTitle,
-                TargetNamespace,
-                TargetDomain,
+                targetTitle,
                 (int)CurrentPageNumber,
                 CurrentPageSize,
                 Descending,
@@ -104,7 +104,7 @@ public partial class SpecialList : OfflineSupportComponent
             var list = await PostAsync(
                 $"{WikiBlazorClientOptions.WikiServerApiRoute}/whatlinkshere",
                 request,
-                WikiBlazorJsonSerializerContext.Default.WhatLinksHereRequest,
+                WikiJsonSerializerContext.Default.WhatLinksHereRequest,
                 WikiBlazorJsonSerializerContext.Default.ListResponse,
                 async user => await WikiDataManager.GetWhatLinksHereAsync(request));
             Items = list?.Links.ToPagedList();
@@ -115,7 +115,7 @@ public partial class SpecialList : OfflineSupportComponent
             {
                 SpecialListType.All_Categories => "This page lists all categories, either alphabetically or by most recent update.",
                 SpecialListType.All_Files => "This page lists all files, either alphabetically or by most recent update.",
-                SpecialListType.All_Pages => "This page lists all articles, either alphabetically or by most recent update.",
+                SpecialListType.All_Articles => "This page lists all articles, either alphabetically or by most recent update.",
                 SpecialListType.All_Redirects => "This page lists all articles which redirect to another page, either alphabetically or by most recent update.",
                 SpecialListType.Broken_Redirects => "This page lists all articles which redirect to an article that does not exist, either alphabetically or by most recent update.",
                 SpecialListType.Double_Redirects => "This page lists all articles which redirect to a page that redirects someplace else, either alphabetically or by most recent update.",
@@ -138,7 +138,7 @@ public partial class SpecialList : OfflineSupportComponent
             var list = await PostAsync(
                 $"{WikiBlazorClientOptions.WikiServerApiRoute}/list",
                 request,
-                WikiBlazorJsonSerializerContext.Default.SpecialListRequest,
+                WikiJsonSerializerContext.Default.SpecialListRequest,
                 WikiBlazorJsonSerializerContext.Default.ListResponse,
                 async user => await WikiDataManager.GetListAsync(request));
             Items = list?.Links.ToPagedList();
@@ -149,7 +149,7 @@ public partial class SpecialList : OfflineSupportComponent
     {
         if (SpecialListType is SpecialListType.All_Categories
             or SpecialListType.All_Files
-            or SpecialListType.All_Pages)
+            or SpecialListType.All_Articles)
         {
             if (!string.IsNullOrEmpty(WikiOptions.ContentsPageTitle))
             {

@@ -13,6 +13,11 @@ public interface ISearchResult
     bool Descending { get; set; }
 
     /// <summary>
+    /// The originally specified wiki namespace.
+    /// </summary>
+    string? Namespace { get; set; }
+
+    /// <summary>
     /// The original search query.
     /// </summary>
     string? Query { get; set; }
@@ -31,9 +36,4 @@ public interface ISearchResult
     /// The originally specified owner.
     /// </summary>
     string? Owner { get; set; }
-
-    /// <summary>
-    /// The originally specified wiki namespace.
-    /// </summary>
-    string? WikiNamespace { get; set; }
 }

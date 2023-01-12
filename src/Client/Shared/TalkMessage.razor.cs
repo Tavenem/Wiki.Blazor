@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
-using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
@@ -29,6 +28,11 @@ public partial class TalkMessage
     /// </summary>
     [Parameter] public TimeSpan TimezoneOffset { get; set; }
 
+    /// <summary>
+    /// The topic ID.
+    /// </summary>
+    [Parameter] public string? TopicId { get; set; }
+
     private bool IsReply { get; set; }
 
     private bool ShowReply { get; set; }
@@ -41,14 +45,19 @@ public partial class TalkMessage
     protected override void OnInitialized()
         => IsReply = !string.IsNullOrEmpty(Message?.Message.ReplyMessageId);
 
+    private static string GetUserLinkClass(MessageResponse response) => response.SenderIsAdmin
+        ? $"wiki-username wiki-username-link wiki-username-admin wiki-username-{response.SenderId}"
+        : $"wiki-username wiki-username-link wiki-username-{response.SenderId}";
+
     private Task OnPost(ReplyRequest reply) => Post.InvokeAsync(reply);
 
     private async Task OnReactionAsync(string emoji)
     {
-        if (Message is not null)
+        if (Message is not null
+            && !string.IsNullOrEmpty(TopicId))
         {
             await Post.InvokeAsync(new(
-                Message.Message.TopicId,
+                TopicId,
                 emoji,
                 Message.Message.Id));
         }

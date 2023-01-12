@@ -10,7 +10,7 @@ public partial class ArticleView
     /// <summary>
     /// The article to display.
     /// </summary>
-    [Parameter] public Article? Article { get; set; }
+    [Parameter] public Page? Page { get; set; }
 
     /// <summary>
     /// Whether the current user has permission to edit this article.
@@ -49,19 +49,19 @@ public partial class ArticleView
         EndMatterType = null;
         FrontMatterType = null;
 
-        if (Article is null)
+        if (Page is null)
         {
             return;
         }
 
-        FrontEndMatterParamaters.Add("Article", Article);
+        FrontEndMatterParamaters.Add("Article", Page);
         FrontEndMatterParamaters.Add("CanEdit", CanEdit);
         if (User is not null)
         {
             FrontEndMatterParamaters.Add("User", User);
         }
 
-        EndMatterType = WikiBlazorClientOptions.GetArticleEndMatter(Article);
-        FrontMatterType = WikiBlazorClientOptions.GetArticleFrontMatter(Article);
+        EndMatterType = WikiBlazorClientOptions.GetArticleEndMatter(Page);
+        FrontMatterType = WikiBlazorClientOptions.GetArticleFrontMatter(Page);
     }
 }

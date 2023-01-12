@@ -15,7 +15,7 @@ public partial class EditView : OfflineSupportComponent
     /// <summary>
     /// The edited article.
     /// </summary>
-    [Parameter] public Article? Article { get; set; }
+    [Parameter] public Page? Page { get; set; }
 
     /// <summary>
     /// The current user.
@@ -64,8 +64,8 @@ public partial class EditView : OfflineSupportComponent
     /// <inheritdoc/>
     public override Task SetParametersAsync(ParameterView parameters)
     {
-        if (parameters.TryGetValue<Article>(nameof(Article), out var newArticle)
-            && !string.Equals(newArticle?.Id, Article?.Id))
+        if (parameters.TryGetValue<Article>(nameof(Page), out var newArticle)
+            && !string.Equals(newArticle?.Id, Page?.Id))
         {
             if (newArticle is null)
             {
@@ -77,12 +77,8 @@ public partial class EditView : OfflineSupportComponent
             {
                 Content = newArticle.MarkdownContent;
                 PreviewContent = new(newArticle.Html);
-                Title = Article.GetFullTitle(
-                    WikiOptions,
-                    newArticle.Title,
-                    newArticle.WikiNamespace,
-                    newArticle.Domain);
-                IsScript = string.Equals(newArticle.WikiNamespace, WikiOptions.ScriptNamespace, StringComparison.Ordinal);
+                Title = newArticle.Title.ToString();
+                IsScript = string.CompareOrdinal(newArticle.Title.Namespace, WikiOptions.ScriptNamespace) == 0;
             }
         }
         return base.SetParametersAsync(parameters);
@@ -106,14 +102,15 @@ public partial class EditView : OfflineSupportComponent
             return;
         }
 
-        var (_, wikiNamespace, title, _, defaultNamespace) = Article.GetTitleParts(WikiOptions, Title);
+        var draftPageTitle = PageTitle.Parse(Title).WithDomain(User.Id);
+        var (title, @namespace, _) = draftPageTitle;
         var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
             .Append("/item?title=")
             .Append(title);
-        if (!defaultNamespace && !string.IsNullOrEmpty(wikiNamespace))
+        if (!string.IsNullOrEmpty(@namespace))
         {
-            url.Append("&wikiNamespace=")
-                .Append(wikiNamespace);
+            url.Append("&namespace=")
+                .Append(@namespace);
         }
         url.Append("&domain=")
             .Append(User.Id)
@@ -121,14 +118,12 @@ public partial class EditView : OfflineSupportComponent
 
         var item = await FetchDataAsync(
             url.ToString(),
-            WikiBlazorJsonSerializerContext.Default.WikiItemInfo,
+            WikiJsonSerializerContext.Default.WikiPageInfo,
             async user => await WikiDataManager.GetItemAsync(
                 user,
-                title,
-                wikiNamespace,
-                User.Id,
+                draftPageTitle,
                 true));
-        if (item?.Item is null)
+        if (item?.Page?.Exists != true)
         {
             HasDraft = false;
             return;
@@ -165,9 +160,7 @@ public partial class EditView : OfflineSupportComponent
         }
 
         var request = new EditRequest(
-            title,
-            wikiNamespace,
-            User.Id,
+            draftPageTitle,
             null,
             "deleted",
             true,
@@ -209,14 +202,15 @@ public partial class EditView : OfflineSupportComponent
             return;
         }
 
-        var (_, wikiNamespace, title, _, defaultNamespace) = Article.GetTitleParts(WikiOptions, Title);
+        var draftPageTitle = PageTitle.Parse(Title).WithDomain(User.Id);
+        var (title, @namespace, _) = draftPageTitle;
         var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
             .Append("/item?title=")
             .Append(title);
-        if (!defaultNamespace && !string.IsNullOrEmpty(wikiNamespace))
+        if (!string.IsNullOrEmpty(@namespace))
         {
-            url.Append("&wikiNamespace=")
-                .Append(wikiNamespace);
+            url.Append("&namespace=")
+                .Append(@namespace);
         }
         url.Append("&domain=")
             .Append(User.Id)
@@ -224,21 +218,19 @@ public partial class EditView : OfflineSupportComponent
 
         var item = await FetchDataAsync(
             url.ToString(),
-            WikiBlazorJsonSerializerContext.Default.WikiItemInfo,
+            WikiJsonSerializerContext.Default.WikiPageInfo,
             async user => await WikiDataManager.GetItemAsync(
                 user,
-                title,
-                wikiNamespace,
-                User.Id,
+                draftPageTitle,
                 true));
-        if (item?.Item is null)
+        if (item?.Page?.Exists != true)
         {
             HasDraft = false;
             SnackbarService.Add("No draft found", ThemeColor.Warning);
         }
         else
         {
-            Content = item.Item.MarkdownContent;
+            Content = item.Page.MarkdownContent;
             PreviewContent = string.IsNullOrEmpty(item.Html)
                 ? new()
                 : new(item.Html);
@@ -255,21 +247,24 @@ public partial class EditView : OfflineSupportComponent
 
     private void OnTitleChanged()
     {
-        var (domain, wikiNamespace, title, _, _) = Article.GetTitleParts(WikiOptions, Title);
-        if (string.Equals(wikiNamespace, WikiOptions.FileNamespace))
+        var pageTitle = PageTitle.Parse(Title);
+        if (string.CompareOrdinal(pageTitle.Namespace, WikiOptions.FileNamespace) == 0)
         {
             SnackbarService.Add("Cannot add articles to the file namespace.", ThemeColor.Warning);
-            Title = title;
+            Title = pageTitle.WithNamespace(null).ToString();
             IsScript = false;
         }
         else
         {
-            IsScript = string.Equals(wikiNamespace, WikiOptions.ScriptNamespace, StringComparison.Ordinal);
+            IsScript = string.CompareOrdinal(pageTitle.Namespace, WikiOptions.ScriptNamespace) == 0;
         }
-        RedirectEnabled = Article is not null
-            && (!string.Equals(title, Article.Title)
-            || !string.Equals(wikiNamespace, Article.WikiNamespace)
-            || !string.Equals(domain, Article.Domain));
+        var wasEnabled = RedirectEnabled;
+        RedirectEnabled = Page is not null
+            && !pageTitle.Equals(Page.Title);
+        if (RedirectEnabled && !wasEnabled)
+        {
+            Redirect = true;
+        }
     }
 
     private async Task PreviewAsync()
@@ -281,8 +276,7 @@ public partial class EditView : OfflineSupportComponent
             return;
         }
 
-        var (domain, wikiNamespace, title, _, _) = Article.GetTitleParts(WikiOptions, Title);
-        var request = new PreviewRequest(Content, title, wikiNamespace, domain);
+        var request = new PreviewRequest(Content, PageTitle.Parse(Title));
         var preview = await PostForStringAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
             request,
@@ -332,11 +326,9 @@ public partial class EditView : OfflineSupportComponent
                 .ToList();
         }
 
-        var (domain, wikiNamespace, title, _, _) = Article.GetTitleParts(WikiOptions, Title);
+        var title = PageTitle.Parse(Title);
         var request = new EditRequest(
             title,
-            wikiNamespace,
-            domain,
             Content,
             Comment?.Trim(),
             delete,
@@ -348,7 +340,10 @@ public partial class EditView : OfflineSupportComponent
             allowedEditors,
             allowedViewers,
             allowedEditorGroups,
-            allowedViewerGroups);
+            allowedViewerGroups,
+            RedirectEnabled
+                ? new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain)
+                : null);
         var result = await PostAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/edit",
             request,
@@ -361,7 +356,7 @@ public partial class EditView : OfflineSupportComponent
         }
         if (result.Success)
         {
-            NavigationManager.NavigateTo(WikiState.Link(title, wikiNamespace, domain));
+            NavigationManager.NavigateTo(WikiState.Link(title));
         }
     }
 
@@ -404,11 +399,9 @@ public partial class EditView : OfflineSupportComponent
                 .ToList();
         }
 
-        var (_, wikiNamespace, title, _, _) = Article.GetTitleParts(WikiOptions, Title);
+        var draftPagetitle = PageTitle.Parse(Title).WithDomain(User.Id);
         var request = new EditRequest(
-            title,
-            wikiNamespace,
-            User.Id,
+            draftPagetitle,
             Content,
             Comment?.Trim(),
             false,

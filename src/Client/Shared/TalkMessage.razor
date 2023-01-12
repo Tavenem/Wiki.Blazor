@@ -3,25 +3,9 @@
     <li class="@(IsReply ? "wiki-message wiki-message-reply" : "wiki-message")">
         <div class="wiki-message-header">
             <span class="wiki-message-sender">
-                @if (Message.Message.SenderExists)
-                {
-                    var classList = $"wiki-username wiki-username-link wiki-username-{Message.Message.SenderId}";
-                    if (Message.Message.SenderIsAdmin)
-                    {
-                        classList += " wiki-username-admin";
-                    }
-                    if (!Message.Message.SenderPageExists)
-                    {
-                        classList += " wiki-link-missing";
-                    }
-                    <a class="@classList"
-                       href="@WikiState.Link(Message.Message.SenderId, WikiOptions.UserNamespace)"
-                       title="@($"Visit the user page for {Message.Message.SenderName}")">@Message.Message.SenderName</a>
-                }
-                else
-                {
-                    <span class="wiki-username wiki-username-nolink">@Message.Message.SenderName</span>
-                }
+                <a class="@GetUserLinkClass(Message.Message)"
+                    href="@WikiState.Link(Message.Message.SenderId, WikiOptions.UserNamespace)"
+                    title="@($"Visit the user page for {Message.Message.SenderName}")">@Message.Message.SenderName</a>
             </span>
             <span class="wiki-message-timestamp">@Message.Message.GetTimestamp(TimezoneOffset)</span>
             @if (Message.Reactions is not null)
@@ -36,25 +20,9 @@
                                     {
                                         <li>
                                             <span class="wiki-reaction-sender">
-                                                @if (reaction.SenderExists)
-                                                {
-                                                    var classList = "wiki-username wiki-username-link";
-                                                    if (reaction.SenderIsAdmin)
-                                                    {
-                                                        classList += " wiki-username-admin";
-                                                    }
-                                                    if (!reaction.SenderPageExists)
-                                                    {
-                                                        classList += " wiki-link-missing";
-                                                    }
-                                                    <a class="@classList"
-                                                       href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
-                                                       title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
-                                                }
-                                                else
-                                                {
-                                                    <span class="wiki-username wiki-username-nolink">@reaction.SenderName</span>
-                                                }
+                                                <a class="@GetUserLinkClass(reaction)"
+                                                   href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
+                                                   title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
                                             </span>
                                             <span class="wiki-reaction-timestamp">@reaction.GetTimestamp(TimezoneOffset)</span>
                                         </li>
@@ -88,7 +56,8 @@
                             <TalkMessage CanPost="CanPost"
                                          Message="reply"
                                          Post="OnPost"
-                                         TimezoneOffset="TimezoneOffset" />
+                                         TimezoneOffset="TimezoneOffset"
+                                         TopicId="@TopicId" />
                         }
                     </div>
                 }
@@ -99,7 +68,7 @@
                         @if (ShowReply)
                         {
                             <div class="wiki-talk-reply">
-                                <TalkCompose TopicId="@Message.Message.TopicId"
+                                <TalkCompose TopicId="@TopicId"
                                              MessageId="@Message.Message.Id"
                                              Post="OnPost" />
                             </div>

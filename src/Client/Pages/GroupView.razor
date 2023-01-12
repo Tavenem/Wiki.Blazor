@@ -14,7 +14,7 @@
             {
                 <li>
                     <a href="@WikiState.Link(user.Id, WikiOptions.UserNamespace)"
-                       class="@(user.PageExists ? "wiki-username wiki-username-link" : "wiki-username wiki-username-link wiki-link-missing")"
+                       class="wiki-username wiki-username-link"
                        title="@($"Visit the user page for {user.Entity?.DisplayName ?? user.Id}")">@(user.Entity?.DisplayName ?? user.Id)</a>
                 </li>
             }

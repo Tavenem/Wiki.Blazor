@@ -18,6 +18,11 @@ public class SearchResult : ISearchResult
     public string? Domain { get; set; }
 
     /// <summary>
+    /// An originally specified wiki namespace.
+    /// </summary>
+    public string? Namespace { get; set; }
+
+    /// <summary>
     /// The originally specified owner.
     /// </summary>
     public string? Owner { get; set; }
@@ -37,9 +42,4 @@ public class SearchResult : ISearchResult
     /// The originally specified sort property.
     /// </summary>
     public string? Sort { get; set; }
-
-    /// <summary>
-    /// An originally specified wiki namespace.
-    /// </summary>
-    public string? WikiNamespace { get; set; }
 }

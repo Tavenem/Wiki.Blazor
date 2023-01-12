@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
-using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using System.Diagnostics.CodeAnalysis;
@@ -10,7 +8,6 @@ using System.Net.Http.Json;
 using System.Text;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
-using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -27,15 +24,11 @@ public partial class Talk : IAsyncDisposable
     /// </summary>
     [Parameter] public string? TopicId { get; set; }
 
-    private IAccessTokenProvider? AccessTokenProvider { get; set; }
-
     private AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
     private bool CanPost { get; set; }
 
     private bool CanTalk { get; set; }
-
-    private bool Connected => WikiTalkClient?.IsConnected == true;
 
     [Inject] private HttpClient HttpClient { get; set; } = default!;
 
@@ -55,23 +48,25 @@ public partial class Talk : IAsyncDisposable
 
     [Inject] private WikiState WikiState { get; set; } = default!;
 
-    private WikiTalkClient? WikiTalkClient { get; set; }
-
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         Navigation.LocationChanged += OnLocationChanged;
-        AccessTokenProvider = ServiceProvider.GetService<IAccessTokenProvider>();
-        AuthenticationStateProvider = ServiceProvider.GetService<AuthenticationStateProvider>();
-        if (AuthenticationStateProvider is not null)
-        {
-            AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
-        }
+        CanTalk = !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
 
-        var state = AuthenticationStateProvider is null
-            ? null
-            : await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        CanPost = state?.User.Identity?.IsAuthenticated == true;
+        if (CanTalk)
+        {
+            AuthenticationStateProvider = ServiceProvider.GetService<AuthenticationStateProvider>();
+            if (AuthenticationStateProvider is not null)
+            {
+                AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+            }
+
+            var state = AuthenticationStateProvider is null
+                ? null
+                : await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            CanPost = state?.User.Identity?.IsAuthenticated == true;
+        }
 
         _module = await JSRuntime.InvokeAsync<IJSObjectReference>(
             "import",
@@ -79,33 +74,6 @@ public partial class Talk : IAsyncDisposable
 
         var offset = await _module.InvokeAsync<int>("getTimezoneOffset");
         TimezoneOffset = TimeSpan.FromMinutes(offset);
-
-        if (!string.IsNullOrEmpty(WikiBlazorClientOptions.TalkHubRoute)
-            && !string.IsNullOrEmpty(TopicId)
-            && AccessTokenProvider is not null)
-        {
-            try
-            {
-                var tokenResult = await AccessTokenProvider.RequestAccessToken();
-                tokenResult.TryGetToken(out var token);
-
-                WikiTalkClient = new WikiTalkClient(
-                    Navigation
-                        .ToAbsoluteUri(WikiBlazorClientOptions.TalkHubRoute)
-                        .ToString(),
-                    token?.Value);
-                WikiTalkClient.OnRecevied += OnMessageRecevied;
-
-                await WikiTalkClient.StartAsync(TopicId);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
-
-        CanTalk = WikiTalkClient is not null
-            || !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
 
         await ReloadAsync();
     }
@@ -137,43 +105,10 @@ public partial class Talk : IAsyncDisposable
                 {
                     await _module.DisposeAsync();
                 }
-                if (WikiTalkClient is not null)
-                {
-                    WikiTalkClient.OnRecevied -= OnMessageRecevied;
-                    await WikiTalkClient.DisposeAsync();
-                }
             }
 
             _disposedValue = true;
         }
-    }
-
-    private void OnMessageRecevied(object? sender, MessageResponse e)
-    {
-        if (!string.Equals(e.TopicId, TopicId))
-        {
-            return;
-        }
-
-        var added = false;
-        if (!string.IsNullOrEmpty(e.ReplyMessageId))
-        {
-            var parent = FindMessage(TalkMessages, e.ReplyMessageId);
-            if (parent is not null)
-            {
-                (parent.Replies ??= new()).Add(new(e));
-                parent.Replies.Sort((x, y) => x.Message.TimestampTicks.CompareTo(y.Message.TimestampTicks));
-                added = true;
-            }
-        }
-
-        if (!added)
-        {
-            TalkMessages.Add(new(e));
-            TalkMessages.Sort((x, y) => x.Message.TimestampTicks.CompareTo(y.Message.TimestampTicks));
-        }
-
-        StateHasChanged();
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
@@ -199,7 +134,7 @@ public partial class Talk : IAsyncDisposable
                 .Append(WikiState.WikiTitle);
             if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
             {
-                url.Append("&wikiNamespace=")
+                url.Append("&namespace=")
                     .Append(WikiState.WikiNamespace);
             }
             var response = await HttpClient.GetAsync(url.ToString());
@@ -216,9 +151,7 @@ public partial class Talk : IAsyncDisposable
             }
             else
             {
-                var talk = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.TalkResponse);
-                TopicId = talk?.TopicId;
-                messages = talk?.Messages;
+                messages = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.ListMessageResponse);
             }
         }
         catch (Exception ex)
@@ -257,13 +190,6 @@ public partial class Talk : IAsyncDisposable
         Justification = "ReplyRequest will not be trimmed if this method is called")]
     private async Task OnPostAsync(ReplyRequest reply)
     {
-        if (WikiTalkClient is not null
-            && WikiTalkClient.IsConnected)
-        {
-            await WikiTalkClient.SendAsync(reply);
-            return;
-        }
-
         IList<MessageResponse>? messages = null;
         if (!string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
         {
@@ -285,9 +211,7 @@ public partial class Talk : IAsyncDisposable
                 }
                 else
                 {
-                    var talk = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.TalkResponse);
-                    TopicId = talk?.TopicId;
-                    messages = talk?.Messages;
+                    messages = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.ListMessageResponse);
                 }
             }
             catch (Exception ex)

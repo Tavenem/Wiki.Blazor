@@ -68,7 +68,7 @@ else
                 @if (Revisions[i].Editor.Entity is not null)
                 {
                     <a href="@WikiState.Link(Revisions[i].Revision.Editor, WikiOptions.UserNamespace)"
-                       class="@(Revisions[i].Editor.PageExists ? "wiki-username wiki-username-link wiki-history-list-editor" : "wiki-username wiki-username-link wiki-history-list-editor wiki-link-missing")"
+                       class="wiki-username wiki-username-link wiki-history-list-editor"
                        title="@($"Visit the user page for {Revisions[i].Editor.Entity!.DisplayName ?? Revisions[i].Editor.Entity!.Id}")">@(Revisions[i].Editor.Entity!.DisplayName ?? Revisions[i].Editor.Entity!.Id)</a>
                 }
                 else

@@ -12,6 +12,6 @@ public record SearchResponse(
     PagedListDTO<SearchHit> SearchHits,
     string? Sort,
     string? Owner,
-    string? WikiNamespace,
+    string? Namespace,
     string? Domain,
-    Article? ExactMatch = null);
+    Page? ExactMatch = null);

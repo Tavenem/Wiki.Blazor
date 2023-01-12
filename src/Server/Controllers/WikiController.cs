@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Exceptions;
 using Tavenem.Wiki.Blazor.Models;
 using Tavenem.Wiki.Blazor.Services.Search;
-using Tavenem.Wiki.Blazor.SignalR;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Server.Controllers;
@@ -51,7 +51,14 @@ public class WikiController : Controller
                 User,
                 domain,
                 _wikiBlazorServerOptions.DomainArchivePermission);
-            return Ok(response);
+            return new JsonResult(response, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+                IgnoreReadOnlyFields = true,
+                IgnoreReadOnlyProperties = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                TypeInfoResolver = WikiArchiveJsonSerializerContext.Default,
+            });
         }
         catch (WikiUnauthorizedException)
         {
@@ -61,23 +68,15 @@ public class WikiController : Controller
 
     [HttpGet]
     [ProducesResponseType(typeof(CategoryInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Category([FromQuery] string title, [FromQuery] string? domain = null)
+    public async Task<IActionResult> Category(
+        [FromQuery] string? title = null,
+        [FromQuery] string? @namespace = null,
+        [FromQuery] string? domain = null)
     {
-        if (string.IsNullOrEmpty(title))
-        {
-            return BadRequest();
-        }
-
         try
         {
-            var response = await _dataManager.GetCategoryAsync(User, title, domain);
-            if (response is null)
-            {
-                return NotFound();
-            }
+            var response = await _dataManager.GetCategoryAsync(User, new PageTitle(title, @namespace, domain));
             return Ok(response);
         }
         catch (WikiUnauthorizedException)
@@ -132,22 +131,16 @@ public class WikiController : Controller
 
     [HttpGet]
     [ProducesResponseType(typeof(WikiEditInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditInfo(
         [FromQuery] string? title = null,
-        [FromQuery] string? wikiNamespace = null,
-        [FromQuery] string? domain = null,
-        [FromQuery] bool noRedirect = false)
+        [FromQuery] string? @namespace = null,
+        [FromQuery] string? domain = null)
     {
         try
         {
-            var result = await _dataManager.GetEditInfoAsync(User, title, wikiNamespace, domain, noRedirect);
+            var result = await _dataManager.GetEditInfoAsync(User, new PageTitle(title, @namespace, domain));
             return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
         }
         catch (WikiUnauthorizedException)
         {
@@ -157,44 +150,30 @@ public class WikiController : Controller
 
     [HttpGet]
     [ProducesResponseType(typeof(GroupPageInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(WikiItemInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(WikiPageInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Group(
         [FromQuery] string title,
-        [FromQuery] bool requestedDiffCurrent = false,
-        [FromQuery] bool requestedDiffPrevious = false,
-        [FromQuery] long? requestedDiffTimestamp = null,
-        [FromQuery] long? requestedTimestamp = null)
+        [FromQuery] long? firstTime = null,
+        [FromQuery] long? secondTime = null,
+        [FromQuery] bool diff = false)
     {
-        if (string.IsNullOrEmpty(title))
-        {
-            return BadRequest();
-        }
-
-        if (requestedDiffCurrent
-            || requestedDiffPrevious
-            || requestedDiffTimestamp.HasValue
-            || requestedTimestamp.HasValue)
+        if (firstTime.HasValue
+            || secondTime.HasValue
+            || diff)
         {
             try
             {
                 var result = await _dataManager.GetItemAsync(
                     User,
-                    title,
-                    _wikiOptions.GroupNamespace,
-                    null,
+                    new PageTitle(title, _wikiOptions.GroupNamespace),
                     true,
-                    requestedDiffCurrent,
-                    requestedDiffPrevious,
-                    requestedDiffTimestamp,
-                    requestedTimestamp);
+                    firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
+                    secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
+                    diff);
                 return Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
             }
             catch (WikiUnauthorizedException)
             {
@@ -219,7 +198,6 @@ public class WikiController : Controller
 
     [HttpPost]
     [ProducesResponseType(typeof(PagedRevisionInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> History([FromBody] HistoryRequest request)
@@ -227,11 +205,11 @@ public class WikiController : Controller
         try
         {
             var result = await _dataManager.GetHistoryAsync(User, request);
+            if (result is null)
+            {
+                return NotFound();
+            }
             return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
         }
         catch (WikiUnauthorizedException)
         {
@@ -240,36 +218,27 @@ public class WikiController : Controller
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(WikiItemInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(WikiPageInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Item(
         [FromQuery] string? title = null,
-        [FromQuery] string? wikiNamespace = null,
+        [FromQuery] string? @namespace = null,
         [FromQuery] string? domain = null,
         [FromQuery] bool noRedirect = false,
-        [FromQuery] bool requestedDiffCurrent = false,
-        [FromQuery] bool requestedDiffPrevious = false,
-        [FromQuery] long? requestedDiffTimestamp = null,
-        [FromQuery] long? requestedTimestamp = null)
+        [FromQuery] long? firstTime = null,
+        [FromQuery] long? secondTime = null,
+        [FromQuery] bool diff = false)
     {
         try
         {
             var result = await _dataManager.GetItemAsync(
                 User,
-                title,
-                wikiNamespace,
-                domain,
+                new PageTitle(title, @namespace, domain),
                 noRedirect,
-                requestedDiffCurrent,
-                requestedDiffPrevious,
-                requestedDiffTimestamp,
-                requestedTimestamp);
+                firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
+                secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
+                diff);
             return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
         }
         catch (WikiUnauthorizedException)
         {
@@ -309,6 +278,22 @@ public class WikiController : Controller
         return Ok(result);
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RestoreArchive([FromBody] Archive archive)
+    {
+        try
+        {
+            await _dataManager.RestoreArchiveAsync(User, archive);
+        }
+        catch (WikiUnauthorizedException)
+        {
+            return Unauthorized();
+        }
+        return Ok();
+    }
+
     [HttpPost]
     [ProducesResponseType(typeof(SearchResponse), StatusCodes.Status200OK)]
     public Task<SearchResponse> Search(
@@ -324,23 +309,18 @@ public class WikiController : Controller
         => _dataManager.GetSearchSuggestionsAsync(searchClient, User, input);
 
     [HttpGet]
-    [ProducesResponseType(typeof(TalkResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(List<MessageResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Talk(
         [FromQuery] string? title = null,
-        [FromQuery] string? wikiNamespace = null,
+        [FromQuery] string? @namespace = null,
         [FromQuery] string? domain = null,
         [FromQuery] bool noRedirect = false)
     {
         try
         {
-            var result = await _dataManager.GetTalkAsync(User, title, wikiNamespace, domain, noRedirect);
+            var result = await _dataManager.GetTalkAsync(User, new PageTitle(title, @namespace, domain), noRedirect);
             return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
         }
         catch (WikiUnauthorizedException)
         {
@@ -349,7 +329,7 @@ public class WikiController : Controller
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(TalkResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(List<MessageResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Talk([FromBody] ReplyRequest reply)
@@ -377,24 +357,29 @@ public class WikiController : Controller
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Upload(
         [FromServices] IFileManager fileManager,
-        [FromForm] IFormFile file,
-        [FromForm] string options)
+        [FromForm] IFormFile? file = null,
+        [FromForm] string? options = null)
     {
         if (file is null)
         {
             return BadRequest("File is required.");
         }
 
-        var uploadOptions = JsonSerializer.Deserialize(options, WikiBlazorJsonSerializerContext.Default.UploadRequest);
-        if (uploadOptions is null
-            || string.IsNullOrEmpty(uploadOptions.Title))
-        {
-            return BadRequest("A title is required.");
-        }
+        var uploadOptions = string.IsNullOrEmpty(options)
+            ? new UploadRequest(new())
+            : JsonSerializer.Deserialize(options, WikiBlazorJsonSerializerContext.Default.UploadRequest)
+                ?? new(new());
 
         try
         {
-            _ = await _dataManager.UploadAsync(User, fileManager, file, uploadOptions);
+            using var stream = file.OpenReadStream();
+            _ = await _dataManager.UploadAsync(
+                User,
+                fileManager,
+                uploadOptions,
+                stream,
+                file.FileName,
+                file.ContentType);
             return Ok();
         }
         catch (WikiConflictException ex)

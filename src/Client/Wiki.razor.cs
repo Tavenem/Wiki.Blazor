@@ -90,10 +90,9 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private bool IsDiff { get; set; }
 
-    private bool IsRevisionRequested => RequestedDiffCurrent
-        || RequestedDiffPrevious
-        || RequestedDiffTimestamp.HasValue
-        || RequestedTimestamp.HasValue;
+    private bool IsRevisionRequested => RequestedDiff
+        || RequestedFirstTime.HasValue
+        || RequestedSecondTime.HasValue;
 
     private bool IsEditing { get; set; }
 
@@ -127,13 +126,11 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private int PreviewY { get; set; }
 
-    private bool RequestedDiffCurrent { get; set; }
+    private bool RequestedDiff { get; set; }
 
-    private bool RequestedDiffPrevious { get; set; }
+    private DateTimeOffset? RequestedFirstTime { get; set; }
 
-    private DateTimeOffset? RequestedDiffTimestamp { get; set; }
-
-    private DateTimeOffset? RequestedTimestamp { get; set; }
+    private DateTimeOffset? RequestedSecondTime { get; set; }
 
     private string? Revision { get; set; }
 
@@ -155,7 +152,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private string? TargetTitle { get; set; }
 
-    private Article? WikiItem { get; set; }
+    private Page? WikiPage { get; set; }
 
     private IWikiUser? User { get; set; }
 
@@ -252,12 +249,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             return;
         }
 
-        var (_, _, _, isTalk, _) = Article.GetTitleParts(WikiOptions, link);
-        if (isTalk)
-        {
-            return;
-        }
-
         Preview = new(string.Empty);
 
         var preview = await FetchStringAsync(
@@ -312,11 +303,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         {
             return Enumerable.Empty<KeyValuePair<string, object>>();
         }
-        var (_, _, title, _, _) = Article.GetTitleParts(WikiOptions, input);
-        if (string.IsNullOrEmpty(title))
-        {
-            return Enumerable.Empty<KeyValuePair<string, object>>();
-        }
 
         var suggestions = await FetchDataAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/searchsuggest?input={input}",
@@ -335,7 +321,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             .Append(WikiState.WikiTitle);
         if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
         {
-            url.Append("&wikiNamespace=")
+            url.Append("&namespace=")
                 .Append(WikiState.WikiNamespace);
         }
         if (!string.IsNullOrEmpty(WikiState.WikiDomain))
@@ -347,52 +333,45 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         {
             url.Append("&noRedirect=true");
         }
-        if (RequestedDiffCurrent)
+        if (RequestedDiff)
         {
-            url.Append("&requestedDiffCurrent=true");
+            url.Append("&diff=true");
         }
-        if (RequestedDiffPrevious)
+        if (RequestedFirstTime.HasValue)
         {
-            url.Append("&requestedDiffPrevious");
+            url.Append("&firstTime=")
+                .Append(RequestedFirstTime.Value.ToUniversalTime().Ticks);
         }
-        if (RequestedDiffTimestamp.HasValue)
+        if (RequestedSecondTime.HasValue)
         {
-            url.Append("&requestedDiffTimestamp=")
-                .Append(RequestedDiffTimestamp.Value.ToUniversalTime().Ticks);
-        }
-        if (RequestedTimestamp.HasValue)
-        {
-            url.Append("&requestedTimestamp=")
-                .Append(RequestedTimestamp.Value.ToUniversalTime().Ticks);
+            url.Append("&secondTime=")
+                .Append(RequestedSecondTime.Value.ToUniversalTime().Ticks);
         }
 
         var item = await FetchDataAsync(
             url.ToString(),
-            WikiBlazorJsonSerializerContext.Default.WikiItemInfo,
+            WikiJsonSerializerContext.Default.WikiPageInfo,
             async user => await WikiDataManager.GetItemAsync(
                 user,
-                WikiState.WikiTitle,
-                WikiState.WikiNamespace,
-                WikiState.WikiDomain,
+                new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain),
                 NoRedirect,
-                RequestedDiffCurrent,
-                RequestedDiffPrevious,
-                RequestedDiffTimestamp?.ToUniversalTime().Ticks,
-                RequestedTimestamp?.ToUniversalTime().Ticks));
+                RequestedFirstTime,
+                RequestedSecondTime,
+                RequestedDiff));
         if (item is null)
         {
             CanCreate = false;
             CanEdit = false;
             Content = null;
-            WikiItem = null;
+            WikiPage = null;
             IsDiff = false;
             WikiState.UpdateTitle(null);
         }
         else
         {
-            WikiItem = item.Item;
+            WikiPage = item.Page;
             CanCreate = item.Permission.HasFlag(WikiPermission.Create);
-            CanEdit = WikiItem is null
+            CanEdit = WikiPage is null
                 ? item.Permission.HasFlag(WikiPermission.Create)
                 : item.Permission.HasFlag(WikiPermission.Write);
             if (!CanEdit && IsEditing)
@@ -421,8 +400,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
                             uri = new Uri(path.ToString());
                         }
                         catch { }
-                        if (uri is null
-                            || uri.IsAbsoluteUri)
+                        if (uri?.IsAbsoluteUri != false)
                         {
                             NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Unauthenticated), true));
                         }
@@ -466,6 +444,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     {
         CanCreate = false;
         CanEdit = false;
+        Content = null;
         IsAllSpecials = false;
         IsCategory = false;
         IsEditing = false;
@@ -477,15 +456,14 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         IsUserPage = false;
         NoRedirect = false;
         PendingPreview = false;
-        RequestedDiffCurrent = false;
-        RequestedDiffPrevious = false;
-        RequestedDiffTimestamp = null;
-        RequestedTimestamp = null;
+        RequestedDiff = false;
+        RequestedFirstTime = null;
+        RequestedSecondTime = null;
         SearchText = null;
         ShowHistory = false;
         SpecialListType = SpecialListType.None;
         User = null;
-        WikiItem = null;
+        WikiPage = null;
         WikiState.IsSystem = false;
         WikiState.LoadError = false;
         WikiState.UpdateTitle(null);
@@ -528,7 +506,8 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         Fragment = null;
 
         var relativeUri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        if (relativeUri.StartsWith(WikiOptions.WikiLinkPrefix, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(WikiOptions.WikiLinkPrefix)
+            && relativeUri.StartsWith(WikiOptions.WikiLinkPrefix, StringComparison.OrdinalIgnoreCase))
         {
             relativeUri = relativeUri[WikiOptions.WikiLinkPrefix.Length..];
         }
@@ -564,13 +543,17 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
         if (!string.IsNullOrEmpty(actionString))
         {
-            IsEditing = string.Equals(actionString, "edit", StringComparison.OrdinalIgnoreCase);
-            if (!IsEditing)
+            WikiState.IsTalk = string.Equals(actionString, "talk", StringComparison.OrdinalIgnoreCase);
+            if (!WikiState.IsTalk)
             {
-                ShowHistory = string.Equals(actionString, "history", StringComparison.OrdinalIgnoreCase);
-                if (!ShowHistory)
+                IsEditing = string.Equals(actionString, "edit", StringComparison.OrdinalIgnoreCase);
+                if (!IsEditing)
                 {
-                    ShowWhatLinksHere = string.Equals(actionString, "whatlinkshere", StringComparison.OrdinalIgnoreCase);
+                    ShowHistory = string.Equals(actionString, "history", StringComparison.OrdinalIgnoreCase);
+                    if (!ShowHistory)
+                    {
+                        ShowWhatLinksHere = string.Equals(actionString, "whatlinkshere", StringComparison.OrdinalIgnoreCase);
+                    }
                 }
             }
         }
@@ -604,12 +587,11 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     private async void SetRouteProperties()
     {
         (
-            WikiState.WikiDomain,
-            WikiState.WikiNamespace,
             WikiState.WikiTitle,
-            WikiState.IsTalk,
-            WikiState.DefaultNamespace
-        ) = Article.GetTitleParts(WikiOptions, Route);
+            WikiState.WikiNamespace,
+            WikiState.WikiDomain
+        ) = PageTitle.Parse(Route);
+        WikiState.DefaultNamespace = string.IsNullOrEmpty(WikiState.WikiNamespace);
 
         IsCategory = !WikiState.DefaultNamespace
             && string.Equals(
@@ -674,7 +656,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
         User = await FetchDataAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/currentuser",
-            WikiBlazorJsonSerializerContext.Default.WikiUser,
+            WikiJsonSerializerContext.Default.WikiUser,
             WikiDataManager.GetWikiUserAsync);
         if (WikiState.IsSystem && User is not null)
         {
@@ -710,11 +692,11 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         {
             if (DateTimeOffset.TryParse(Revision, out var timestamp))
             {
-                RequestedTimestamp = timestamp;
+                RequestedFirstTime = timestamp;
             }
             else if (long.TryParse(Revision, out var ticks))
             {
-                RequestedTimestamp = new DateTimeOffset(ticks, TimeSpan.Zero);
+                RequestedFirstTime = new DateTimeOffset(ticks, TimeSpan.Zero);
             }
         }
 
@@ -722,19 +704,23 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         {
             if (string.Equals(Diff, "prev", StringComparison.OrdinalIgnoreCase))
             {
-                RequestedDiffPrevious = true;
+                if (RequestedFirstTime is not null)
+                {
+                    RequestedSecondTime = RequestedFirstTime;
+                    RequestedFirstTime = null;
+                }
             }
             else if (string.Equals(Diff, "cur", StringComparison.OrdinalIgnoreCase))
             {
-                RequestedDiffCurrent = true;
+                RequestedDiff = true;
             }
             else if (DateTimeOffset.TryParse(Diff, out var diffTimestamp))
             {
-                RequestedDiffTimestamp = diffTimestamp;
+                RequestedSecondTime = diffTimestamp;
             }
             else if (long.TryParse(Diff, out var diffTicks))
             {
-                RequestedDiffTimestamp = new DateTimeOffset(diffTicks, TimeSpan.Zero);
+                RequestedSecondTime = new DateTimeOffset(diffTicks, TimeSpan.Zero);
             }
         }
     }

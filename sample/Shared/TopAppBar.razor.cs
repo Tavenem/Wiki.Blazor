@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
 
@@ -24,7 +25,11 @@ public partial class TopAppBar
             archive,
             new JsonSerializerOptions
             {
-                TypeInfoResolver = WikiBlazorJsonSerializerContext.Default,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+                IgnoreReadOnlyFields = true,
+                IgnoreReadOnlyProperties = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                TypeInfoResolver = WikiArchiveJsonSerializerContext.Default,
                 WriteIndented = true,
             });
         ms.Position = 0;

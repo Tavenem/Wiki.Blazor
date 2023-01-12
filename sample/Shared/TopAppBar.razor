@@ -6,5 +6,7 @@
         </svg>
     </a>
     <LightDarkToggle Class="ms-2 d-print-none" />
-    <button class="btn btn-icon" @onclick="GetArchiveAsync"><tf-icon>download</tf-icon></button>
+    <Tooltip TooltipText="Download a JSON archive of this wiki" Delay="500">
+        <button class="btn btn-icon" @onclick="GetArchiveAsync"><tf-icon>download</tf-icon></button>
+    </Tooltip>
 </AppBar>

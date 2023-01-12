@@ -1,11 +1,10 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Routing;
+using System.Text.Json.Serialization.Metadata;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Server;
-using Tavenem.Wiki.Blazor.Server.Hubs;
 using Tavenem.Wiki.Blazor.Services.FileManager;
 using Tavenem.Wiki.Blazor.Services.Search;
 
@@ -114,12 +113,6 @@ public static class ServiceExtensions
     /// <param name="groupManagerType">
     /// The type of <see cref="IWikiGroupManager"/> to register.
     /// </param>
-    /// <param name="wikiOptions">
-    /// The options used to configure the wiki system.
-    /// </param>
-    /// <param name="wikiBlazorOptions">
-    /// The options used to configure the wiki Blazor system.
-    /// </param>
     /// <param name="fileManagerType">
     /// <para>
     /// The type of <see cref="IFileManager"/> to register.
@@ -136,6 +129,12 @@ public static class ServiceExtensions
     /// If omitted, <see cref="DefaultSearchClient"/> will be used. Note: the default client is
     /// not recommended for production use.
     /// </para>
+    /// </param>
+    /// <param name="wikiOptions">
+    /// The options used to configure the wiki system.
+    /// </param>
+    /// <param name="wikiBlazorOptions">
+    /// The options used to configure the wiki Blazor system.
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWiki(
@@ -511,8 +510,6 @@ public static class ServiceExtensions
         var provider = endpoints.ServiceProvider.CreateScope().ServiceProvider;
         var options = provider.GetRequiredService<WikiBlazorServerOptions>();
 
-        endpoints.MapHub<WikiTalkHub>(options?.TalkHubRoute ?? WikiBlazorServerOptions.DefaultTalkHubRoute);
-
         endpoints.MapControllerRoute(
             "tavenem_wiki_route",
             $$"""{{(options?.WikiServerApiRoute ?? WikiBlazorServerOptions.DefaultWikiServerApiRoute).TrimStart('/')}}/{action}""",
@@ -520,19 +517,20 @@ public static class ServiceExtensions
             new { area = "Wiki", controller = "Wiki" });
     }
 
+    /// <summary>
+    /// Adds the <see cref="WikiBlazorJsonSerializerContext"/> and <see
+    /// cref="WikiJsonSerializerContext"/> to the <see cref="JsonTypeInfo"/> contract resolver used
+    /// by Mvc.
+    /// </summary>
+    /// <param name="services">An <see cref="IServiceCollection"/> instance.</param>
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiJsonContext(this IServiceCollection services)
     {
-        services.Configure<JsonOptions>(options =>
-            options.JsonSerializerOptions.AddContext<WikiBlazorJsonSerializerContext>());
-        services
-            .AddSignalR()
-            .AddJsonProtocol(options => options
-                .PayloadSerializerOptions
-                .AddContext<WikiBlazorJsonSerializerContext>());
-        services.AddResponseCompression(options
-            => options.MimeTypes = ResponseCompressionDefaults
-            .MimeTypes
-            .Concat(new[] { "application/octet-stream" }));
-        return services;
+        var resolver = JsonTypeInfoResolver.Combine(
+            WikiBlazorJsonSerializerContext.Default,
+            WikiJsonSerializerContext.Default,
+            new DefaultJsonTypeInfoResolver());
+        return services.Configure<JsonOptions>(options =>
+            options.JsonSerializerOptions.TypeInfoResolver = resolver);
     }
 }

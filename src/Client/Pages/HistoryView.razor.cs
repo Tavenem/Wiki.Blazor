@@ -109,9 +109,7 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
         Revisions = null;
 
         var request = new HistoryRequest(
-            WikiState.WikiTitle,
-            WikiState.WikiNamespace,
-            WikiState.WikiDomain,
+            new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain),
             PageNumber ?? 1,
             PageSize ?? 50,
             Editor,
@@ -120,8 +118,8 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
         var history = await PostAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/history",
             request,
-            WikiBlazorJsonSerializerContext.Default.HistoryRequest,
-            WikiBlazorJsonSerializerContext.Default.PagedRevisionInfo,
+            WikiJsonSerializerContext.Default.HistoryRequest,
+            WikiJsonSerializerContext.Default.PagedRevisionInfo,
             user => WikiDataManager.GetHistoryAsync(user, request));
         Revisions = history?.Revisions is null
             ? null
@@ -129,7 +127,7 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
                 history.Revisions.List.Select(x => new RevisionInfo(
                     x,
                     history.Editors?.FirstOrDefault(y => string.Equals(y.Id, x.Editor))
-                        ?? new WikiUserInfo(x.Editor, null, false))),
+                        ?? new WikiUserInfo(x.Editor, null))),
                 history.Revisions.PageNumber,
                 history.Revisions.PageSize,
                 history.Revisions.TotalCount);

@@ -119,14 +119,13 @@ public partial class Upload : OfflineSupportComponent
             return;
         }
 
-        var (domain, wikiNamespace, title, _, defaultNamespace) = Article.GetTitleParts(WikiOptions, Title);
-        if (!defaultNamespace
-            && !string.Equals(wikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+        var title = PageTitle.Parse(Title);
+        if (string.CompareOrdinal(title.Namespace, WikiOptions.FileNamespace) != 0)
         {
             return;
         }
 
-        var request = new PreviewRequest(Content, title, WikiOptions.FileNamespace, domain);
+        var request = new PreviewRequest(Content, title);
         Preview = await PostForStringAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
             request,
@@ -141,9 +140,8 @@ public partial class Upload : OfflineSupportComponent
             return;
         }
 
-        var (domain, wikiNamespace, title, _, defaultNamespace) = Article.GetTitleParts(WikiOptions, Title);
-        if (!defaultNamespace
-            && !string.Equals(wikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+        var title = PageTitle.Parse(Title);
+        if (string.CompareOrdinal(title.Namespace, WikiOptions.FileNamespace) != 0)
         {
             return;
         }
@@ -182,11 +180,11 @@ public partial class Upload : OfflineSupportComponent
         }
 
         var request = new UploadRequest(
-            Title.Trim(),
-            domain,
+            title,
             Content,
             confirmOverwrite,
             Comment?.Trim(),
+            false,
             OwnerSelf,
             OwnerSelf || Owner.Count < 1 ? null : Owner[0].Id,
             EditorSelf,
@@ -277,7 +275,7 @@ public partial class Upload : OfflineSupportComponent
                 }
                 else if (response.IsSuccessStatusCode)
                 {
-                    NavigationManager.NavigateTo(WikiState.Link(title, WikiOptions.FileNamespace, domain));
+                    NavigationManager.NavigateTo(WikiState.Link(title));
                 }
             }
         }

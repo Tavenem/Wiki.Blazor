@@ -3,8 +3,4 @@
 /// <summary>
 /// The preview request object.
 /// </summary>
-public record PreviewRequest(
-    string Content,
-    string? Title = null,
-    string? WikiNamespace = null,
-    string? Domain = null);
+public record PreviewRequest(string Content, PageTitle Title);

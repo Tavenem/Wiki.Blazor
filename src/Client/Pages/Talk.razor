@@ -5,7 +5,8 @@
             <TalkMessage CanPost="CanTalk && CanPost"
                          Message="message"
                          Post="OnPostAsync"
-                         TimezoneOffset="TimezoneOffset" />
+                         TimezoneOffset="TimezoneOffset"
+                         TopicId="@TopicId" />
         }
     </ul>
     @if (TalkMessages.Count == 0)
@@ -16,17 +17,6 @@
 @if (CanPost)
 {
     <TalkCompose TopicId="@TopicId" Post="OnPostAsync" />
-}
-else if (WikiTalkClient is not null && !Connected)
-{
-    @if (WikiTalkClient?.State == HubConnectionState.Reconnecting)
-    {
-        <div class="wiki-talk-signin-prompt">Reconnecting...</div>
-    }
-    else
-    {
-        <div class="wiki-talk-signin-prompt">Disconnected</div>
-    }
 }
 else if (CanTalk)
 {

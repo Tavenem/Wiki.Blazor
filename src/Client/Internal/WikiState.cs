@@ -43,10 +43,7 @@ internal class WikiState
     }
 
     public string Link(
-        string? title = null,
-        string? wikiNamespace = null,
-        string? domain = null,
-        bool talk = false,
+        PageTitle title,
         string? query = null,
         string? route = null)
     {
@@ -56,7 +53,23 @@ internal class WikiState
                 ? "compact=true"
                 : "compact=true&" + query;
         }
-        return _wikiOptions.GetWikiPageUrl(title, wikiNamespace, domain, talk, route, query);
+        return _wikiOptions.GetWikiPageUrl(title, route, query);
+    }
+
+    public string Link(
+        string? title = null,
+        string? @namespace = null,
+        string? domain = null,
+        string? query = null,
+        string? route = null)
+    {
+        if (IsCompact)
+        {
+            query = string.IsNullOrEmpty(query)
+                ? "compact=true"
+                : "compact=true&" + query;
+        }
+        return _wikiOptions.GetWikiPageUrl(new PageTitle(title, @namespace, domain), route, query);
     }
 
     public string LinkHere(
@@ -73,7 +86,11 @@ internal class WikiState
                 : "compact=true&" + query;
         }
         string? route = null;
-        if (edit)
+        if (talk)
+        {
+            route = "Talk";
+        }
+        else if (edit)
         {
             route = "Edit";
         }
@@ -86,10 +103,7 @@ internal class WikiState
             route = "WhatLinksHere";
         }
         return _wikiOptions.GetWikiPageUrl(
-            WikiTitle,
-            WikiNamespace,
-            WikiDomain,
-            talk,
+            new PageTitle(WikiTitle, WikiNamespace, WikiDomain),
             route,
             query);
     }
@@ -104,11 +118,17 @@ internal class WikiState
     public void UpdateTitle(string? displayTitle = null)
     {
         DisplayTitle = displayTitle;
-        PageTitle = Article.GetFullTitle(
-            _wikiOptions,
-            DisplayTitle,
-            WikiNamespace ?? _wikiOptions.DefaultNamespace,
-            WikiDomain,
-            IsTalk);
+        if (string.IsNullOrEmpty(DisplayTitle))
+        {
+            PageTitle = _wikiOptions.SiteName;
+        }
+        else
+        {
+            PageTitle = new PageTitle(
+                DisplayTitle,
+                WikiNamespace,
+                WikiDomain)
+                .ToString();
+        }
     }
 }

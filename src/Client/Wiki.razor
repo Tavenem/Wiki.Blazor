@@ -15,7 +15,7 @@
                     }
                     else
                     {
-                        if (WikiItem is not null && (IsSpecialList || WikiState.IsTalk))
+                        if (WikiPage is not null && (IsSpecialList || WikiState.IsTalk))
                         {
                             <li>
                                 <a href="@WikiState.LinkHere()" title="View article">@ArticleType</a>
@@ -30,13 +30,13 @@
                         if (WikiState.IsTalk)
                         {
                             <li class="is-active">
-                                <span title="View discussion">@WikiOptions.TalkNamespace</span>
+                                <span title="View discussion">Talk</span>
                             </li>
                         }
-                        else if (WikiItem is not null)
+                        else if (WikiPage is not null)
                         {
                             <li>
-                                <a href="@WikiState.LinkHere(true)" title="View discussion">@WikiOptions.TalkNamespace</a>
+                                <a href="@WikiState.LinkHere(true)" title="View discussion">Talk</a>
                             </li>
                         }
                     }
@@ -125,7 +125,7 @@
                     {
                         if (WikiState.IsTalk)
                         {
-                            <span>@WikiOptions.TalkNamespace</span>
+                            <span>Talk</span>
                             <span>:</span>
                         }
                         else if (IsEditing)
@@ -135,8 +135,7 @@
                         if (IsCategory
                             || IsGroupPage
                             || !CanEdit
-                            || (WikiItem is not null
-                            && !WikiItem.IsDeleted))
+                            || WikiPage?.Exists == true)
                         {
                             @if (!WikiState.DefaultNamespace)
                             {
@@ -203,7 +202,7 @@
                 else if (WikiState.NotAuthorized)
                 {
                     <Unauthorized ForEdit="IsEditing"
-                                  ForCreate="@(!CanCreate && IsEditing && WikiItem is null)"
+                                  ForCreate="@(!CanCreate && IsEditing && WikiPage is null)"
                                   Unauthenticated="Unauthenticated" />
                 }
                 else if (IsSearch)
@@ -247,7 +246,7 @@
                 }
                 else if (IsEditing && CanEdit)
                 {
-                    <EditView Article="WikiItem" User="User" />
+                    <EditView Page="WikiPage" User="User" />
                 }
                 else if (IsCategory && !IsRevisionRequested)
                 {
@@ -257,7 +256,7 @@
                 {
                     <GroupView />
                 }
-                else if (WikiItem is null)
+                else if (WikiPage is null)
                 {
                     <p>
                         <span>This</span>
@@ -271,15 +270,15 @@
                 }
                 else if (WikiState.IsTalk)
                 {
-                    <Talk TopicId="@WikiItem.Id" />
+                    <Talk TopicId="@WikiPage.Id" />
                 }
                 else if (IsFile)
                 {
-                    <FileView Content="Content" WikiFile="WikiItem as WikiFile" />
+                    <FileView Content="Content" WikiFile="WikiPage as WikiFile" />
                 }
                 else
                 {
-                    <ArticleView Article="WikiItem"
+                    <ArticleView Page="WikiPage"
                                  CanEdit="CanEdit"
                                  Content="Content"
                                  IsDiff="IsDiff"
@@ -288,12 +287,12 @@
                 @if (!WikiState.IsCompact
                     && !WikiState.IsTalk
                     && !ShowHistory
-                    && WikiItem?.Categories.Count > 0)
+                    && WikiPage?.Categories?.Count > 0)
                 {
                     <section class="wiki-category-list-section">
                         <a href="@WikiState.Link(WikiOptions.CategoriesTitle)" class="wiki-category-list-category-link">@WikiOptions.CategoriesTitle</a>
                         <ul class="inline">
-                            @foreach (var category in WikiItem.Categories)
+                            @foreach (var category in WikiPage.Categories)
                             {
                                 <li>
                                     <a href="@WikiState.Link(category, WikiOptions.CategoryNamespace)" title="@($"{WikiOptions.CategoryNamespace}:{category}")">@category</a>
@@ -311,9 +310,9 @@
                     <ul class="inline">
                         @if (!WikiState.IsSystem
                             && !WikiState.IsTalk
-                            && WikiItem is not null)
+                            && WikiPage is not null)
                         {
-                            <li>This page was last edited <span>@WikiItem.Timestamp.ToWikiDisplayString()</span> (UTC).</li>
+                            <li>This page was last edited <span>@WikiPage.Timestamp.ToWikiDisplayString()</span> (UTC).</li>
                         }
                         @if (!string.IsNullOrWhiteSpace(WikiOptions.CopyrightPageTitle))
                         {

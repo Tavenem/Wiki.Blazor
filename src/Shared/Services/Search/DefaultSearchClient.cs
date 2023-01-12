@@ -49,7 +49,7 @@ public class DefaultSearchClient : ISearchClient
     {
         var queryEmpty = string.IsNullOrWhiteSpace(request.Query);
         var domainEmpty = string.IsNullOrWhiteSpace(request.Domain);
-        var namespaceEmpty = string.IsNullOrWhiteSpace(request.WikiNamespace);
+        var namespaceEmpty = string.IsNullOrWhiteSpace(request.Namespace);
         var ownerEmpty = string.IsNullOrWhiteSpace(request.Owner);
         var uploaderEmpty = string.IsNullOrWhiteSpace(request.Uploader);
         if (queryEmpty && domainEmpty && namespaceEmpty && ownerEmpty && uploaderEmpty)
@@ -89,7 +89,7 @@ public class DefaultSearchClient : ISearchClient
 
         var namespaces = namespaceEmpty
             ? Array.Empty<string>()
-            : request.WikiNamespace!.Split(';');
+            : request.Namespace!.Split(';');
         var excludedNamespaces = namespaces
             .Where(x => x[0] == '!')
             .Select(x => x[1..])
@@ -153,11 +153,7 @@ public class DefaultSearchClient : ISearchClient
                 totalCount = files.TotalCount;
                 foreach (var file in files)
                 {
-                    hits.Add(new SearchHit(
-                        file.Title,
-                        file.WikiNamespace,
-                        file.Domain,
-                        Article.GetFullTitle(_options, file.Title, file.WikiNamespace, file.Domain)));
+                    hits.Add(new SearchHit(file.Title));
                 }
             }
             else if (includedNamespaces.Count == 1
@@ -183,12 +179,7 @@ public class DefaultSearchClient : ISearchClient
                     var excerpt = await GetExcerptAsync(request, queryEmpty, category)
                         .ConfigureAwait(false);
 
-                    hits.Add(new SearchHit(
-                        category.Title,
-                        category.WikiNamespace,
-                        category.Domain,
-                        Article.GetFullTitle(_options, category.Title, category.WikiNamespace, category.Domain),
-                        excerpt));
+                    hits.Add(new SearchHit(category.Title, excerpt));
                 }
             }
             else
@@ -245,11 +236,7 @@ public class DefaultSearchClient : ISearchClient
                         totalCount = files.TotalCount;
                         foreach (var file in files)
                         {
-                            hits.Add(new SearchHit(
-                                file.Title,
-                                file.WikiNamespace,
-                                file.Domain,
-                                Article.GetFullTitle(_options, file.Title, file.WikiNamespace, file.Domain)));
+                            hits.Add(new SearchHit(file.Title));
                         }
                     }
                     else
@@ -259,12 +246,7 @@ public class DefaultSearchClient : ISearchClient
                             var excerpt = await GetExcerptAsync(request, queryEmpty, category)
                                 .ConfigureAwait(false);
 
-                            hits.Add(new SearchHit(
-                                category.Title,
-                                category.WikiNamespace,
-                                category.Domain,
-                                Article.GetFullTitle(_options, category.Title, category.WikiNamespace, category.Domain),
-                                excerpt));
+                            hits.Add(new SearchHit(category.Title, excerpt));
                         }
                     }
                 }
@@ -275,12 +257,7 @@ public class DefaultSearchClient : ISearchClient
                         var excerpt = await GetExcerptAsync(request, queryEmpty, article)
                             .ConfigureAwait(false);
 
-                        hits.Add(new SearchHit(
-                            article.Title,
-                            article.WikiNamespace,
-                            article.Domain,
-                            Article.GetFullTitle(_options, article.Title, article.WikiNamespace, article.Domain),
-                            excerpt));
+                        hits.Add(new SearchHit(article.Title, excerpt));
                     }
                 }
             }
@@ -309,7 +286,7 @@ public class DefaultSearchClient : ISearchClient
         }
     }
 
-    private async Task<string> GetExcerptAsync(ISearchRequest request, bool queryEmpty, Article article)
+    private async Task<string> GetExcerptAsync(ISearchRequest request, bool queryEmpty, Page article)
     {
         var hitIndex = queryEmpty
             ? 0
@@ -408,32 +385,36 @@ public class DefaultSearchClient : ISearchClient
         List<string> excludedOwners,
         bool anyExcludedOwners,
         List<string> includedOwners,
-        bool anyIncludedOwners) where T : Article
+        bool anyIncludedOwners) where T : Page
     {
-        Expression<Func<T, bool>> exp = x => !x.IsDeleted;
+        Expression<Func<T, bool>> exp = x => x.Exists;
 
         if (!queryEmpty)
         {
             if (request.TitleMatchOnly)
             {
-                exp = exp.AndAlso(x => x.Title.Contains(request.Query!, StringComparison.OrdinalIgnoreCase));
+                exp = exp.AndAlso(x => x.Title.Title != null
+                    && x.Title.Title.Contains(request.Query!, StringComparison.OrdinalIgnoreCase));
             }
             else
             {
-                exp = exp.AndAlso(x => x.Title.Contains(request.Query!, StringComparison.OrdinalIgnoreCase)
+                exp = exp.AndAlso(x => (x.Title.Title != null
+                    && x.Title.Title.Contains(request.Query!, StringComparison.OrdinalIgnoreCase))
                     || x.MarkdownContent.Contains(request.Query!, StringComparison.OrdinalIgnoreCase));
             }
         }
 
-        exp = exp.AndAlso(x => x.Domain == request.Domain);
+        exp = exp.AndAlso(x => x.Title.Domain == request.Domain);
 
         if (anyIncludedNamespaces)
         {
-            exp = exp.AndAlso(x => includedNamespaces.Contains(x.WikiNamespace));
+            exp = exp.AndAlso(x => x.Title.Namespace != null
+                && includedNamespaces.Contains(x.Title.Namespace));
         }
         if (anyExcludedNamespaces)
         {
-            exp = exp.AndAlso(x => !excludedNamespaces.Contains(x.WikiNamespace));
+            exp = exp.AndAlso(x => x.Title.Namespace != null
+                && !excludedNamespaces.Contains(x.Title.Namespace));
         }
 
         if (anyIncludedOwners)
@@ -466,10 +447,10 @@ public class DefaultSearchClient : ISearchClient
                     || user.Id == x.Owner
                     || x.AllowedEditors.Contains(user.Id)
                     || x.AllowedViewers.Contains(user.Id)
-                    || (user.AllowedEditArticles != null
-                    && user.AllowedEditArticles.Contains(x.Id))
-                    || (user.AllowedViewArticles != null
-                    && user.AllowedViewArticles.Contains(x.Id))
+                    || (user.AllowedEditPages != null
+                    && user.AllowedEditPages.Contains(x.Title))
+                    || (user.AllowedViewPages != null
+                    && user.AllowedViewPages.Contains(x.Title))
                     || groupIds.Contains(x.Owner!)
                     || x.AllowedEditors.Any(y => groupIds.Contains(y))
                     || x.AllowedViewers.Any(y => groupIds.Contains(y)));
@@ -482,10 +463,10 @@ public class DefaultSearchClient : ISearchClient
                     || user.Id == x.Owner
                     || x.AllowedEditors.Contains(user.Id)
                     || x.AllowedViewers.Contains(user.Id)
-                    || (user.AllowedEditArticles != null
-                    && user.AllowedEditArticles.Contains(x.Id))
-                    || (user.AllowedViewArticles != null
-                    && user.AllowedViewArticles.Contains(x.Id))
+                    || (user.AllowedEditPages != null
+                    && user.AllowedEditPages.Contains(x.Title))
+                    || (user.AllowedViewPages != null
+                    && user.AllowedViewPages.Contains(x.Title))
                     || groupIds.Contains(x.Owner)
                     || x.AllowedEditors.Any(y => groupIds.Contains(y))
                     || x.AllowedViewers.Any(y => groupIds.Contains(y)));
@@ -496,7 +477,7 @@ public class DefaultSearchClient : ISearchClient
 
         if (string.Equals(request.Sort, "timestamp", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.OrderBy(x => x.TimestampTicks, request.Descending);
+            query = query.OrderBy(x => x.Revision == null ? 0 : x.Revision.TimestampTicks, request.Descending);
         }
         else if (string.Equals(request.Sort, "title", StringComparison.OrdinalIgnoreCase))
         {
@@ -506,7 +487,8 @@ public class DefaultSearchClient : ISearchClient
         {
             query = query
                 .OrderBy(x => request.Query != null
-                    && x.Title.Contains(request.Query, StringComparison.OrdinalIgnoreCase)
+                    && x.Title.Title != null
+                    && x.Title.Title.Contains(request.Query, StringComparison.OrdinalIgnoreCase)
                     ? 0
                     : 1,
                     request.Descending)

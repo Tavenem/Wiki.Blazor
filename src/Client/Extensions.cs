@@ -1,15 +1,11 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
-using Tavenem.Wiki.Blazor.SignalR;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
 internal static partial class Extensions
 {
-    private const string Letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
     private static readonly Regex _emojiRegex = EmojiRegex();
-    private static readonly Random _Random = new();
 
     public static bool IsEmoji(this string input) => _emojiRegex.IsMatch(input);
 
