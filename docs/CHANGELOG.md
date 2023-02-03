@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1-preview
+### Updated
+- Update dependencies
+
 ## 0.2.0-preview
 ### Added
 - Archive support
