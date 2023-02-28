@@ -45,6 +45,11 @@ public delegate ValueTask<bool> IsOfflineDomainFunc(string domain);
 public class WikiBlazorClientOptions
 {
     /// <summary>
+    /// The default URL of the wiki's server API.
+    /// </summary>
+    public const string DefaultWikiServerApiRoute = "/wikiapi";
+
+    /// <summary>
     /// <para>
     /// The type of an optional component (typically containing an <see
     /// cref="Tavenem.Blazor.Framework.AppBar"/>) which will appear at the top of wiki pages.
@@ -222,6 +227,11 @@ public class WikiBlazorClientOptions
     /// No automatic synchronization occurs from the local data store to the server (for instance
     /// when an offline client reestablishes network connectivity). If your app model requires
     /// synchronization of offline content to a server, that logic must be implemented separately.
+    /// </para>
+    /// <para>
+    /// This is initialized to <see langword="null"/> by default, but <see
+    /// cref="DefaultWikiServerApiRoute"/> may be assigned to use the default value for a hosting
+    /// server app with default values.
     /// </para>
     /// </remarks>
     public string? WikiServerApiRoute { get; set; }

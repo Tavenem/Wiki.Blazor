@@ -77,6 +77,9 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
    - `TenorAPIKey`: The API key to be used for [Tenor](https://tenor.com) GIF integration. If omitted, discussion pages will not have built-in GIF functionality.
    - `WikiServerApiRoute`: The relative URL of the wiki's server API.
 
+     
+     This is initialized to <see langword="null"/> by default, `WikiBlazorClientOptions.DefaultWikiServerApiRoute` may be assigned to use the default value for a hosting server app with default values.
+
    The third parameter to `AddTavenemWikiClient` is either an instance of `ISearchClient`, the `Type` of an implementation, or a function which provides one. This service provides search capabilities when using the local data source. If omitted, an instance of `DefaultSearchClient` will be used.
      
    Note: the `DefaultSearchClient` is not recommended for production use. It is provided only to ensure that basic search functionality operates when an implementation of `ISearchClient` is not available (e.g. during debugging if the production client cannot be used during development).

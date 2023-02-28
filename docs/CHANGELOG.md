@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2-preview
+### Changed
+- Hide last update if it's a default value
+
 ## 0.2.1-preview
 ### Updated
 - Update dependencies
