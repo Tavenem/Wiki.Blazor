@@ -310,7 +310,8 @@
                     <ul class="inline">
                         @if (!WikiState.IsSystem
                             && !WikiState.IsTalk
-                            && WikiPage is not null)
+                            && WikiPage is not null
+                            && WikiPage.Timestamp > DateTimeOffset.MinValue)
                         {
                             <li>This page was last edited <span>@WikiPage.Timestamp.ToWikiDisplayString()</span> (UTC).</li>
                         }
@@ -325,7 +326,7 @@
                     </ul>
                 </div>
                 <div>
-                    <span>ver 0.1.0 &copy; 2022&ndash;@(DateTime.Now.Year) <a href="https://tavenem.com" target="_blank">Tavenem</a></span>
+                    <span>ver 0.2.1 &copy; 2022&ndash;@(DateTime.Now.Year) <a href="https://tavenem.com" target="_blank">Tavenem</a></span>
                 </div>
             </footer>
         }
