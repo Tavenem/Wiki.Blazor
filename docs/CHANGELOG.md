@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4-preview
+### Changed
+- Return 204 instead of 404
+
 ## 0.2.3-preview
 ### Changed
 - Add token redirect to API calls

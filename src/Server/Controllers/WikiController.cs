@@ -89,13 +89,13 @@ public class WikiController : Controller
     [HttpGet]
     [ProducesResponseType(typeof(WikiUser), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> CurrentUser()
     {
         var wikiUser = await _dataManager.GetWikiUserAsync(User);
         if (wikiUser is null)
         {
-            return NotFound();
+            return NoContent();
         }
         return Ok(wikiUser);
     }
@@ -199,7 +199,7 @@ public class WikiController : Controller
     [HttpPost]
     [ProducesResponseType(typeof(PagedRevisionInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> History([FromBody] HistoryRequest request)
     {
         try
@@ -207,7 +207,7 @@ public class WikiController : Controller
             var result = await _dataManager.GetHistoryAsync(User, request);
             if (result is null)
             {
-                return NotFound();
+                return NoContent();
             }
             return Ok(result);
         }
@@ -413,17 +413,17 @@ public class WikiController : Controller
 
     [HttpGet]
     [ProducesResponseType(typeof(WikiUserInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> WikiUser([FromQuery] string query)
     {
         if (string.IsNullOrEmpty(query))
         {
-            return NotFound();
+            return NoContent();
         }
         var wikiUserInfo = await _dataManager.GetWikiUserAsync(User, query);
         if (wikiUserInfo is null)
         {
-            return NotFound();
+            return NoContent();
         }
         return Ok(wikiUserInfo);
     }
