@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3-preview
+### Changed
+- Add token redirect to API calls
+
 ## 0.2.2-preview
 ### Changed
 - Hide last update if it's a default value

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
@@ -125,6 +126,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     fetchedFromServer = true;
                 }
             }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
+            }
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
@@ -212,6 +217,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     fetchedFromServer = true;
                 }
             }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
+            }
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
@@ -296,6 +305,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     }
                 }
             }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
+            }
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
@@ -372,6 +385,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                 {
                     return await response.Content.ReadAsStringAsync();
                 }
+            }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
             }
             catch (HttpRequestException) { }
             catch (Exception ex)
@@ -454,6 +471,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     result = await response.Content.ReadFromJsonAsync(returnType);
                     fetchedFromServer = true;
                 }
+            }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
             }
             catch (HttpRequestException) { }
             catch (Exception ex)
@@ -538,6 +559,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     return new FetchResult(true, response.ReasonPhrase);
                 }
             }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
+            }
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
@@ -617,6 +642,10 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     result = await response.Content.ReadAsStringAsync();
                     fetchedFromServer = true;
                 }
+            }
+            catch (AccessTokenNotAvailableException ex)
+            {
+                ex.Redirect();
             }
             catch (HttpRequestException) { }
             catch (Exception ex)
