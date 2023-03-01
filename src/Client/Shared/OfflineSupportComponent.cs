@@ -120,7 +120,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     result = await response.Content.ReadFromJsonAsync<T>();
                     fetchedFromServer = true;
@@ -211,7 +212,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     result = await response.Content.ReadFromJsonAsync(type);
                     fetchedFromServer = true;
@@ -296,7 +298,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return 0;
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     var result = await response.Content.ReadAsStringAsync();
                     if (int.TryParse(result, out var value))
@@ -381,7 +384,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                 {
                     return null;
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     return await response.Content.ReadAsStringAsync();
                 }
@@ -466,7 +470,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     result = await response.Content.ReadFromJsonAsync(returnType);
                     fetchedFromServer = true;
@@ -554,7 +559,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return new FetchResult(false);
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     return new FetchResult(true, response.ReasonPhrase);
                 }
@@ -637,7 +643,8 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
                     SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
-                else if (response.IsSuccessStatusCode)
+                else if (response.IsSuccessStatusCode
+                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
                 {
                     result = await response.Content.ReadAsStringAsync();
                     fetchedFromServer = true;

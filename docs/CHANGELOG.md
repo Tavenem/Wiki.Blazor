@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5-preview
+### Changed
+- Removed version footer
+### Fixed
+- Handle 204 and allow fallback to offline
+
 ## 0.2.4-preview
 ### Changed
 - Return 204 instead of 404
