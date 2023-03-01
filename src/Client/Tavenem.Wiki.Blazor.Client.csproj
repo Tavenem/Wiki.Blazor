@@ -54,7 +54,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Tavenem.Blazor.Framework" Version="1.19.4" />
+    <PackageReference Include="Tavenem.Blazor.Framework" Version="1.25.4" />
   </ItemGroup>
 
   <ItemGroup>

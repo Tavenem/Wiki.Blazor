@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6-preview
+### Updated
+- Update dependencies
+
 ## 0.2.5-preview
 ### Changed
 - Removed version footer

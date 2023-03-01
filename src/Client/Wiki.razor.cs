@@ -618,6 +618,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             TargetDomain = WikiState.WikiDomain;
             TargetNamespace = WikiState.WikiNamespace;
             TargetTitle = WikiState.WikiTitle;
+            WikiState.UpdateTitle($"{WikiState.WikiTitle} {SpecialListType.What_Links_Here.ToHumanReadable()}");
             return;
         }
 
