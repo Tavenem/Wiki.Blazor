@@ -295,7 +295,7 @@
                             @foreach (var category in WikiPage.Categories)
                             {
                                 <li>
-                                    <a href="@WikiState.Link(category, WikiOptions.CategoryNamespace)" title="@($"{WikiOptions.CategoryNamespace}:{category}")">@category</a>
+                                    <a href="@WikiState.Link(category)">@(category.Title ?? WikiOptions.MainPageTitle)</a>
                                 </li>
                             }
                         </ul>

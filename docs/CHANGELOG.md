@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.7-preview
+### Fixed
+- Category links
+
 ## 0.2.6-preview
 ### Updated
 - Update dependencies
