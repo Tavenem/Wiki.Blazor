@@ -371,7 +371,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         {
             WikiPage = item.Page;
             CanCreate = item.Permission.HasFlag(WikiPermission.Create);
-            CanEdit = WikiPage is null
+            CanEdit = WikiPage?.Exists != true
                 ? item.Permission.HasFlag(WikiPermission.Create)
                 : item.Permission.HasFlag(WikiPermission.Write);
             if (!CanEdit && IsEditing)

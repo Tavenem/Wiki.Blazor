@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.8-preview
+### Fixed
+- Non-existing pages
+
 ## 0.2.7-preview
 ### Fixed
 - Category links

@@ -15,7 +15,7 @@
                     }
                     else
                     {
-                        if (WikiPage is not null && (IsSpecialList || WikiState.IsTalk))
+                        if (WikiPage?.Exists == true && (IsSpecialList || WikiState.IsTalk))
                         {
                             <li>
                                 <a href="@WikiState.LinkHere()" title="View article">@ArticleType</a>
@@ -33,7 +33,7 @@
                                 <span title="View discussion">Talk</span>
                             </li>
                         }
-                        else if (WikiPage is not null)
+                        else if (WikiPage?.Exists == true)
                         {
                             <li>
                                 <a href="@WikiState.LinkHere(true)" title="View discussion">Talk</a>
@@ -202,7 +202,7 @@
                 else if (WikiState.NotAuthorized)
                 {
                     <Unauthorized ForEdit="IsEditing"
-                                  ForCreate="@(!CanCreate && IsEditing && WikiPage is null)"
+                                  ForCreate="@(!CanCreate && IsEditing && WikiPage?.Exists != true)"
                                   Unauthenticated="Unauthenticated" />
                 }
                 else if (IsSearch)
@@ -256,7 +256,7 @@
                 {
                     <GroupView />
                 }
-                else if (WikiPage is null)
+                else if (WikiPage?.Exists != true)
                 {
                     <p>
                         <span>This</span>
@@ -310,7 +310,7 @@
                     <ul class="inline">
                         @if (!WikiState.IsSystem
                             && !WikiState.IsTalk
-                            && WikiPage is not null
+                            && WikiPage?.Exists == true
                             && WikiPage.Timestamp > DateTimeOffset.MinValue)
                         {
                             <li>This page was last edited <span>@WikiPage.Timestamp.ToWikiDisplayString()</span> (UTC).</li>
