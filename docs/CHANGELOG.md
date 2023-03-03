@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0-preview
+### Added
+- `ShowPageTools` parameter for `WikiLeftDrawer`
+
 ## 0.2.8-preview
 ### Fixed
 - Non-existing pages

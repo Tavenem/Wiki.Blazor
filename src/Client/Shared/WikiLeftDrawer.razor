@@ -39,7 +39,7 @@
         <AnchorLink href="@WikiState.Link("All_Pages", WikiOptions.SystemNamespace, query: "sort=timestamp&descending=true")"
                     class="wiki-link wiki-link-exists"
                     title="A list of recent revisions">Recent changes</AnchorLink>
-        @if (!WikiState.IsSystem)
+        @if (ShowPageTools && !WikiState.IsSystem)
         {
             <AnchorLink href="@WikiState.LinkHere(whatLinksHere: true)"
                     class="wiki-link wiki-link-exists"
