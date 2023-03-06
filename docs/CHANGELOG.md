@@ -2,6 +2,7 @@
 
 ## 0.3.0-preview
 ### Added
+- Dynamic contents
 - `ShowPageTools` parameter for `WikiLeftDrawer`
 
 ## 0.2.8-preview

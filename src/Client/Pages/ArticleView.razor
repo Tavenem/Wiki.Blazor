@@ -1,11 +1,11 @@
 ﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
 @if (!IsDiff && FrontMatterType is not null)
 {
-    <DynamicComponent Type="FrontMatterType" Parameters="FrontEndMatterParamaters" />
+    <DynamicComponent Type="FrontMatterType" Parameters="FrontEndMatterParameters" />
 }
 <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
 @if (!IsDiff && EndMatterType is not null)
 {
-    <DynamicComponent Type="EndMatterType" Parameters="FrontEndMatterParamaters" />
+    <DynamicComponent Type="EndMatterType" Parameters="FrontEndMatterParameters" />
 }
 

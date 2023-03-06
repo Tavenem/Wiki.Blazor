@@ -32,7 +32,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
-    <PackageReference Include="Tavenem.Wiki" Version="0.19.4-preview" />
+    <PackageReference Include="Tavenem.Wiki" Version="0.20.0-preview" />
   </ItemGroup>
 
 </Project>
