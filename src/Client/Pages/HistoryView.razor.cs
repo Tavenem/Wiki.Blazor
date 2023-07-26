@@ -124,7 +124,7 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
         Revisions = history?.Revisions is null
             ? null
             : new PagedList<RevisionInfo>(
-                history.Revisions.List.Select(x => new RevisionInfo(
+                history.Revisions.Items?.Select(x => new RevisionInfo(
                     x,
                     history.Editors?.FirstOrDefault(y => string.Equals(y.Id, x.Editor))
                         ?? new WikiUserInfo(x.Editor, null))),

@@ -115,23 +115,12 @@ public partial class Search : OfflineSupportComponent
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/search",
             request,
             WikiBlazorJsonSerializerContext.Default.SearchRequest,
-            WikiBlazorJsonSerializerContext.Default.SearchResponse,
+            WikiBlazorJsonSerializerContext.Default.SearchResult,
             async user => SearchClient is null
                 ? null
                 : await WikiDataManager.SearchAsync(SearchClient, user, request));
         ExactMatch = results?.ExactMatch;
-        Result = results is null
-            ? null
-            : new SearchResult
-            {
-                Descending = results.Descending,
-                Owner = results.Owner,
-                Query = results.Query,
-                SearchHits = results.SearchHits.ToPagedList(),
-                Sort = results.Sort,
-                Namespace = results.Namespace,
-                Domain = results.Domain,
-            };
+        Result = results;
     }
 
     [UnconditionalSuppressMessage(

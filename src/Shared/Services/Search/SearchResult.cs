@@ -5,41 +5,41 @@ namespace Tavenem.Wiki.Blazor.Services.Search;
 /// <summary>
 /// The result of a search operation.
 /// </summary>
-public class SearchResult : ISearchResult
+/// <param name="Descending">
+/// Whether the results are in descending order.
+/// </param>
+/// <param name="Query">
+/// The original search query.
+/// </param>
+/// <param name="SearchHits">
+/// A <see cref="PagedList{T}" /> of <see cref="SearchHit" /> instances representing the results.
+/// </param>
+/// <param name="Sort">
+/// The originally specified sort property.
+/// </param>
+/// <param name="Owner">
+/// The originally specified owner.
+/// </param>
+/// <param name="Namespace">
+/// An originally specified wiki namespace.
+/// </param>
+/// <param name="Domain">
+/// An originally specified wiki domain.
+/// </param>
+/// <param name="ExactMatch"></param>
+public record SearchResult(
+    bool Descending = false,
+    string? Query = null,
+    PagedList<SearchHit>? SearchHits = null,
+    string? Sort = null,
+    string? Owner = null,
+    string? Namespace = null,
+    string? Domain = null,
+    Page? ExactMatch = null) : ISearchResult
 {
-    /// <summary>
-    /// Whether the results are in descending order.
-    /// </summary>
-    public bool Descending { get; set; }
-
-    /// <summary>
-    /// An originally specified wiki domain.
-    /// </summary>
-    public string? Domain { get; set; }
-
-    /// <summary>
-    /// An originally specified wiki namespace.
-    /// </summary>
-    public string? Namespace { get; set; }
-
-    /// <summary>
-    /// The originally specified owner.
-    /// </summary>
-    public string? Owner { get; set; }
-
-    /// <summary>
-    /// The original search query.
-    /// </summary>
-    public string? Query { get; set; }
-
     /// <summary>
     /// An <see cref="IPagedList{T}" /> of <see cref="ISearchHit" /> representing the results.
     /// </summary>
-    public IPagedList<ISearchHit> SearchHits { get; set; }
-        = new PagedList<ISearchHit>(null, 1, 50, 0);
-
-    /// <summary>
-    /// The originally specified sort property.
-    /// </summary>
-    public string? Sort { get; set; }
+    IPagedList<ISearchHit> ISearchResult.SearchHits
+        => SearchHits ?? new PagedList<SearchHit>(null, 1, 50, 0);
 }

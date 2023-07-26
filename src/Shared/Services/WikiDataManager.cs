@@ -13,7 +13,15 @@ namespace Tavenem.Wiki.Blazor;
 /// <summary>
 /// Facilitates data operations for the wiki.
 /// </summary>
-public class WikiDataManager
+/// <remarks>
+/// Constructs a new instance of <see cref="WikiDataManager"/>.
+/// </remarks>
+public class WikiDataManager(
+    IDataStore dataStore,
+    IWikiGroupManager groupManager,
+    ILoggerFactory loggerFactory,
+    IWikiUserManager userManager,
+    WikiOptions wikiOptions)
 {
     /// <summary>
     /// The format string used for a domain in a preview.
@@ -27,29 +35,7 @@ public class WikiDataManager
     /// The format string used for a preview.
     /// </summary>
     public const string PreviewTemplate = "<div class=\"wiki compact preview\"><div><main class=\"wiki-content\" role=\"main\"><div class=\"wiki-heading\" role=\"heading\"><h1 class=\"wiki-main-heading\">{0}{1}<span class=\"wiki-main-heading-title\">{2}</span></h1></div><div class=\"wiki-body\"><div class=\"wiki-parser-output\">{3}</div></div></main></div></div>";
-
-    private readonly IDataStore _dataStore;
-    private readonly ILogger _logger;
-    private readonly IWikiGroupManager _groupManager;
-    private readonly IWikiUserManager _userManager;
-    private readonly WikiOptions _wikiOptions;
-
-    /// <summary>
-    /// Constructs a new instance of <see cref="WikiDataManager"/>.
-    /// </summary>
-    public WikiDataManager(
-        IDataStore dataStore,
-        IWikiGroupManager groupManager,
-        ILoggerFactory loggerFactory,
-        IWikiUserManager userManager,
-        WikiOptions wikiOptions)
-    {
-        _dataStore = dataStore;
-        _groupManager = groupManager;
-        _logger = loggerFactory.CreateLogger("Wiki");
-        _userManager = userManager;
-        _wikiOptions = wikiOptions;
-    }
+    private readonly ILogger _logger = loggerFactory.CreateLogger("Wiki");
 
     /// <summary>
     /// Performs the requested edit operation.
@@ -82,7 +68,7 @@ public class WikiDataManager
     {
         if (string.Equals(
             request.Title.Namespace,
-            _wikiOptions.FileNamespace,
+            wikiOptions.FileNamespace,
             StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException(
@@ -94,17 +80,17 @@ public class WikiDataManager
         {
             throw new WikiUnauthorizedException();
         }
-        var wikiUser = await _userManager.GetUserAsync(user);
+        var wikiUser = await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
             throw new WikiUnauthorizedException();
         }
 
-        var result = await _dataStore.GetWikiPageAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetWikiPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             request.OriginalTitle ?? request.Title,
             wikiUser,
             true);
@@ -128,7 +114,7 @@ public class WikiDataManager
             throw new WikiUnauthorizedException();
         }
 
-        var intendedOwner = await _userManager.FindByIdAsync(ownerId);
+        var intendedOwner = await userManager.FindByIdAsync(ownerId);
 
         List<string>? allAllowedEditors = null;
         if (request.EditorSelf)
@@ -139,7 +125,7 @@ public class WikiDataManager
         {
             foreach (var id in request.AllowedEditors)
             {
-                var editor = await _userManager.FindByIdAsync(id);
+                var editor = await userManager.FindByIdAsync(id);
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
@@ -154,7 +140,7 @@ public class WikiDataManager
         {
             foreach (var id in request.AllowedEditorGroups)
             {
-                var editor = await _groupManager.FindByIdAsync(id);
+                var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
                     (allAllowedEditorGroups ??= new()).Add(editor.Id);
@@ -171,7 +157,7 @@ public class WikiDataManager
         {
             foreach (var id in request.AllowedViewers)
             {
-                var editor = await _userManager.FindByIdAsync(id);
+                var editor = await userManager.FindByIdAsync(id);
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
@@ -186,7 +172,7 @@ public class WikiDataManager
         {
             foreach (var id in request.AllowedViewerGroups)
             {
-                var editor = await _groupManager.FindByIdAsync(id);
+                var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
                     (allAllowedViewerGroups ??= new()).Add(editor.Id);
@@ -194,10 +180,10 @@ public class WikiDataManager
             }
         }
 
-        var success = await _dataStore.AddOrReviseWikiPageAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var success = await dataStore.AddOrReviseWikiPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             wikiUser,
             request.Title,
             request.Markdown,
@@ -217,10 +203,10 @@ public class WikiDataManager
         if (request.LeaveRedirect
             && result.Page?.Title.Equals(request.Title) == false)
         {
-            var redirectSuccess = await _dataStore.AddOrReviseWikiPageAsync(
-                _wikiOptions,
-                _userManager,
-                _groupManager,
+            var redirectSuccess = await dataStore.AddOrReviseWikiPageAsync(
+                wikiOptions,
+                userManager,
+                groupManager,
                 wikiUser,
                 result.Page.Title,
                 null,
@@ -290,15 +276,15 @@ public class WikiDataManager
         string? domain = null,
         WikiPermission requiredPermission = WikiPermission.Read)
     {
-        var wikiUser = await _userManager.GetUserAsync(user)
+        var wikiUser = await userManager.GetUserAsync(user)
             ?? throw new WikiUnauthorizedException();
         var hasDomain = !string.IsNullOrEmpty(domain);
         if (hasDomain)
         {
             var domainPermission = WikiPermission.None;
-            if (_wikiOptions.GetDomainPermission is not null)
+            if (wikiOptions.GetDomainPermission is not null)
             {
-                domainPermission = await _wikiOptions
+                domainPermission = await wikiOptions
                     .GetDomainPermission
                     .Invoke(wikiUser.Id, domain!);
             }
@@ -317,7 +303,7 @@ public class WikiDataManager
             throw new WikiUnauthorizedException();
         }
 
-        return await _dataStore.GetWikiArchiveAsync(_wikiOptions, domain);
+        return await dataStore.GetWikiArchiveAsync(wikiOptions, domain);
     }
 
     /// <summary>
@@ -338,12 +324,12 @@ public class WikiDataManager
     {
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
-        var response = await _dataStore.GetCategoryAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var response = await dataStore.GetCategoryAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             title,
             wikiUser);
         if (!response.Permission.HasFlag(WikiPermission.Read))
@@ -368,12 +354,12 @@ public class WikiDataManager
     {
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
-        var result = await _dataStore.GetWikiPageForEditingAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetWikiPageForEditingAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             title,
             wikiUser);
         if ((result.Permission & WikiPermission.ReadWrite) != WikiPermission.ReadWrite)
@@ -413,12 +399,12 @@ public class WikiDataManager
 
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
-        var result = await _dataStore.GetGroupPageAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetGroupPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             title,
             wikiUser);
         if (result is null)
@@ -449,12 +435,12 @@ public class WikiDataManager
     {
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
-        var result = await _dataStore.GetHistoryAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetHistoryAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             request,
             wikiUser);
         if (result is null)
@@ -531,16 +517,16 @@ public class WikiDataManager
     {
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
         WikiPageInfo result;
         if (diff
             || secondTime.HasValue)
         {
-            result = await _dataStore.GetWikiPageDiffAsync(
-                _wikiOptions,
-                _userManager,
-                _groupManager,
+            result = await dataStore.GetWikiPageDiffAsync(
+                wikiOptions,
+                userManager,
+                groupManager,
                 title,
                 firstTime,
                 secondTime,
@@ -548,10 +534,10 @@ public class WikiDataManager
         }
         else if (firstTime.HasValue)
         {
-            result = await _dataStore.GetWikiPageAsync(
-                _wikiOptions,
-                _userManager,
-                _groupManager,
+            result = await dataStore.GetWikiPageAsync(
+                wikiOptions,
+                userManager,
+                groupManager,
                 title,
                 wikiUser,
                 noRedirect,
@@ -559,10 +545,10 @@ public class WikiDataManager
         }
         else
         {
-            result = await _dataStore.GetWikiPageAsync(
-                _wikiOptions,
-                _userManager,
-                _groupManager,
+            result = await dataStore.GetWikiPageAsync(
+                wikiOptions,
+                userManager,
+                groupManager,
                 title,
                 wikiUser,
                 noRedirect);
@@ -579,9 +565,9 @@ public class WikiDataManager
     /// Fetches a special list for the given request.
     /// </summary>
     /// <param name="request">A <see cref="SpecialListRequest"/> instance.</param>
-    /// <returns>A <see cref="ListResponse"/> instance.</returns>
-    public async Task<ListResponse> GetListAsync(SpecialListRequest request)
-        => new(await _dataStore.GetSpecialListAsync(request));
+    /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
+    public async Task<PagedList<LinkInfo>> GetListAsync(SpecialListRequest request)
+        => await dataStore.GetSpecialListAsync(request);
 
     /// <summary>
     /// Gets the preview content of an article.
@@ -598,12 +584,12 @@ public class WikiDataManager
 
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
-        var result = await _dataStore.GetWikiPageAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetWikiPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             title,
             wikiUser);
         if (result.Page?.Exists != true
@@ -648,7 +634,7 @@ public class WikiDataManager
         };
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
         var result = await searchClient.SearchAsync(request, wikiUser);
 
         return result
@@ -678,12 +664,12 @@ public class WikiDataManager
     {
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
 
-        var result = await _dataStore.GetWikiPageAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetWikiPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             title,
             wikiUser,
             noRedirect);
@@ -696,7 +682,7 @@ public class WikiDataManager
             return new();
         }
 
-        var topic = await Topic.GetTopicAsync(_dataStore, result.Page.Title);
+        var topic = await Topic.GetTopicAsync(dataStore, result.Page.Title);
         return await GetTopicMessagesAsync(topic);
     }
 
@@ -717,30 +703,27 @@ public class WikiDataManager
         {
             return 0;
         }
-        var wikiUser = await _userManager.GetUserAsync(user);
+        var wikiUser = await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
             return 0;
         }
-        return await _groupManager.UserMaxUploadLimit(wikiUser);
+        return await groupManager.UserMaxUploadLimit(wikiUser);
     }
 
     /// <summary>
     /// Fetches a list of the pages which link to a given resource.
     /// </summary>
     /// <param name="request">a <see cref="WhatLinksHereRequest"/> instance.</param>
-    /// <returns>A <see cref="ListResponse"/> instance.</returns>
-    public async Task<ListResponse> GetWhatLinksHereAsync(WhatLinksHereRequest request)
+    /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
+    public async Task<PagedList<LinkInfo>> GetWhatLinksHereAsync(WhatLinksHereRequest request)
     {
-        var result = await _dataStore.GetWhatLinksHereAsync(
-            _wikiOptions,
+        var result = await dataStore.GetWhatLinksHereAsync(
+            wikiOptions,
             request);
-        if (result is null)
-        {
-            return new(new(null, 1, request.PageSize, 0));
-        }
-        return new ListResponse(result);
+        return result
+            ?? new(null, 1, request.PageSize, 0);
     }
 
     /// <summary>
@@ -757,7 +740,7 @@ public class WikiDataManager
         {
             return null;
         }
-        var wikiUser = await _userManager.GetUserAsync(user);
+        var wikiUser = await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
@@ -799,14 +782,14 @@ public class WikiDataManager
         {
             return null;
         }
-        var wikiUser = await _userManager.FindByIdAsync(query);
-        wikiUser ??= await _userManager.FindByNameAsync(query);
+        var wikiUser = await userManager.FindByIdAsync(query);
+        wikiUser ??= await userManager.FindByNameAsync(query);
         if (wikiUser is null)
         {
             return null;
         }
 
-        var requestingUser = await _userManager.GetUserAsync(user);
+        var requestingUser = await userManager.GetUserAsync(user);
         if (requestingUser?.IsDeleted != false
             || requestingUser.IsDisabled)
         {
@@ -874,7 +857,7 @@ public class WikiDataManager
 
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
@@ -884,10 +867,10 @@ public class WikiDataManager
         var title = new Topic(reply.TopicId, null).GetTitle();
         if (!title.Equals(new PageTitle()))
         {
-            var result = await _dataStore.GetWikiPageAsync(
-                _wikiOptions,
-                _userManager,
-                _groupManager,
+            var result = await dataStore.GetWikiPageAsync(
+                wikiOptions,
+                userManager,
+                groupManager,
                 title,
                 wikiUser);
             if (!result.Permission.HasFlag(WikiPermission.Read))
@@ -901,8 +884,8 @@ public class WikiDataManager
         }
 
         _ = await Message.ReplyAsync(
-            _wikiOptions,
-            _dataStore,
+            wikiOptions,
+            dataStore,
             reply.TopicId,
             wikiUser.Id,
             wikiUser.IsWikiAdmin,
@@ -910,7 +893,7 @@ public class WikiDataManager
             reply.Markdown,
             reply.MessageId);
 
-        var topic = await _dataStore.GetItemAsync<Topic>(reply.TopicId);
+        var topic = await dataStore.GetItemAsync<Topic>(reply.TopicId);
         return await GetTopicMessagesAsync(topic);
     }
 
@@ -929,7 +912,7 @@ public class WikiDataManager
         {
             return null;
         }
-        var wikiUser = await _userManager.GetUserAsync(user);
+        var wikiUser = await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
@@ -937,11 +920,11 @@ public class WikiDataManager
         }
 
         return MarkdownItem.RenderHtml(
-            _wikiOptions,
-            _dataStore,
+            wikiOptions,
+            dataStore,
             await TransclusionParser.TranscludeAsync(
-                _wikiOptions,
-                _dataStore,
+                wikiOptions,
+                dataStore,
                 request.Title,
                 request.Content));
     }
@@ -966,7 +949,7 @@ public class WikiDataManager
         {
             throw new WikiUnauthorizedException();
         }
-        var wikiUser = await _userManager.GetUserAsync(user);
+        var wikiUser = await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
@@ -978,7 +961,7 @@ public class WikiDataManager
         {
             skipPermission = true;
         }
-        else if (_wikiOptions.UserDomains)
+        else if (wikiOptions.UserDomains)
         {
             var domains = archive.Pages.ConvertAll(x => x.Title.Domain);
             if (domains.Count == 1
@@ -997,10 +980,10 @@ public class WikiDataManager
 
             foreach (var page in archive.Pages)
             {
-                var permission = await _userManager.GetPermissionAsync(
-                    _wikiOptions,
-                    _dataStore,
-                    _groupManager,
+                var permission = await userManager.GetPermissionAsync(
+                    wikiOptions,
+                    dataStore,
+                    groupManager,
                     page,
                     wikiUser);
                 if ((permission & RequiredPermissions) != RequiredPermissions)
@@ -1010,7 +993,7 @@ public class WikiDataManager
             }
         }
 
-        await archive.RestoreAsync(_dataStore, _wikiOptions, wikiUser.Id);
+        await archive.RestoreAsync(dataStore, wikiOptions, wikiUser.Id);
     }
 
     /// <summary>
@@ -1020,19 +1003,19 @@ public class WikiDataManager
     /// <param name="user">The user making the request.</param>
     /// <param name="request">The search request.</param>
     /// <returns>
-    /// A <see cref="SearchResponse"/> object.
+    /// A <see cref="SearchResult"/> object.
     /// </returns>
-    public async Task<SearchResponse> SearchAsync(
+    public async Task<SearchResult> SearchAsync(
         ISearchClient searchClient,
         ClaimsPrincipal? user,
         SearchRequest request)
     {
         if (string.IsNullOrEmpty(request.Query))
         {
-            return new SearchResponse(
+            return new SearchResult(
                 request.Descending,
                 request.Query,
-                new PagedListDTO<SearchHit>(),
+                new PagedList<SearchHit>(null, request.PageNumber, request.PageSize, 0),
                 request.Sort,
                 request.Owner,
                 request.Namespace,
@@ -1051,8 +1034,8 @@ public class WikiDataManager
                 var excluded = name.Length > 0 && name[0] == '!';
                 var ownerId = excluded ? name[1..] : name;
 
-                IWikiOwner? foundOwner = await _userManager.FindByIdAsync(ownerId);
-                foundOwner ??= await _groupManager.FindByIdAsync(ownerId);
+                IWikiOwner? foundOwner = await userManager.FindByIdAsync(ownerId);
+                foundOwner ??= await groupManager.FindByIdAsync(ownerId);
                 if (foundOwner is not null)
                 {
                     ownerIds.Add(excluded ? $"!{foundOwner.Id}" : foundOwner.Id);
@@ -1060,10 +1043,10 @@ public class WikiDataManager
             }
             if (ownerIds.Count == 0)
             {
-                return new SearchResponse(
+                return new SearchResult(
                     request.Descending,
                     request.Query,
-                    new PagedListDTO<SearchHit>(),
+                    new PagedList<SearchHit>(null, request.PageNumber, request.PageSize, 0),
                     request.Sort,
                     request.Owner,
                     request.Namespace,
@@ -1122,7 +1105,7 @@ public class WikiDataManager
             title = title.WithNamespace(singleSearchNamespace);
         }
 
-        var exactMatch = await _dataStore.GetWikiPageAsync(_wikiOptions, title);
+        var exactMatch = await dataStore.GetWikiPageAsync(wikiOptions, title);
         if (exactMatch?.Exists != true)
         {
             exactMatch = null;
@@ -1130,7 +1113,7 @@ public class WikiDataManager
 
         var wikiUser = user is null
             ? null
-            : await _userManager.GetUserAsync(user);
+            : await userManager.GetUserAsync(user);
         var result = await searchClient.SearchAsync(new SearchRequest
         {
             Descending = request.Descending,
@@ -1143,10 +1126,10 @@ public class WikiDataManager
             Domain = request.Domain,
         }, wikiUser);
 
-        return new SearchResponse(
+        return new SearchResult(
             request.Descending,
             original,
-            new PagedListDTO<SearchHit>(
+            new PagedList<SearchHit>(
                 result
                     .SearchHits
                     .Select(x => new SearchHit(
@@ -1244,7 +1227,7 @@ public class WikiDataManager
         string? contentType)
     {
         if (!string.IsNullOrEmpty(options.Title.Namespace)
-            && string.CompareOrdinal(options.Title.Namespace, _wikiOptions.FileNamespace) != 0)
+            && string.CompareOrdinal(options.Title.Namespace, wikiOptions.FileNamespace) != 0)
         {
             throw new ArgumentException("Files can only be uploaded to the File namespace (the namespace may be omitted to use the File namespace by default).", nameof(options));
         }
@@ -1252,21 +1235,21 @@ public class WikiDataManager
         {
             throw new ArgumentException($"{nameof(contentType)} cannot be missing when a {nameof(file)} is provided.", nameof(contentType));
         }
-        if (file?.Length > _wikiOptions.MaxFileSize)
+        if (file?.Length > wikiOptions.MaxFileSize)
         {
-            throw new ArgumentException($"File size exceeds {_wikiOptions.MaxFileSizeString}.", nameof(file));
+            throw new ArgumentException($"File size exceeds {wikiOptions.MaxFileSizeString}.", nameof(file));
         }
         if (user is null)
         {
             throw new WikiUnauthorizedException();
         }
-        var wikiUser = await _userManager.GetUserAsync(user);
+        var wikiUser = await userManager.GetUserAsync(user);
         if (wikiUser?.IsDeleted != false
             || wikiUser.IsDisabled)
         {
             throw new WikiUnauthorizedException();
         }
-        var limit = await _groupManager.UserMaxUploadLimit(wikiUser);
+        var limit = await groupManager.UserMaxUploadLimit(wikiUser);
         if (limit == 0)
         {
             throw new WikiUnauthorizedException();
@@ -1286,15 +1269,15 @@ public class WikiDataManager
             ? wikiUser.Id
             : options.Owner;
 
-        var intendedOwner = await _userManager.FindByIdAsync(ownerId)
+        var intendedOwner = await userManager.FindByIdAsync(ownerId)
             ?? throw new ArgumentException("No such owner found.", nameof(options));
 
-        var title = options.Title.WithNamespace(_wikiOptions.FileNamespace);
+        var title = options.Title.WithNamespace(wikiOptions.FileNamespace);
 
-        var result = await _dataStore.GetWikiPageAsync(
-            _wikiOptions,
-            _userManager,
-            _groupManager,
+        var result = await dataStore.GetWikiPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
             title,
             wikiUser,
             true);
@@ -1323,7 +1306,7 @@ public class WikiDataManager
         {
             foreach (var id in options.AllowedEditors)
             {
-                var editor = await _userManager.FindByIdAsync(id);
+                var editor = await userManager.FindByIdAsync(id);
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
@@ -1338,7 +1321,7 @@ public class WikiDataManager
         {
             foreach (var id in options.AllowedEditorGroups)
             {
-                var editor = await _groupManager.FindByIdAsync(id);
+                var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
                     (allAllowedEditorGroups ??= new()).Add(editor.Id);
@@ -1355,7 +1338,7 @@ public class WikiDataManager
         {
             foreach (var id in options.AllowedViewers)
             {
-                var editor = await _userManager.FindByIdAsync(id);
+                var editor = await userManager.FindByIdAsync(id);
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
@@ -1370,7 +1353,7 @@ public class WikiDataManager
         {
             foreach (var id in options.AllowedViewerGroups)
             {
-                var editor = await _groupManager.FindByIdAsync(id);
+                var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
                     (allAllowedViewerGroups ??= new()).Add(editor.Id);
@@ -1379,7 +1362,7 @@ public class WikiDataManager
         }
 
         var hasPermission = CheckEditPermissions(
-            _wikiOptions,
+            wikiOptions,
             result,
             false,
             allAllowedEditors,
@@ -1395,16 +1378,16 @@ public class WikiDataManager
         if (options.OriginalTitle.HasValue
             && !options.OriginalTitle.Equals(title))
         {
-            originalPage = await _dataStore.GetWikiPageAsync(
-                _wikiOptions,
-                _userManager,
-                _groupManager,
+            originalPage = await dataStore.GetWikiPageAsync(
+                wikiOptions,
+                userManager,
+                groupManager,
                 options.OriginalTitle.Value,
                 wikiUser,
                 true);
 
             var hasOriginalPermission = CheckEditPermissions(
-                _wikiOptions,
+                wikiOptions,
                 originalPage,
                 true,
                 allAllowedEditors,
@@ -1459,8 +1442,8 @@ public class WikiDataManager
             try
             {
                 await originalWikiFile.UpdateAsync(
-                    _wikiOptions,
-                    _dataStore,
+                    wikiOptions,
+                    dataStore,
                     wikiUser.Id,
                     originalWikiFile.FilePath,
                     0,
@@ -1514,8 +1497,8 @@ public class WikiDataManager
             try
             {
                 await wikiFile.UpdateAsync(
-                    _wikiOptions,
-                    _dataStore,
+                    wikiOptions,
+                    dataStore,
                     wikiUser.Id,
                     wikiFile.FilePath,
                     0,
@@ -1545,8 +1528,8 @@ public class WikiDataManager
             try
             {
                 await wikiFile.UpdateAsync(
-                    _wikiOptions,
-                    _dataStore,
+                    wikiOptions,
+                    dataStore,
                     wikiUser.Id,
                     storagePath,
                     (int)file.Length,
@@ -1698,7 +1681,7 @@ public class WikiDataManager
                     && !link.IsMissing
                     && string.IsNullOrEmpty(link.Action))
                 {
-                    var article = await _dataStore.GetWikiPageAsync(_wikiOptions, link.Title);
+                    var article = await dataStore.GetWikiPageAsync(wikiOptions, link.Title);
                     if (article?.Exists == true)
                     {
                         preview = true;

@@ -101,13 +101,12 @@ public partial class SpecialList : OfflineSupportComponent
                 Descending,
                 Sort,
                 Filter);
-            var list = await PostAsync(
+            Items = await PostAsync(
                 $"{WikiBlazorClientOptions.WikiServerApiRoute}/whatlinkshere",
                 request,
                 WikiJsonSerializerContext.Default.WhatLinksHereRequest,
-                WikiBlazorJsonSerializerContext.Default.ListResponse,
+                WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
                 async user => await WikiDataManager.GetWhatLinksHereAsync(request));
-            Items = list?.Links.ToPagedList();
         }
         else
         {
@@ -135,13 +134,12 @@ public partial class SpecialList : OfflineSupportComponent
                 Descending,
                 Sort,
                 Filter);
-            var list = await PostAsync(
+            Items = await PostAsync(
                 $"{WikiBlazorClientOptions.WikiServerApiRoute}/list",
                 request,
                 WikiJsonSerializerContext.Default.SpecialListRequest,
-                WikiBlazorJsonSerializerContext.Default.ListResponse,
+                WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
                 async user => await WikiDataManager.GetListAsync(request));
-            Items = list?.Links.ToPagedList();
         }
     }
 

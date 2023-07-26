@@ -16,29 +16,20 @@ namespace Tavenem.Wiki.Blazor.Server.Controllers;
 /// The built-in wiki controller.
 /// </summary>
 [Area("Wiki")]
-public class WikiController : Controller
+public class WikiController(
+    IDataStore dataStore,
+    IWikiGroupManager groupManager,
+    ILoggerFactory loggerFactory,
+    IWikiUserManager userManager,
+    WikiBlazorServerOptions wikiBlazorServerOptions,
+    WikiOptions wikiOptions) : Controller
 {
-    private readonly WikiDataManager _dataManager;
-    private readonly WikiBlazorServerOptions _wikiBlazorServerOptions;
-    private readonly WikiOptions _wikiOptions;
-
-    public WikiController(
-        IDataStore dataStore,
-        IWikiGroupManager groupManager,
-        ILoggerFactory loggerFactory,
-        IWikiUserManager userManager,
-        WikiBlazorServerOptions wikiBlazorServerOptions,
-        WikiOptions wikiOptions)
-    {
-        _dataManager = new WikiDataManager(
-            dataStore,
-            groupManager,
-            loggerFactory,
-            userManager,
-            wikiOptions);
-        _wikiBlazorServerOptions = wikiBlazorServerOptions;
-        _wikiOptions = wikiOptions;
-    }
+    private readonly WikiDataManager _dataManager = new(
+        dataStore,
+        groupManager,
+        loggerFactory,
+        userManager,
+        wikiOptions);
 
     [HttpGet]
     [ProducesResponseType(typeof(Archive), StatusCodes.Status200OK)]
@@ -50,7 +41,7 @@ public class WikiController : Controller
             var response = await _dataManager.GetArchiveAsync(
                 User,
                 domain,
-                _wikiBlazorServerOptions.DomainArchivePermission);
+                wikiBlazorServerOptions.DomainArchivePermission);
             return new JsonResult(response, new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
@@ -168,7 +159,7 @@ public class WikiController : Controller
             {
                 var result = await _dataManager.GetItemAsync(
                     User,
-                    new PageTitle(title, _wikiOptions.GroupNamespace),
+                    new PageTitle(title, wikiOptions.GroupNamespace),
                     true,
                     firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
                     secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
@@ -247,8 +238,8 @@ public class WikiController : Controller
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(ListResponse), StatusCodes.Status200OK)]
-    public Task<ListResponse> List([FromBody] SpecialListRequest request)
+    [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
+    public Task<PagedList<LinkInfo>> List([FromBody] SpecialListRequest request)
         => _dataManager.GetListAsync(request);
 
     [Authorize]
@@ -295,8 +286,8 @@ public class WikiController : Controller
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(SearchResponse), StatusCodes.Status200OK)]
-    public Task<SearchResponse> Search(
+    [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
+    public Task<SearchResult> Search(
         [FromServices] ISearchClient searchClient,
         [FromBody] SearchRequest request)
         => _dataManager.SearchAsync(searchClient, User, request);
@@ -407,8 +398,8 @@ public class WikiController : Controller
         => _dataManager.GetUploadLimitAsync(User);
 
     [HttpPost]
-    [ProducesResponseType(typeof(ListResponse), StatusCodes.Status200OK)]
-    public Task<ListResponse> WhatLinksHere([FromBody] WhatLinksHereRequest request)
+    [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
+    public Task<PagedList<LinkInfo>> WhatLinksHere([FromBody] WhatLinksHereRequest request)
         => _dataManager.GetWhatLinksHereAsync(request);
 
     [HttpGet]

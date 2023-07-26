@@ -7,34 +7,20 @@ namespace Tavenem.Wiki.Blazor.Services.Search;
 
 /// <summary>
 /// <para>
-/// The default search client performs a naive search of the <see cref="IDataStore"/>, looking
+/// The default search client performs a naïve search of the <see cref="IDataStore"/>, looking
 /// for exact string matches of the query in the title and markdown of each item.
 /// </para>
 /// <para>
 /// Although this default is functional, it is neither powerful nor fast, nor does it rank
 /// results intelligently. A more robust search solution is recommended. The default is supplied
-/// only to ensure that search functions when no client is provided.
+/// only to ensure that search is functional when no client is provided.
 /// </para>
 /// </summary>
-public class DefaultSearchClient : ISearchClient
+public class DefaultSearchClient(
+    IDataStore dataStore,
+    ILogger<DefaultSearchClient> logger,
+    WikiOptions options) : ISearchClient
 {
-    private readonly IDataStore _dataStore;
-    private readonly ILogger<DefaultSearchClient> _logger;
-    private readonly WikiOptions _options;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="DefaultSearchClient"/>.
-    /// </summary>
-    public DefaultSearchClient(
-        IDataStore dataStore,
-        ILogger<DefaultSearchClient> logger,
-        WikiOptions options)
-    {
-        _dataStore = dataStore;
-        _logger = logger;
-        _options = options;
-    }
-
     /// <summary>
     /// Search for wiki content which matches the given search criteria.
     /// </summary>
@@ -54,12 +40,11 @@ public class DefaultSearchClient : ISearchClient
         var uploaderEmpty = string.IsNullOrWhiteSpace(request.Uploader);
         if (queryEmpty && domainEmpty && namespaceEmpty && ownerEmpty && uploaderEmpty)
         {
-            return new SearchResult
-            {
-                Descending = request.Descending,
-                Query = request.Query,
-                Sort = request.Sort,
-            };
+            return new SearchResult(
+                request.Descending,
+                request.Query,
+                null,
+                request.Sort);
         }
 
         if (!domainEmpty)
@@ -67,9 +52,9 @@ public class DefaultSearchClient : ISearchClient
             var domainPermission = WikiPermission.None;
             if (user is not null)
             {
-                if (_options.GetDomainPermission is not null)
+                if (options.GetDomainPermission is not null)
                 {
-                    domainPermission = await _options.GetDomainPermission(user.Id, request.Domain!);
+                    domainPermission = await options.GetDomainPermission(user.Id, request.Domain!);
                 }
                 if (user.AllowedViewDomains?.Contains(request.Domain!) == true)
                 {
@@ -78,12 +63,11 @@ public class DefaultSearchClient : ISearchClient
             }
             if (!domainPermission.HasFlag(WikiPermission.Read))
             {
-                return new SearchResult
-                {
-                    Descending = request.Descending,
-                    Query = request.Query,
-                    Sort = request.Sort,
-                };
+                return new SearchResult(
+                    request.Descending,
+                    request.Query,
+                    null,
+                    request.Sort);
             }
         }
 
@@ -134,7 +118,7 @@ public class DefaultSearchClient : ISearchClient
 
             if (anyIncludedUploaders
                 || (includedNamespaces.Count == 1
-                && includedNamespaces[0] == _options.FileNamespace))
+                && includedNamespaces[0] == options.FileNamespace))
             {
                 var files = await GetPageAsync<WikiFile>(
                     request,
@@ -157,7 +141,7 @@ public class DefaultSearchClient : ISearchClient
                 }
             }
             else if (includedNamespaces.Count == 1
-                && includedNamespaces[0] == _options.CategoryNamespace)
+                && includedNamespaces[0] == options.CategoryNamespace)
             {
                 var categories = await GetPageAsync<Category>(
                     request,
@@ -262,27 +246,24 @@ public class DefaultSearchClient : ISearchClient
                 }
             }
 
-            return new SearchResult
-            {
-                Descending = request.Descending,
-                Query = request.Query,
-                SearchHits = new PagedList<SearchHit>(
+            return new SearchResult(
+                request.Descending,
+                request.Query,
+                new(
                     hits,
                     pageNumber,
                     pageSize,
                     totalCount),
-                Sort = request.Sort,
-            };
+                request.Sort);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception in search for query: {Query}", request.Query);
-            return new SearchResult
-            {
-                Descending = request.Descending,
-                Query = request.Query,
-                Sort = request.Sort,
-            };
+            logger.LogError(ex, "Exception in search for query: {Query}", request.Query);
+            return new SearchResult(
+                request.Descending,
+                request.Query,
+                null,
+                request.Sort);
         }
     }
 
@@ -354,8 +335,8 @@ public class DefaultSearchClient : ISearchClient
         }
 
         var excerpt = await article.GetPlainTextAsync(
-            _options,
-            _dataStore,
+            options,
+            dataStore,
             article.MarkdownContent[startIndex..endIndex])
             .ConfigureAwait(false);
         if (!queryEmpty)
@@ -473,7 +454,7 @@ public class DefaultSearchClient : ISearchClient
             }
         }
 
-        var query = _dataStore.Query<T>().Where(exp);
+        var query = dataStore.Query<T>().Where(exp);
 
         if (string.Equals(request.Sort, "timestamp", StringComparison.OrdinalIgnoreCase))
         {
