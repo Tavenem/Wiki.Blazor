@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -76,13 +75,15 @@ public class WikiController(
         }
     }
 
-    [Authorize]
     [HttpGet]
     [ProducesResponseType(typeof(WikiUser), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> CurrentUser()
     {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return NoContent();
+        }
         var wikiUser = await _dataManager.GetWikiUserAsync(User);
         if (wikiUser is null)
         {
@@ -242,12 +243,15 @@ public class WikiController(
     public Task<PagedList<LinkInfo>> List([FromBody] SpecialListRequest request)
         => _dataManager.GetListAsync(request);
 
-    [Authorize]
     [HttpPost]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Preview([FromBody] PreviewRequest request)
     {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return NoContent();
+        }
         var result = await _dataManager.PreviewAsync(User, request);
         if (string.IsNullOrEmpty(result))
         {
@@ -340,17 +344,20 @@ public class WikiController(
         }
     }
 
-    [Authorize]
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Upload(
         [FromServices] IFileManager fileManager,
         [FromForm] IFormFile? file = null,
         [FromForm] string? options = null)
     {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return Unauthorized();
+        }
+
         if (file is null)
         {
             return BadRequest("File is required.");
@@ -391,11 +398,17 @@ public class WikiController(
         }
     }
 
-    [Authorize]
     [HttpGet]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
-    public Task<int> UploadLimit()
-        => _dataManager.GetUploadLimitAsync(User);
+    public async Task<int> UploadLimit()
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return 0;
+        }
+
+        return await _dataManager.GetUploadLimitAsync(User);
+    }
 
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]

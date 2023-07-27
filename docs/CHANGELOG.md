@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1-preview
+### Changed
+- Remove `[Authorize]` attribute from server methods, check `IsAuthorized` directly
+
 ## 0.4.0-preview
 ### Changed
 - Update to .NET 8 preview
