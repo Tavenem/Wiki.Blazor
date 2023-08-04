@@ -127,10 +127,10 @@ public partial class Upload : OfflineSupportComponent
 
         var request = new PreviewRequest(Content, title);
         Preview = await PostForStringAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/html",
             request,
             WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-            user => WikiDataManager.PreviewAsync(user, request));
+            user => WikiDataManager.RenderHtmlAsync(user, request));
     }
 
     private async Task UploadAsync(bool confirmOverwrite = false)

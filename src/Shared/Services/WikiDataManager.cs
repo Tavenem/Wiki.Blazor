@@ -898,15 +898,15 @@ public class WikiDataManager(
     }
 
     /// <summary>
-    /// Gets a preview of the given content in its rendered form.
+    /// Gets the given content's rendered HTML.
     /// </summary>
     /// <param name="user">The user making the request.</param>
     /// <param name="request">A <see cref="PreviewRequest"/> instance.</param>
     /// <returns>
-    /// A <see cref="string"/> containing the preview; or <see langword="null"/> if there is no such
+    /// A <see cref="string"/> containing the HTML; or <see langword="null"/> if there is no such
     /// content, or the user's account is not found, deleted, or disabled.
     /// </returns>
-    public async Task<string?> PreviewAsync(ClaimsPrincipal? user, PreviewRequest request)
+    public async Task<string?> RenderHtmlAsync(ClaimsPrincipal? user, PreviewRequest request)
     {
         if (user is null)
         {
@@ -920,6 +920,38 @@ public class WikiDataManager(
         }
 
         return MarkdownItem.RenderHtml(
+            wikiOptions,
+            dataStore,
+            await TransclusionParser.TranscludeAsync(
+                wikiOptions,
+                dataStore,
+                request.Title,
+                request.Content));
+    }
+
+    /// <summary>
+    /// Gets a preview of the given content's rendered HTML.
+    /// </summary>
+    /// <param name="user">The user making the request.</param>
+    /// <param name="request">A <see cref="PreviewRequest"/> instance.</param>
+    /// <returns>
+    /// A <see cref="string"/> containing the preview; or <see langword="null"/> if there is no such
+    /// content, or the user's account is not found, deleted, or disabled.
+    /// </returns>
+    public async Task<string?> RenderPreviewAsync(ClaimsPrincipal? user, PreviewRequest request)
+    {
+        if (user is null)
+        {
+            return null;
+        }
+        var wikiUser = await userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            return null;
+        }
+
+        return MarkdownItem.RenderPreview(
             wikiOptions,
             dataStore,
             await TransclusionParser.TranscludeAsync(

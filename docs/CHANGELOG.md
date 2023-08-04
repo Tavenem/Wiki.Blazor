@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0-preview
+### Added
+- `WikiEditComponent` for easy implementing of alternative edit controls.
+### Changed
+- Made `OfflineSupportContent` members protected for inheritance
+
 ## 0.4.1-preview
 ### Changed
 - Remove `[Authorize]` attribute from server methods, check `IsAuthorized` directly

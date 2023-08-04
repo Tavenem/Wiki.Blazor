@@ -209,6 +209,23 @@ public class WikiController(
         }
     }
 
+    [HttpPost]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Html([FromBody] PreviewRequest request)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return NoContent();
+        }
+        var result = await _dataManager.RenderHtmlAsync(User, request);
+        if (string.IsNullOrEmpty(result))
+        {
+            return NoContent();
+        }
+        return Ok(result);
+    }
+
     [HttpGet]
     [ProducesResponseType(typeof(WikiPageInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -252,7 +269,7 @@ public class WikiController(
         {
             return NoContent();
         }
-        var result = await _dataManager.PreviewAsync(User, request);
+        var result = await _dataManager.RenderPreviewAsync(User, request);
         if (string.IsNullOrEmpty(result))
         {
             return NoContent();

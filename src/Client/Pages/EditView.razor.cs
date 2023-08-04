@@ -10,7 +10,7 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// The article edit view.
 /// </summary>
-public partial class EditView : OfflineSupportComponent
+public partial class EditView : WikiEditComponent
 {
     /// <summary>
     /// The edited article.
@@ -22,11 +22,14 @@ public partial class EditView : OfflineSupportComponent
     /// </summary>
     [Parameter] public IWikiUser? User { get; set; }
 
+    /// <summary>
+    /// The title of the wiki article.
+    /// </summary>
+    protected override string? Title { get; set; }
+
     private bool AllowDrafts => WikiOptions.UserDomains;
 
     private string? Comment { get; set; }
-
-    private string? Content { get; set; }
 
     [Inject] DialogService DialogService { get; set; } = default!;
 
@@ -36,15 +39,11 @@ public partial class EditView : OfflineSupportComponent
 
     private bool HasDraft { get; set; } = true;
 
-    private bool IsScript { get; set; }
-
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
     private List<WikiUserInfo> Owner { get; set; } = new();
 
     private bool OwnerSelf { get; set; }
-
-    private MarkupString PreviewContent { get; set; }
 
     private bool Redirect { get; set; } = true;
 
@@ -54,8 +53,6 @@ public partial class EditView : OfflineSupportComponent
     [MemberNotNullWhen(false, nameof(User))]
     private bool SubmitDisabled => User is null
         || string.IsNullOrWhiteSpace(Title);
-
-    private string? Title { get; set; }
 
     private List<WikiUserInfo> Viewers { get; set; } = new();
 
@@ -70,13 +67,13 @@ public partial class EditView : OfflineSupportComponent
             if (newArticle is null)
             {
                 Content = null;
-                PreviewContent = new();
+                HtmlContent = new();
                 Title = null;
             }
             else
             {
                 Content = newArticle.MarkdownContent;
-                PreviewContent = new(newArticle.Html);
+                HtmlContent = new(newArticle.Html);
                 Title = newArticle.Title.ToString();
                 IsScript = string.CompareOrdinal(newArticle.Title.Namespace, WikiOptions.ScriptNamespace) == 0;
             }
@@ -185,16 +182,6 @@ public partial class EditView : OfflineSupportComponent
         }
     }
 
-    private void FixContent()
-    {
-        if (!IsScript)
-        {
-            Content = Content?
-                .Replace(@"\[\[", "[[")
-                .Replace(@"\]\]", "]]");
-        }
-    }
-
     private async Task LoadDraftAsync()
     {
         if (!AllowDrafts || User is null)
@@ -231,7 +218,7 @@ public partial class EditView : OfflineSupportComponent
         else
         {
             Content = item.Page.MarkdownContent;
-            PreviewContent = string.IsNullOrEmpty(item.Html)
+            HtmlContent = string.IsNullOrEmpty(item.Html)
                 ? new()
                 : new(item.Html);
         }
@@ -265,24 +252,6 @@ public partial class EditView : OfflineSupportComponent
         {
             Redirect = true;
         }
-    }
-
-    private async Task PreviewAsync()
-    {
-        PreviewContent = new();
-        FixContent();
-        if (string.IsNullOrWhiteSpace(Content))
-        {
-            return;
-        }
-
-        var request = new PreviewRequest(Content, PageTitle.Parse(Title));
-        var preview = await PostForStringAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
-            request,
-            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-            user => WikiDataManager.PreviewAsync(user, request));
-        PreviewContent = new(preview ?? string.Empty);
     }
 
     private Task ReviseAsync() => ReviseInnerAsync();

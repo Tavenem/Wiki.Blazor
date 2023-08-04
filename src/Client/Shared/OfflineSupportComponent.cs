@@ -22,23 +22,56 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
 {
     private bool _disposedValue;
 
-    private protected AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
+    /// <summary>
+    /// <para>
+    /// An <see cref="Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider"/>
+    /// instance.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/>.
+    /// </para>
+    /// </summary>
+    protected AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
-    [Inject] private protected HttpClient HttpClient { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="System.Net.Http.HttpClient"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected HttpClient? HttpClient { get; set; }
 
-    [Inject] private protected NavigationManager NavigationManager { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="Microsoft.AspNetCore.Components.NavigationManager"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected NavigationManager? NavigationManager { get; set; }
 
-    [Inject] private protected IServiceProvider ServiceProvider { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="System.IServiceProvider"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected IServiceProvider? ServiceProvider { get; set; }
 
-    [Inject] private protected SnackbarService SnackbarService { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="Tavenem.Blazor.Framework.SnackbarService"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected SnackbarService? SnackbarService { get; set; }
 
-    [Inject] private protected WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="Client.WikiBlazorClientOptions"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
 
-    [Inject] private protected WikiDataManager WikiDataManager { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="Blazor.WikiDataManager"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected WikiDataManager? WikiDataManager { get; set; }
 
-    [Inject] private protected WikiOptions WikiOptions { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="Tavenem.Wiki.WikiOptions"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected WikiOptions? WikiOptions { get; set; }
 
-    [Inject] private protected WikiState WikiState { get; set; } = default!;
+    /// <summary>
+    /// An injected <see cref="Client.WikiState"/> instance.
+    /// </summary>
+    [Inject, NotNull] private protected WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
     protected override void OnInitialized()
@@ -80,9 +113,16 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// </summary>
     protected virtual Task RefreshAsync() => Task.CompletedTask;
 
+    /// <summary>
+    /// Fetches data from the wiki server, or the offline store.
+    /// </summary>
+    /// <typeparam name="T">The type of data to retrieve.</typeparam>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <returns>The result.</returns>
     [RequiresUnreferencedCode(
         "Calls System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsync<T>(JsonSerializerOptions, CancellationToken)")]
-    private protected async Task<T?> FetchDataAsync<T>(
+    protected async Task<T?> FetchDataAsync<T>(
         string url,
         Func<ClaimsPrincipal?, Task<T?>> fetchOffline)
     {
@@ -173,7 +213,15 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         return result;
     }
 
-    private protected async Task<T?> FetchDataAsync<T>(
+    /// <summary>
+    /// Fetches data from the wiki server, or the offline store.
+    /// </summary>
+    /// <typeparam name="T">The type of data to retrieve.</typeparam>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="type">THe JSON type info</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <returns>The result.</returns>
+    protected async Task<T?> FetchDataAsync<T>(
         string url,
         JsonTypeInfo<T> type,
         Func<ClaimsPrincipal?, Task<T?>> fetchOffline)
@@ -265,7 +313,13 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         return result;
     }
 
-    private protected async Task<int> FetchIntAsync(
+    /// <summary>
+    /// Fetches an integer from the wiki server, or the offline store.
+    /// </summary>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <returns>The result.</returns>
+    protected async Task<int> FetchIntAsync(
         string url,
         Func<ClaimsPrincipal?, Task<int>> fetchOffline)
     {
@@ -347,7 +401,13 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         return 0;
     }
 
-    private protected async Task<string?> FetchStringAsync(
+    /// <summary>
+    /// Fetches a string from the wiki server, or the offline store.
+    /// </summary>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <returns>The result.</returns>
+    protected async Task<string?> FetchStringAsync(
         string url,
         Func<ClaimsPrincipal?, Task<string?>> fetchOffline)
     {
@@ -429,7 +489,18 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         return null;
     }
 
-    private protected async Task<TReturn?> PostAsync<TSend, TReturn>(
+    /// <summary>
+    /// POSTs data to the wiki server, or the offline store.
+    /// </summary>
+    /// <typeparam name="TSend">The type of data to send.</typeparam>
+    /// <typeparam name="TReturn">The type of data which will be returned.</typeparam>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="value">The data to send.</param>
+    /// <param name="postedType">JSON type info for the data sent.</param>
+    /// <param name="returnType">JSON type info for the data to be returned.</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <returns>The result.</returns>
+    protected async Task<TReturn?> PostAsync<TSend, TReturn>(
         string url,
         TSend value,
         JsonTypeInfo<TSend> postedType,
@@ -523,7 +594,21 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         return result;
     }
 
-    private protected async Task<FetchResult> PostAsync<T>(
+    /// <summary>
+    /// POSTs data to the wiki server, or the offline store.
+    /// </summary>
+    /// <typeparam name="T">The type of data to send.</typeparam>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="value">The data to send.</param>
+    /// <param name="type">JSON type info for the data sent.</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="failMessage">
+    /// A message to supply when the operation fails, and no message is returned.
+    /// </param>
+    /// <returns>
+    /// A <see cref="FetchResult"/> with information about the success of the operation.
+    /// </returns>
+    protected async Task<FetchResult> PostAsync<T>(
         string url,
         T value,
         JsonTypeInfo<T> type,
@@ -605,7 +690,16 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         return new FetchResult(false);
     }
 
-    private protected async Task<string?> PostForStringAsync<T>(
+    /// <summary>
+    /// POSTs data to the wiki server, or the offline store.
+    /// </summary>
+    /// <typeparam name="T">The type of data to send.</typeparam>
+    /// <param name="url">The URL to call when online.</param>
+    /// <param name="value">The data to send.</param>
+    /// <param name="type">JSON type info for the data sent.</param>
+    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <returns>A string.</returns>
+    protected async Task<string?> PostForStringAsync<T>(
         string url,
         T value,
         JsonTypeInfo<T> type,

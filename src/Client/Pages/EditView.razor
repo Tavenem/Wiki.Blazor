@@ -1,4 +1,4 @@
-﻿@inherits OfflineSupportComponent
+﻿@inherits WikiEditComponent
 
 <div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
@@ -50,7 +50,7 @@
     </TabPanel>
     <TabPanel Title="Preview">
         <SyntaxHighlighter Style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
-            @PreviewContent
+            @HtmlContent
         </SyntaxHighlighter>
     </TabPanel>
 </Tabs>
