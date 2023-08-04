@@ -228,7 +228,7 @@ public partial class EditView : WikiEditComponent
     {
         if (index > 0)
         {
-            await PreviewAsync();
+            await HtmlAsync();
         }
     }
 

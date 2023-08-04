@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1-preview
+### Fixed
+- `WikiEditComponent` typos
+
 ## 0.5.0-preview
 ### Added
 - `WikiEditComponent` for easy implementing of alternative edit controls.

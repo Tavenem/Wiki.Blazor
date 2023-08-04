@@ -68,7 +68,7 @@ public class WikiEditComponent : OfflineSupportComponent
     /// </summary>
     protected async Task PreviewAsync()
     {
-        HtmlContent = new();
+        PreviewContent = new();
         FixContent();
         if (string.IsNullOrWhiteSpace(Content))
         {
@@ -81,7 +81,7 @@ public class WikiEditComponent : OfflineSupportComponent
             request,
             WikiBlazorJsonSerializerContext.Default.PreviewRequest,
             user => WikiDataManager.RenderHtmlAsync(user, request));
-        HtmlContent = new(preview ?? string.Empty);
+        PreviewContent = new(preview ?? string.Empty);
     }
 
     /// <summary>
