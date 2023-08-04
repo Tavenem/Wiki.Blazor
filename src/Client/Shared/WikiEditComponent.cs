@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Tavenem.Wiki.Models;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
@@ -41,6 +42,26 @@ public class WikiEditComponent : OfflineSupportComponent
     /// The title of the wiki article.
     /// </summary>
     protected virtual string? Title { get; set; }
+
+    /// <summary>
+    /// Gets the wiki links in the content by calling the wiki server, or the offline data manager.
+    /// </summary>
+    protected async Task<List<WikiLink>?> GetWikiLinksAsync()
+    {
+        FixContent();
+        if (string.IsNullOrWhiteSpace(Content))
+        {
+            return null;
+        }
+
+        var request = new PreviewRequest(Content, PageTitle.Parse(Title));
+        return await PostAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
+            request,
+            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
+            WikiBlazorJsonSerializerContext.Default.ListWikiLink,
+            user => WikiDataManager.GetWikiLinksAsync(user, request));
+    }
 
     /// <summary>
     /// Renders the HTML content by calling the wiki server, or the offline data manager.

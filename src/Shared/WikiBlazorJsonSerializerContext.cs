@@ -2,6 +2,7 @@
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Models;
 using Tavenem.Wiki.Blazor.Services.Search;
+using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor;
@@ -21,6 +22,7 @@ namespace Tavenem.Wiki.Blazor;
 [JsonSerializable(typeof(SearchRequest))]
 [JsonSerializable(typeof(SearchResult))]
 [JsonSerializable(typeof(UploadRequest))]
+[JsonSerializable(typeof(List<WikiLink>))]
 public partial class WikiBlazorJsonSerializerContext
     : JsonSerializerContext
 { }

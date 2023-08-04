@@ -7,6 +7,7 @@ using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Exceptions;
 using Tavenem.Wiki.Blazor.Models;
 using Tavenem.Wiki.Blazor.Services.Search;
+using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Server.Controllers;
@@ -431,6 +432,23 @@ public class WikiController(
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
     public Task<PagedList<LinkInfo>> WhatLinksHere([FromBody] WhatLinksHereRequest request)
         => _dataManager.GetWhatLinksHereAsync(request);
+
+    [HttpPost]
+    [ProducesResponseType(typeof(List<WikiLink>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> WikiLinks([FromBody] PreviewRequest request)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return NoContent();
+        }
+        var result = await _dataManager.GetWikiLinksAsync(User, request);
+        if (result is null)
+        {
+            return NoContent();
+        }
+        return Ok(result);
+    }
 
     [HttpGet]
     [ProducesResponseType(typeof(WikiUserInfo), StatusCodes.Status200OK)]

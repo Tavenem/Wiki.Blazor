@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3-preview
+### Added
+- `GetWikiLinksAsync` to `WikiEditComponent`
+
 ## 0.5.2-preview
 ### Added
 - `GetWikiLinksAsync` to `WikiDataManager`
