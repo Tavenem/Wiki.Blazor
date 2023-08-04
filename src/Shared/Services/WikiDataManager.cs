@@ -228,7 +228,7 @@ public class WikiDataManager(
     }
 
     /// <summary>
-    /// Retreive an archive of a domain, or the entire wiki.
+    /// Retrieve an archive of a domain, or the entire wiki.
     /// </summary>
     /// <param name="user">The user making the request.</param>
     /// <param name="domain">
@@ -724,6 +724,39 @@ public class WikiDataManager(
             request);
         return result
             ?? new(null, 1, request.PageSize, 0);
+    }
+
+    /// <summary>
+    /// Gets a list of the given content's embedded wiki links.
+    /// </summary>
+    /// <param name="user">The user making the request.</param>
+    /// <param name="request">A <see cref="PreviewRequest"/> instance.</param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of <see cref="WikiLink"/>s (possibly empty); or <see
+    /// langword="null"/> if the user's account is not found, deleted, or disabled.
+    /// </returns>
+    public async Task<List<WikiLink>?> GetWikiLinksAsync(ClaimsPrincipal? user, PreviewRequest request)
+    {
+        if (user is null)
+        {
+            return null;
+        }
+        var wikiUser = await userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            return null;
+        }
+
+        return MarkdownItem.GetWikiLinks(
+            wikiOptions,
+            dataStore,
+            await TransclusionParser.TranscludeAsync(
+                wikiOptions,
+                dataStore,
+                request.Title,
+                request.Content),
+            request.Title);
     }
 
     /// <summary>

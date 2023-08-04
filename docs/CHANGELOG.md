@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2-preview
+### Added
+- `GetWikiLinksAsync` to `WikiDataManager`
+
 ## 0.5.1-preview
 ### Fixed
 - `WikiEditComponent` typos
