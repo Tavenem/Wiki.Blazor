@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.5-preview
+### Added
+- Title requests
+
 ## 0.5.4-preview
 ### Updated
 - Update dependencies

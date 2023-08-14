@@ -687,6 +687,14 @@ public class WikiDataManager(
     }
 
     /// <summary>
+    /// Fetches a list of wiki pages which satisfy the given request.
+    /// </summary>
+    /// <param name="request">A <see cref="TitleRequest"/> instance.</param>
+    /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
+    public async Task<PagedList<LinkInfo>> GetTitleAsync(TitleRequest request)
+        => await dataStore.GetTitleAsync(request);
+
+    /// <summary>
     /// Gets the given <paramref name="user"/>'s upload limit.
     /// </summary>
     /// <returns>

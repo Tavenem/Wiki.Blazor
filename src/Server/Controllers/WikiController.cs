@@ -363,6 +363,11 @@ public class WikiController(
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
+    public Task<PagedList<LinkInfo>> Title([FromBody] TitleRequest request)
+        => _dataManager.GetTitleAsync(request);
+
+    [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
