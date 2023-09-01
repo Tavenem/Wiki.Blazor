@@ -78,12 +78,6 @@ public static class ServiceExtensions
     /// Add the required services for <c>Tavenem.Wiki.Blazor</c>.
     /// </summary>
     /// <param name="services">Your <see cref="IServiceCollection"/> instance.</param>
-    /// <param name="wikiOptions">
-    /// The options used to configure the wiki system.
-    /// </param>
-    /// <param name="wikiBlazorOptions">
-    /// The options used to configure the wiki Blazor system.
-    /// </param>
     /// <param name="searchClientType">
     /// <para>
     /// The type of <see cref="ISearchClient"/> to register.
@@ -92,6 +86,12 @@ public static class ServiceExtensions
     /// If omitted, <see cref="DefaultSearchClient"/> will be used. Note: the default client is
     /// not recommended for production use.
     /// </para>
+    /// </param>
+    /// <param name="wikiOptions">
+    /// The options used to configure the wiki system.
+    /// </param>
+    /// <param name="wikiBlazorOptions">
+    /// The options used to configure the wiki Blazor system.
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddTavenemWikiClient(

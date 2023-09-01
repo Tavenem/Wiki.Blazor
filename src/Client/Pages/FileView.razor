@@ -1,4 +1,14 @@
-﻿@if (WikiFile is not null)
+﻿@if (WikiFile is null)
+{
+    <div class="wiki-file-missing">
+        <p>The file associated with "@WikiState.WikiTitle" is missing.</p>
+        <p>
+            You can <a href="@WikiState.Link("Upload", WikiOptions.SystemNamespace)"
+            class="wiki-link wiki-link-exists">upload</a> a new file to replace it.
+        </p>
+    </div>
+}
+else
 {
     if (WikiFile.FileType.StartsWith("image"))
     {
@@ -13,14 +23,4 @@
         <span>(file size: @WikiFile.GetFileSizeString(WikiFile.FileSize), MIME type: @WikiFile.FileType)</span>
     </p>
     <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
-}
-else
-{
-    <div class="wiki-file-missing">
-        <p>The file associated with "@WikiState.WikiTitle" is missing.</p>
-        <p>
-            You can <a href="@WikiState.Link("Upload", WikiOptions.SystemNamespace)"
-            class="wiki-link wiki-link-exists">upload</a> a new file to replace it.
-        </p>
-    </div>
 }

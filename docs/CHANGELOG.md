@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.6-preview
+### Changed
+- Made `wiki-main-heading` an `id` instead of a `class`
+
 ## 0.5.5-preview
 ### Added
 - Title requests
