@@ -165,6 +165,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
    app.MapWiki();
    ```
    This call should normally precede any other mapped endpoints.
+1. It is possible to implement an authorization policy with the name "WikiPolicy" which will be applied to the built-in wiki controller. Note, however, that the `AllowAnonymous` attribute is applied to this controller. This means that while authentication will be performed according to the rules defined in the policy, access to the actions of the controller will not be denied on the basis of authorization.
 
 ## Roadmap
 

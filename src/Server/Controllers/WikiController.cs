@@ -17,7 +17,7 @@ namespace Tavenem.Wiki.Blazor.Server.Controllers;
 /// The built-in wiki controller.
 /// </summary>
 [Area("Wiki")]
-[Authorize]
+[Authorize(Policy = "WikiPolicy")]
 [AllowAnonymous]
 public class WikiController(
     IDataStore dataStore,

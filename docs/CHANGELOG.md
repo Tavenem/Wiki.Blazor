@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.8-preview
+### Changed
+- Add named, undefined authorization policy to wiki controller "WikiPolicy" for user customization
+
 ## 0.5.7-preview
 ### Changed
 - Ensure wiki controller captures logged in users while allowing anonymous users
