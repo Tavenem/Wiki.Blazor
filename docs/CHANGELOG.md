@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.7-preview
+### Changed
+- Ensure wiki controller captures logged in users while allowing anonymous users
+
 ## 0.5.6-preview
 ### Changed
 - Made `wiki-main-heading` an `id` instead of a `class`

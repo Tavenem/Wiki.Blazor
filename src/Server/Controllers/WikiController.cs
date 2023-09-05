@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -16,6 +17,8 @@ namespace Tavenem.Wiki.Blazor.Server.Controllers;
 /// The built-in wiki controller.
 /// </summary>
 [Area("Wiki")]
+[Authorize]
+[AllowAnonymous]
 public class WikiController(
     IDataStore dataStore,
     IWikiGroupManager groupManager,
