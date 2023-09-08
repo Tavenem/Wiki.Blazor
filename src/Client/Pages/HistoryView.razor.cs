@@ -56,7 +56,7 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
 
     private long? SecondRevision { get; set; }
 
-    private List<WikiUserInfo> SelectedEditor { get; set; } = new();
+    private List<IWikiOwner> SelectedEditor { get; set; } = new();
 
     private TimeSpan TimezoneOffset { get; set; }
 
@@ -127,7 +127,7 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
                 history.Revisions.Items?.Select(x => new RevisionInfo(
                     x,
                     history.Editors?.FirstOrDefault(y => string.Equals(y.Id, x.Editor))
-                        ?? new WikiUserInfo(x.Editor, null))),
+                        ?? new WikiUser { Id = x.Editor })),
                 history.Revisions.PageNumber,
                 history.Revisions.PageSize,
                 history.Revisions.TotalCount);

@@ -3,7 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Shared;
-using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -12,6 +11,11 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// </summary>
 public partial class EditView : WikiEditComponent
 {
+    /// <summary>
+    /// Whether the title of the page can be changed.
+    /// </summary>
+    [Parameter] public bool CanRename { get; set; }
+
     /// <summary>
     /// The edited article.
     /// </summary>
@@ -33,7 +37,7 @@ public partial class EditView : WikiEditComponent
 
     [Inject] DialogService DialogService { get; set; } = default!;
 
-    private List<WikiUserInfo> Editors { get; set; } = new();
+    private List<IWikiOwner> Editors { get; set; } = new();
 
     private bool EditorSelf { get; set; }
 
@@ -41,7 +45,7 @@ public partial class EditView : WikiEditComponent
 
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
-    private List<WikiUserInfo> Owner { get; set; } = new();
+    private List<IWikiOwner> Owner { get; set; } = new();
 
     private bool OwnerSelf { get; set; }
 
@@ -54,7 +58,7 @@ public partial class EditView : WikiEditComponent
     private bool SubmitDisabled => User is null
         || string.IsNullOrWhiteSpace(Title);
 
-    private List<WikiUserInfo> Viewers { get; set; } = new();
+    private List<IWikiOwner> Viewers { get; set; } = new();
 
     private bool ViewerSelf { get; set; }
 
@@ -115,12 +119,12 @@ public partial class EditView : WikiEditComponent
 
         var item = await FetchDataAsync(
             url.ToString(),
-            WikiJsonSerializerContext.Default.WikiPageInfo,
+            WikiJsonSerializerContext.Default.Page,
             async user => await WikiDataManager.GetItemAsync(
                 user,
                 draftPageTitle,
                 true));
-        if (item?.Page?.Exists != true)
+        if (item?.Exists != true)
         {
             HasDraft = false;
             return;
@@ -131,12 +135,12 @@ public partial class EditView : WikiEditComponent
         if (!EditorSelf && Editors.Count > 0)
         {
             allowedEditors = Editors
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedEditorGroups = Editors
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }
@@ -146,12 +150,12 @@ public partial class EditView : WikiEditComponent
         if (!ViewerSelf && Viewers.Count > 0)
         {
             allowedViewers = Viewers
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedViewerGroups = Viewers
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }
@@ -205,19 +209,19 @@ public partial class EditView : WikiEditComponent
 
         var item = await FetchDataAsync(
             url.ToString(),
-            WikiJsonSerializerContext.Default.WikiPageInfo,
+            WikiJsonSerializerContext.Default.Page,
             async user => await WikiDataManager.GetItemAsync(
                 user,
                 draftPageTitle,
                 true));
-        if (item?.Page?.Exists != true)
+        if (item?.Exists != true)
         {
             HasDraft = false;
             SnackbarService.Add("No draft found", ThemeColor.Warning);
         }
         else
         {
-            Content = item.Page.MarkdownContent;
+            Content = item.MarkdownContent;
             HtmlContent = string.IsNullOrEmpty(item.Html)
                 ? new()
                 : new(item.Html);
@@ -270,12 +274,12 @@ public partial class EditView : WikiEditComponent
         if (!EditorSelf && Editors.Count > 0)
         {
             allowedEditors = Editors
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedEditorGroups = Editors
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }
@@ -285,12 +289,12 @@ public partial class EditView : WikiEditComponent
         if (!ViewerSelf && Viewers.Count > 0)
         {
             allowedViewers = Viewers
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedViewerGroups = Viewers
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }
@@ -343,12 +347,12 @@ public partial class EditView : WikiEditComponent
         if (!EditorSelf && Editors.Count > 0)
         {
             allowedEditors = Editors
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedEditorGroups = Editors
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }
@@ -358,12 +362,12 @@ public partial class EditView : WikiEditComponent
         if (!ViewerSelf && Viewers.Count > 0)
         {
             allowedViewers = Viewers
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedViewerGroups = Viewers
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }

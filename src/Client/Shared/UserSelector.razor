@@ -9,13 +9,13 @@
     {
         if (AllowToggle)
         {
-            <ChipSet TChip="WikiUserInfo"
+            <ChipSet TChip="IWikiOwner"
                      ItemIsDisabled="@(_ => Disabled)"
                      Items="SelectedUsers"
                      ItemStyle="@(v => GetItemStyle(v))"
                      OnChipClosed="@(v => OnRemoveUserAsync(v))"
                      OnItemClick="@(v => OnItemClickAsync(v))" />
-            <ChipSet TChip="WikiUserInfo"
+            <ChipSet TChip="IWikiOwner"
                      ItemIsDisabled="@(_ => Disabled)"
                      Items="DeselectedUsers"
                      ItemThemeColor="@(_ => ThemeColor.Danger)"
@@ -24,7 +24,7 @@
         }
         else
         {
-            <ChipSet TChip="WikiUserInfo"
+            <ChipSet TChip="IWikiOwner"
                      ItemIsDisabled="@(_ => Disabled)"
                      Items="SelectedUsers"
                      ItemStyle="@(v => GetItemStyle(v))"

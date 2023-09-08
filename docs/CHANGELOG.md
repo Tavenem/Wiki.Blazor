@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0-preview
+### Updated
+- Update dependencies 
+
 ## 0.5.8-preview
 ### Changed
 - Add named, undefined authorization policy to wiki controller "WikiPolicy" for user customization

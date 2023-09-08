@@ -1,7 +1,6 @@
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Components;
 using Tavenem.Blazor.Framework;
-using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
@@ -43,12 +42,12 @@ public partial class UserSelector : OfflineSupportComponent
     /// <summary>
     /// The list of deselected users.
     /// </summary>
-    [Parameter] public List<WikiUserInfo> DeselectedUsers { get; set; } = new();
+    [Parameter] public List<IWikiOwner> DeselectedUsers { get; set; } = new();
 
     /// <summary>
     /// The list of deselected users.
     /// </summary>
-    [Parameter] public EventCallback<List<WikiUserInfo>> DeselectedUsersChanged { get; set; }
+    [Parameter] public EventCallback<List<IWikiOwner>> DeselectedUsersChanged { get; set; }
 
     /// <summary>
     /// Help text to display under the control.
@@ -63,12 +62,12 @@ public partial class UserSelector : OfflineSupportComponent
     /// <summary>
     /// The list of selected users.
     /// </summary>
-    [Parameter] public List<WikiUserInfo> SelectedUsers { get; set; } = new();
+    [Parameter] public List<IWikiOwner> SelectedUsers { get; set; } = new();
 
     /// <summary>
     /// The list of selected users.
     /// </summary>
-    [Parameter] public EventCallback<List<WikiUserInfo>> SelectedUsersChanged { get; set; }
+    [Parameter] public EventCallback<List<IWikiOwner>> SelectedUsersChanged { get; set; }
 
     /// <summary>
     /// CSS style(s) to apply to this component.
@@ -88,23 +87,17 @@ public partial class UserSelector : OfflineSupportComponent
 
     private string? InputText { get; set; }
 
-    private static string GetItemStyle(WikiUserInfo user)
+    private static string GetItemStyle(IWikiOwner user)
         => $"background-color:hsl({20 + (user.Id.GetHashCode() % 320)}, --tavenem-color-default-saturation, --tavenem-color-default-lightness)";
 
-    private async Task OnAddUserAsync(WikiUserInfo? user)
+    private async Task OnAddUserAsync(IWikiOwner user)
     {
         if (InputDisabled)
         {
             return;
         }
 
-        if (user?.Entity is null)
-        {
-            SnackbarService.Add("No such user", ThemeColor.Warning);
-            return;
-        }
-
-        if (!AllowGroups && user.Entity is IWikiGroup)
+        if (!AllowGroups && user is IWikiGroup)
         {
             SnackbarService.Add("Cannot select a group here", ThemeColor.Warning);
             return;
@@ -116,7 +109,7 @@ public partial class UserSelector : OfflineSupportComponent
         StateHasChanged();
     }
 
-    private async Task OnItemClickAsync(WikiUserInfo user)
+    private async Task OnItemClickAsync(IWikiOwner user)
     {
         if (!AllowToggle)
         {
@@ -141,7 +134,7 @@ public partial class UserSelector : OfflineSupportComponent
         await DeselectedUsersChanged.InvokeAsync(DeselectedUsers);
     }
 
-    private async Task OnRemoveUserAsync(WikiUserInfo user)
+    private async Task OnRemoveUserAsync(IWikiOwner user)
     {
         if (SelectedUsers.Remove(user))
         {
@@ -158,17 +151,18 @@ public partial class UserSelector : OfflineSupportComponent
         }
 
         var query = InputText.Trim();
-        var user = await FetchDataAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiuser?query={query}",
-            WikiJsonSerializerContext.Default.WikiUserInfo,
-            user => WikiDataManager.GetWikiUserAsync(user, query));
-        if (user is null)
+        var wikiOwner = await FetchDataAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiowner?query={query}",
+            WikiJsonSerializerContext.Default.IWikiOwner,
+            async user =>
+            {
+                IWikiOwner? wikiOwner = await WikiDataManager.GetWikiUserAsync(user, query);
+                wikiOwner ??= await WikiDataManager.GetWikiGroupAsync(user, query);
+                return wikiOwner;
+            });
+        if (wikiOwner is not null)
         {
-            SnackbarService.Add("There was a problem fetching user info", ThemeColor.Danger);
-        }
-        else
-        {
-            await OnAddUserAsync(user);
+            await OnAddUserAsync(wikiOwner);
         }
     }
 }

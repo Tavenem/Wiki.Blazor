@@ -8,7 +8,6 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Shared;
-using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -27,7 +26,7 @@ public partial class Upload : OfflineSupportComponent
 
     private string DragAreaClass { get; set; } = _baseDragAreaClass;
 
-    private List<WikiUserInfo> Editors { get; set; } = new();
+    private List<IWikiOwner> Editors { get; set; } = new();
 
     private bool EditorSelf { get; set; }
 
@@ -41,7 +40,7 @@ public partial class Upload : OfflineSupportComponent
 
     private bool NotAuthorized { get; set; }
 
-    private List<WikiUserInfo> Owner { get; set; } = new();
+    private List<IWikiOwner> Owner { get; set; } = new();
 
     private bool OwnerSelf { get; set; }
 
@@ -54,7 +53,7 @@ public partial class Upload : OfflineSupportComponent
 
     private string? Title { get; set; }
 
-    private List<WikiUserInfo> Viewers { get; set; } = new();
+    private List<IWikiOwner> Viewers { get; set; } = new();
 
     private bool ViewerSelf { get; set; }
 
@@ -154,12 +153,12 @@ public partial class Upload : OfflineSupportComponent
         if (!EditorSelf && Editors.Count > 0)
         {
             allowedEditors = Editors
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedEditorGroups = Editors
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }
@@ -169,12 +168,12 @@ public partial class Upload : OfflineSupportComponent
         if (!ViewerSelf && Viewers.Count > 0)
         {
             allowedViewers = Viewers
-                .Where(x => x.Entity is IWikiUser)
+                .Where(x => x is IWikiUser)
                 .Select(x => x.Id)
                 .ToList();
 
             allowedViewerGroups = Viewers
-                .Where(x => x.Entity is IWikiGroup)
+                .Where(x => x is IWikiGroup)
                 .Select(x => x.Id)
                 .ToList();
         }

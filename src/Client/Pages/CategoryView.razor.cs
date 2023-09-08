@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System.Text;
 using Tavenem.Wiki.Blazor.Client.Shared;
-using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -10,7 +9,7 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// </summary>
 public partial class CategoryView : OfflineSupportComponent
 {
-    private CategoryInfo? CategoryInfo { get; set; }
+    private Category? Category { get; set; }
 
     private MarkupString? Content { get; set; }
 
@@ -27,22 +26,22 @@ public partial class CategoryView : OfflineSupportComponent
             WikiOptions.CategoryNamespace,
             StringComparison.OrdinalIgnoreCase))
         {
-            CategoryInfo = null;
+            Category = null;
             Content = null;
             return;
         }
 
-        CategoryInfo = await FetchDataAsync(
+        Category = await FetchDataAsync(
             new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
                 .Append("/category?title=")
                 .Append(WikiState.WikiTitle)
                 .ToString(),
-            WikiJsonSerializerContext.Default.CategoryInfo,
+            WikiJsonSerializerContext.Default.Category,
             async user => await WikiDataManager.GetCategoryAsync(
                 user,
                 new PageTitle(WikiState.WikiTitle, WikiOptions.CategoryNamespace, WikiState.WikiDomain)));
-        Content = string.IsNullOrEmpty(CategoryInfo?.Category?.Html)
+        Content = string.IsNullOrEmpty(Category?.DisplayHtml)
             ? null
-            : new MarkupString(CategoryInfo.Category.Html);
+            : new MarkupString(Category.DisplayHtml);
     }
 }

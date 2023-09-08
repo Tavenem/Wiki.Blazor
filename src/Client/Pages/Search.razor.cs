@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Blazor.Services.Search;
-using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -67,7 +66,7 @@ public partial class Search : OfflineSupportComponent
 
     private string? CurrentSort { get; set; }
 
-    private List<WikiUserInfo> DeselectedOwners { get; set; } = new();
+    private List<IWikiOwner> DeselectedOwners { get; set; } = new();
 
     private Page? ExactMatch { get; set; }
 
@@ -75,7 +74,7 @@ public partial class Search : OfflineSupportComponent
 
     [Inject] ISearchClient SearchClient { get; set; } = default!;
 
-    private List<WikiUserInfo> SelectedOwners { get; set; } = new();
+    private List<IWikiOwner> SelectedOwners { get; set; } = new();
 
     /// <inheritdoc/>
     protected override Task OnParametersSetAsync()

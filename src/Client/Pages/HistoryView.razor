@@ -65,16 +65,9 @@ else
                 <a href="@WikiState.LinkHere(query: $"rev={Revisions[i].Revision.TimestampTicks}")"
                    class="wiki-history-list-timestamp"
                    title="@WikiState.PageTitle">@Revisions[i].Revision.GetTimestamp(TimezoneOffset)</a>
-                @if (Revisions[i].Editor.Entity is not null)
-                {
-                    <a href="@WikiState.Link(Revisions[i].Revision.Editor, WikiOptions.UserNamespace)"
-                       class="wiki-username wiki-username-link wiki-history-list-editor"
-                       title="@($"Visit the user page for {Revisions[i].Editor.Entity!.DisplayName ?? Revisions[i].Editor.Entity!.Id}")">@(Revisions[i].Editor.Entity!.DisplayName ?? Revisions[i].Editor.Entity!.Id)</a>
-                }
-                else
-                {
-                    <span class="wiki-username wiki-username-nolink wiki-history-list-editor">@Revisions[i].Editor.Id</span>
-                }
+                <a href="@WikiState.Link(Revisions[i].Revision.Editor, WikiOptions.UserNamespace)"
+                   class="wiki-username wiki-username-link wiki-history-list-editor"
+                   title="@($"Visit the user page for {Revisions[i].EditorName}")">@(Revisions[i].EditorName)</a>
                 <span>@Revisions[i].Revision.Comment</span>
             </li>
         }

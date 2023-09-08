@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System.Text;
 using Tavenem.Wiki.Blazor.Client.Shared;
-using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -10,7 +9,7 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// </summary>
 public partial class GroupView : OfflineSupportComponent
 {
-    private GroupPageInfo? GroupPageInfo { get; set; }
+    private GroupPage? GroupPage { get; set; }
 
     private MarkupString? Content { get; set; }
 
@@ -27,24 +26,24 @@ public partial class GroupView : OfflineSupportComponent
             WikiOptions.GroupNamespace,
             StringComparison.OrdinalIgnoreCase))
         {
-            GroupPageInfo = null;
+            GroupPage = null;
             Content = null;
             return;
         }
 
-        GroupPageInfo = await FetchDataAsync(
+        GroupPage = await FetchDataAsync(
             new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
                 .Append("/group?title=")
                 .Append(WikiState.WikiTitle)
                 .ToString(),
-            WikiJsonSerializerContext.Default.GroupPageInfo,
-            user => WikiDataManager.GetGroupPageAsync(user, WikiState.WikiTitle));
-        Content = string.IsNullOrEmpty(GroupPageInfo?.Page?.Html)
+            WikiJsonSerializerContext.Default.GroupPage,
+            async user => await WikiDataManager.GetGroupPageAsync(user, WikiState.WikiTitle));
+        Content = string.IsNullOrEmpty(GroupPage?.DisplayHtml)
             ? null
-            : new MarkupString(GroupPageInfo.Page.Html);
-        if (!string.IsNullOrEmpty(GroupPageInfo?.Group?.Entity?.DisplayName))
+            : new MarkupString(GroupPage.DisplayHtml);
+        if (!string.IsNullOrEmpty(GroupPage?.DisplayTitle))
         {
-            WikiState.UpdateTitle(GroupPageInfo.Group.Entity.DisplayName);
+            WikiState.UpdateTitle(GroupPage.DisplayTitle);
         }
     }
 }

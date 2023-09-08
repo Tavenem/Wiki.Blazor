@@ -1,21 +1,21 @@
 ﻿@inherits OfflineSupportComponent
 
 <div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
-@if (GroupPageInfo is not null)
+@if (GroupPage is not null)
 {
     <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
-    if (GroupPageInfo.Users is not null
-        && GroupPageInfo.Users.Count > 0)
+    if (GroupPage.Users is not null
+        && GroupPage.Users.Count > 0)
     {
         <h2>Members</h2>
-        <p>This group has the following @GroupPageInfo.Users.Count.ToString("N0") members.</p>
+        <p>This group has the following @GroupPage.Users.Count.ToString("N0") members.</p>
         <ul class="wiki-group-list">
-            @foreach (var user in GroupPageInfo.Users)
+            @foreach (var user in GroupPage.Users)
             {
                 <li>
                     <a href="@WikiState.Link(user.Id, WikiOptions.UserNamespace)"
                        class="wiki-username wiki-username-link"
-                       title="@($"Visit the user page for {user.Entity?.DisplayName ?? user.Id}")">@(user.Entity?.DisplayName ?? user.Id)</a>
+                       title="@($"Visit the user page for {user.DisplayName ?? user.Id}")">@(user.DisplayName ?? user.Id)</a>
                 </li>
             }
         </ul>

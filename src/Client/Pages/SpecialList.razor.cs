@@ -94,7 +94,7 @@ public partial class SpecialList : OfflineSupportComponent
 
             Description = $"The following pages link to {targetTitle}.";
 
-            var request = new WhatLinksHereRequest(
+            var request = new TitleRequest(
                 targetTitle,
                 (int)CurrentPageNumber,
                 CurrentPageSize,
@@ -104,7 +104,7 @@ public partial class SpecialList : OfflineSupportComponent
             Items = await PostAsync(
                 $"{WikiBlazorClientOptions.WikiServerApiRoute}/whatlinkshere",
                 request,
-                WikiJsonSerializerContext.Default.WhatLinksHereRequest,
+                WikiJsonSerializerContext.Default.TitleRequest,
                 WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
                 async user => await WikiDataManager.GetWhatLinksHereAsync(request));
         }

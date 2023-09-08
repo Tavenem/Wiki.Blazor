@@ -61,7 +61,7 @@ public class WikiController(
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(CategoryInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Category), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Category(
         [FromQuery] string? title = null,
@@ -126,7 +126,7 @@ public class WikiController(
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(WikiEditInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> EditInfo(
         [FromQuery] string? title = null,
@@ -145,8 +145,8 @@ public class WikiController(
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(GroupPageInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(WikiPageInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(GroupPage), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -231,7 +231,7 @@ public class WikiController(
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(WikiPageInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Item(
         [FromQuery] string? title = null,
@@ -438,7 +438,7 @@ public class WikiController(
 
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
-    public Task<PagedList<LinkInfo>> WhatLinksHere([FromBody] WhatLinksHereRequest request)
+    public Task<PagedList<LinkInfo>> WhatLinksHere([FromBody] TitleRequest request)
         => _dataManager.GetWhatLinksHereAsync(request);
 
     [HttpPost]
@@ -459,7 +459,23 @@ public class WikiController(
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(WikiUserInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IWikiOwner), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> WikiOwner([FromQuery] string query)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return NoContent();
+        }
+        IWikiOwner? wikiOwner = await _dataManager.GetWikiUserAsync(User, query);
+        wikiOwner ??= await _dataManager.GetWikiGroupAsync(User, query);
+        return wikiOwner is null
+            ? NoContent()
+            : Ok(wikiOwner);
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(WikiUser), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> WikiUser([FromQuery] string query)
     {
@@ -468,10 +484,8 @@ public class WikiController(
             return NoContent();
         }
         var wikiUserInfo = await _dataManager.GetWikiUserAsync(User, query);
-        if (wikiUserInfo is null)
-        {
-            return NoContent();
-        }
-        return Ok(wikiUserInfo);
+        return wikiUserInfo is null
+            ? NoContent()
+            : Ok(wikiUserInfo);
     }
 }

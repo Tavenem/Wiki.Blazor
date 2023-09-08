@@ -76,6 +76,13 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         set => _canEdit = value;
     }
 
+    private bool _canRename;
+    private bool CanRename
+    {
+        get => !WikiState.NotAuthorized && _canRename;
+        set => _canRename = value;
+    }
+
     private MarkupString? Content { get; set; }
 
     private string? Diff { get; set; }
@@ -350,7 +357,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
         var item = await FetchDataAsync(
             url.ToString(),
-            WikiJsonSerializerContext.Default.WikiPageInfo,
+            WikiJsonSerializerContext.Default.Page,
             async user => await WikiDataManager.GetItemAsync(
                 user,
                 new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain),
@@ -369,11 +376,12 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         }
         else
         {
-            WikiPage = item.Page;
+            WikiPage = item;
             CanCreate = item.Permission.HasFlag(WikiPermission.Create);
             CanEdit = WikiPage?.Exists != true
                 ? item.Permission.HasFlag(WikiPermission.Create)
                 : item.Permission.HasFlag(WikiPermission.Write);
+            CanRename = CanEdit && item.CanRename;
             if (!CanEdit && IsEditing)
             {
                 WikiState.NotAuthorized = true;
@@ -411,9 +419,9 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
                     }
                 }
             }
-            Content = string.IsNullOrEmpty(item.Html)
+            Content = string.IsNullOrEmpty(item.DisplayHtml)
                 ? null
-                : new MarkupString(item.Html);
+                : new MarkupString(item.DisplayHtml);
             IsDiff = item.IsDiff;
             WikiState.UpdateTitle(item.DisplayTitle);
             StateHasChanged();

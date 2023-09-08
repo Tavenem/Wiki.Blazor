@@ -98,7 +98,7 @@ public class WikiDataManager(
         {
             throw new WikiUnauthorizedException();
         }
-        if (result.Page?.Exists != true
+        if (!result.Exists
             && !result.Permission.HasFlag(WikiPermission.Create))
         {
             throw new WikiUnauthorizedException();
@@ -109,7 +109,7 @@ public class WikiDataManager(
             : request.Owner;
 
         if (!result.Permission.HasFlag(WikiPermission.SetOwner)
-            && ownerId != result.Page?.Owner)
+            && ownerId != result.Owner)
         {
             throw new WikiUnauthorizedException();
         }
@@ -201,14 +201,14 @@ public class WikiDataManager(
         }
 
         if (request.LeaveRedirect
-            && result.Page?.Title.Equals(request.Title) == false)
+            && !result.Title.Equals(request.Title))
         {
             var redirectSuccess = await dataStore.AddOrReviseWikiPageAsync(
                 wikiOptions,
                 userManager,
                 groupManager,
                 wikiUser,
-                result.Page.Title,
+                result.Title,
                 null,
                 request.RevisionComment,
                 false,
@@ -318,7 +318,7 @@ public class WikiDataManager(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given category.
     /// </exception>
-    public async Task<CategoryInfo> GetCategoryAsync(
+    public async Task<Category> GetCategoryAsync(
         ClaimsPrincipal? user,
         PageTitle title)
     {
@@ -348,7 +348,7 @@ public class WikiDataManager(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have permission to make the requested edit.
     /// </exception>
-    public async Task<WikiEditInfo> GetEditInfoAsync(
+    public async Task<Page> GetEditInfoAsync(
         ClaimsPrincipal? user,
         PageTitle title)
     {
@@ -366,7 +366,7 @@ public class WikiDataManager(
         {
             throw new WikiUnauthorizedException();
         }
-        if (result.Item is null
+        if (!result.Exists
             && !result.Permission.HasFlag(WikiPermission.Create))
         {
             throw new WikiUnauthorizedException();
@@ -382,7 +382,7 @@ public class WikiDataManager(
     /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
     /// </param>
     /// <returns>
-    /// A <see cref="GroupPageInfo"/> instance; or <see langword="null"/> if there is no such page.
+    /// A <see cref="GroupPage"/> instance.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// <paramref name="title"/> was empty.
@@ -390,7 +390,7 @@ public class WikiDataManager(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have permission to view the requested page.
     /// </exception>
-    public async Task<GroupPageInfo?> GetGroupPageAsync(ClaimsPrincipal? user, string title)
+    public async Task<GroupPage> GetGroupPageAsync(ClaimsPrincipal? user, string title)
     {
         if (string.IsNullOrEmpty(title))
         {
@@ -407,10 +407,6 @@ public class WikiDataManager(
             groupManager,
             title,
             wikiUser);
-        if (result is null)
-        {
-            return null;
-        }
         if (!result.Permission.HasFlag(WikiPermission.Read))
         {
             throw new WikiUnauthorizedException();
@@ -507,7 +503,7 @@ public class WikiDataManager(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
     /// </exception>
-    public async Task<WikiPageInfo> GetItemAsync(
+    public async Task<Page> GetItemAsync(
         ClaimsPrincipal? user,
         PageTitle title,
         bool noRedirect = false,
@@ -519,7 +515,7 @@ public class WikiDataManager(
             ? null
             : await userManager.GetUserAsync(user);
 
-        WikiPageInfo result;
+        Page result;
         if (diff
             || secondTime.HasValue)
         {
@@ -592,12 +588,12 @@ public class WikiDataManager(
             groupManager,
             title,
             wikiUser);
-        if (result.Page?.Exists != true
+        if (!result.Exists
             || !result.Permission.HasFlag(WikiPermission.Read))
         {
             return null;
         }
-        return result.Page.Preview;
+        return result.Preview;
     }
 
     /// <summary>
@@ -677,12 +673,12 @@ public class WikiDataManager(
         {
             throw new WikiUnauthorizedException();
         }
-        if (result.Page?.Exists != true)
+        if (!result.Exists)
         {
             return new();
         }
 
-        var topic = await Topic.GetTopicAsync(dataStore, result.Page.Title);
+        var topic = await Topic.GetTopicAsync(dataStore, result.Title);
         return await GetTopicMessagesAsync(topic);
     }
 
@@ -721,17 +717,85 @@ public class WikiDataManager(
     }
 
     /// <summary>
+    /// Fetches information about the group page with the given <paramref name="title"/>.
+    /// </summary>
+    /// <param name="title">
+    /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
+    /// </param>
+    /// <returns>
+    /// A <see cref="UserPage"/> instance.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="title"/> was empty.
+    /// </exception>
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have permission to view the requested page.
+    /// </exception>
+    public async Task<UserPage> GetUserPageAsync(ClaimsPrincipal? user, string title)
+    {
+        if (string.IsNullOrEmpty(title))
+        {
+            throw new ArgumentException($"{nameof(title)} cannot be empty", nameof(title));
+        }
+
+        var wikiUser = user is null
+            ? null
+            : await userManager.GetUserAsync(user);
+
+        var result = await dataStore.GetUserPageAsync(
+            wikiOptions,
+            userManager,
+            groupManager,
+            title,
+            wikiUser);
+        if (!result.Permission.HasFlag(WikiPermission.Read))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Fetches a list of the pages which link to a given resource.
     /// </summary>
     /// <param name="request">a <see cref="WhatLinksHereRequest"/> instance.</param>
     /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
-    public async Task<PagedList<LinkInfo>> GetWhatLinksHereAsync(WhatLinksHereRequest request)
+    public async Task<PagedList<LinkInfo>> GetWhatLinksHereAsync(TitleRequest request)
     {
         var result = await dataStore.GetWhatLinksHereAsync(
             wikiOptions,
             request);
         return result
             ?? new(null, 1, request.PageSize, 0);
+    }
+
+    /// <summary>
+    /// Fetches information about a given wiki group.
+    /// </summary>
+    /// <param name="query">
+    /// A wiki user ID or username.
+    /// </param>
+    /// <returns>
+    /// An <see cref="IWikiGroup"/> instance; or <see langword="null"/> if there is no such group.
+    /// </returns>
+    public async Task<IWikiGroup?> GetWikiGroupAsync(ClaimsPrincipal? user, string query)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var requestingUser = await userManager.GetUserAsync(user);
+        if (requestingUser?.IsDeleted != false
+            || requestingUser.IsDisabled)
+        {
+            return null;
+        }
+
+        var wikiGroup = await groupManager.FindByIdAsync(query);
+        wikiGroup ??= await groupManager.FindByNameAsync(query);
+        return wikiGroup;
     }
 
     /// <summary>
@@ -817,15 +881,9 @@ public class WikiDataManager(
     /// non-administrator requests information about a deleted or disabled user, <see
     /// langword="null"/> is returned.
     /// </remarks>
-    public async Task<WikiUserInfo?> GetWikiUserAsync(ClaimsPrincipal? user, string query)
+    public async Task<WikiUser?> GetWikiUserAsync(ClaimsPrincipal? user, string query)
     {
         if (string.IsNullOrEmpty(query))
-        {
-            return null;
-        }
-        var wikiUser = await userManager.FindByIdAsync(query);
-        wikiUser ??= await userManager.FindByNameAsync(query);
-        if (wikiUser is null)
         {
             return null;
         }
@@ -837,23 +895,28 @@ public class WikiDataManager(
             return null;
         }
 
+        var wikiUser = await userManager.FindByIdAsync(query);
+        wikiUser ??= await userManager.FindByNameAsync(query);
+        if (wikiUser is null)
+        {
+            return null;
+        }
+
         if (requestingUser.IsWikiAdmin)
         {
-            return new WikiUserInfo(
-                wikiUser.Id,
-                new WikiUser
-                {
-                    AllowedEditPages = wikiUser.AllowedEditPages,
-                    AllowedViewPages = wikiUser.AllowedViewPages,
-                    AllowedViewDomains = wikiUser.AllowedViewDomains,
-                    DisplayName = wikiUser.DisplayName,
-                    Groups = wikiUser.Groups,
-                    Id = wikiUser.Id,
-                    IsDeleted = wikiUser.IsDeleted,
-                    IsDisabled = wikiUser.IsDisabled,
-                    IsWikiAdmin = wikiUser.IsWikiAdmin,
-                    UploadLimit = wikiUser.UploadLimit,
-                });
+            return new WikiUser
+            {
+                AllowedEditPages = wikiUser.AllowedEditPages,
+                AllowedViewPages = wikiUser.AllowedViewPages,
+                AllowedViewDomains = wikiUser.AllowedViewDomains,
+                DisplayName = wikiUser.DisplayName,
+                Groups = wikiUser.Groups,
+                Id = wikiUser.Id,
+                IsDeleted = wikiUser.IsDeleted,
+                IsDisabled = wikiUser.IsDisabled,
+                IsWikiAdmin = wikiUser.IsWikiAdmin,
+                UploadLimit = wikiUser.UploadLimit,
+            };
         }
 
         if (wikiUser.IsDeleted
@@ -862,14 +925,12 @@ public class WikiDataManager(
             return null;
         }
 
-        return new WikiUserInfo(
-            wikiUser.Id,
-            new WikiUser
-            {
-                DisplayName = wikiUser.DisplayName,
-                Id = wikiUser.Id,
-                IsWikiAdmin = wikiUser.IsWikiAdmin,
-            });
+        return new WikiUser
+        {
+            DisplayName = wikiUser.DisplayName,
+            Id = wikiUser.Id,
+            IsWikiAdmin = wikiUser.IsWikiAdmin,
+        };
     }
 
     /// <summary>
@@ -918,7 +979,7 @@ public class WikiDataManager(
             {
                 throw new WikiUnauthorizedException();
             }
-            if (result.Page?.Exists != true)
+            if (!result.Exists)
             {
                 return new();
             }
@@ -1355,17 +1416,17 @@ public class WikiDataManager(
             wikiUser,
             true);
 
-        if (result.Page?.Exists != true && file is null)
+        if (!result.Exists && file is null)
         {
             throw new WikiConflictException("Cannot upload an empty file to a new page.");
         }
 
-        if (result.Page is not null and not WikiFile)
+        if (result.Exists && result is not WikiFile)
         {
             throw new ArgumentException("The specified title is an existing page which is not a file.", nameof(options));
         }
 
-        if (result.Page?.Exists == true && !options.OverwriteConfirmed)
+        if (result.Exists && !options.OverwriteConfirmed)
         {
             throw new WikiConflictException("A file with this title already exists.");
         }
@@ -1447,7 +1508,7 @@ public class WikiDataManager(
             throw new WikiUnauthorizedException();
         }
 
-        WikiPageInfo? originalPage = null;
+        Page? originalPage = null;
         if (options.OriginalTitle.HasValue
             && !options.OriginalTitle.Equals(title))
         {
@@ -1459,15 +1520,14 @@ public class WikiDataManager(
                 wikiUser,
                 true);
 
-            var hasOriginalPermission = CheckEditPermissions(
+            if (!CheckEditPermissions(
                 wikiOptions,
                 originalPage,
                 true,
                 allAllowedEditors,
                 allAllowedViewers,
                 allAllowedEditorGroups,
-                allAllowedViewerGroups);
-            if (!hasOriginalPermission || originalPage.Page is null)
+                allAllowedViewerGroups))
             {
                 return false;
             }
@@ -1496,7 +1556,7 @@ public class WikiDataManager(
         }
 
         var success = true;
-        if (originalPage?.Page is WikiFile originalWikiFile)
+        if (originalPage is WikiFile originalWikiFile)
         {
             try
             {
@@ -1544,7 +1604,7 @@ public class WikiDataManager(
             }
         }
 
-        if (result.Page is WikiFile wikiFile)
+        if (result is WikiFile wikiFile)
         {
             try
             {
@@ -1634,30 +1694,29 @@ public class WikiDataManager(
 
     private static bool CheckEditPermissions(
         WikiOptions options,
-        WikiPageInfo page,
+        Page page,
         bool isDeletedOrRenamed = false,
         IEnumerable<string>? allowedEditors = null,
         IEnumerable<string>? allowedViewers = null,
         IEnumerable<string>? allowedEditorGroups = null,
         IEnumerable<string>? allowedViewerGroups = null)
     {
-        if (page.Page is null
-            || !page.Permission.HasFlag(WikiPermission.Write))
+        if (!page.Permission.HasFlag(WikiPermission.Write))
         {
             return false;
         }
-        if (!page.Page.Exists)
+        if (!page.Exists)
         {
             if (!page.Permission.HasFlag(WikiPermission.Create))
             {
                 return false;
             }
-            if (options.ReservedNamespaces.Any(x => string.CompareOrdinal(page.Page.Title.Namespace, x) == 0))
+            if (options.ReservedNamespaces.Any(x => string.CompareOrdinal(page.Title.Namespace, x) == 0))
             {
                 return false;
             }
         }
-        if (!string.IsNullOrEmpty(page.Page.Owner)
+        if (!string.IsNullOrEmpty(page.Owner)
             && !page.Permission.HasFlag(WikiPermission.SetOwner))
         {
             return false;
@@ -1671,7 +1730,7 @@ public class WikiDataManager(
 
         if (!page.Permission.HasFlag(WikiPermission.SetPermissions))
         {
-            if (!page.Page.Exists)
+            if (!page.Exists)
             {
                 if (allowedEditors is not null
                     || allowedEditorGroups is not null
@@ -1683,7 +1742,7 @@ public class WikiDataManager(
             }
             else
             {
-                if (page.Page.AllowedEditors is null)
+                if (page.AllowedEditors is null)
                 {
                     if (allowedEditors is not null)
                     {
@@ -1691,12 +1750,12 @@ public class WikiDataManager(
                     }
                 }
                 else if (allowedEditors is null
-                    || !page.Page.AllowedEditors.Order().SequenceEqual(allowedEditors.Order()))
+                    || !page.AllowedEditors.Order().SequenceEqual(allowedEditors.Order()))
                 {
                     return false;
                 }
 
-                if (page.Page.AllowedEditorGroups is null)
+                if (page.AllowedEditorGroups is null)
                 {
                     if (allowedEditorGroups is not null)
                     {
@@ -1704,12 +1763,12 @@ public class WikiDataManager(
                     }
                 }
                 else if (allowedEditorGroups is null
-                    || !page.Page.AllowedEditorGroups.Order().SequenceEqual(allowedEditorGroups.Order()))
+                    || !page.AllowedEditorGroups.Order().SequenceEqual(allowedEditorGroups.Order()))
                 {
                     return false;
                 }
 
-                if (page.Page.AllowedViewers is null)
+                if (page.AllowedViewers is null)
                 {
                     if (allowedViewers is not null)
                     {
@@ -1717,12 +1776,12 @@ public class WikiDataManager(
                     }
                 }
                 else if (allowedViewers is null
-                    || !page.Page.AllowedViewers.Order().SequenceEqual(allowedViewers.Order()))
+                    || !page.AllowedViewers.Order().SequenceEqual(allowedViewers.Order()))
                 {
                     return false;
                 }
 
-                if (page.Page.AllowedViewerGroups is null)
+                if (page.AllowedViewerGroups is null)
                 {
                     if (allowedViewerGroups is not null)
                     {
@@ -1730,7 +1789,7 @@ public class WikiDataManager(
                     }
                 }
                 else if (allowedViewerGroups is null
-                    || !page.Page.AllowedViewerGroups.Order().SequenceEqual(allowedViewerGroups.Order()))
+                    || !page.AllowedViewerGroups.Order().SequenceEqual(allowedViewerGroups.Order()))
                 {
                     return false;
                 }
