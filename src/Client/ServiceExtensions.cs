@@ -32,7 +32,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddTavenemWikiClient(
+    public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
         WikiOptions? wikiOptions = null,
         WikiBlazorClientOptions? wikiBlazorOptions = null,
@@ -94,7 +94,7 @@ public static class ServiceExtensions
     /// The options used to configure the wiki Blazor system.
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddTavenemWikiClient(
+    public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         Type searchClientType,
@@ -157,7 +157,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddTavenemWikiClient(
+    public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
         Func<IServiceProvider, WikiBlazorClientOptions> wikiBlazorOptionsBuilder,

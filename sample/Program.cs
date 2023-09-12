@@ -60,7 +60,7 @@ using (var response = await httpClient.GetAsync("archive.json"))
     }
 }
 
-builder.Services.AddTavenemWikiClient(
+builder.Services.AddWikiClient(
     wikiOptions,
     new WikiBlazorClientOptions()
     {

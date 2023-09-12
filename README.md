@@ -21,15 +21,15 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 
 ### The Client App
 
-1. Call one of the overloads of `AddTavenemWikiClient` on an `IServiceCollection` instance in your `Program.cs` file.
+1. Call one of the overloads of `AddWikiClient` on an `IServiceCollection` instance in your `Program.cs` file.
 
     For example:
     ```csharp
     var builder = WebAssemblyHostBuilder.CreateDefault(args);
-    builder.Services.AddTavenemWikiClient();
+    builder.Services.AddWikiClient();
     ```
 
-   `AddTavenemWikiClient` has three optional parameters.
+   `AddWikiClient` has three optional parameters.
 
    The first parameter is either an instance of `WikiOptions` or a function which provides one. This interface allows you to configure the wiki's core features. See the README for [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for more information.
    
@@ -80,7 +80,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
      
      This is initialized to <see langword="null"/> by default, `WikiBlazorClientOptions.DefaultWikiServerApiRoute` may be assigned to use the default value for a hosting server app with default values.
 
-   The third parameter to `AddTavenemWikiClient` is either an instance of `ISearchClient`, the `Type` of an implementation, or a function which provides one. This service provides search capabilities when using the local data source. If omitted, an instance of `DefaultSearchClient` will be used.
+   The third parameter to `AddWikiClient` is either an instance of `ISearchClient`, the `Type` of an implementation, or a function which provides one. This service provides search capabilities when using the local data source. If omitted, an instance of `DefaultSearchClient` will be used.
      
    Note: the `DefaultSearchClient` is not recommended for production use. It is provided only to ensure that basic search functionality operates when an implementation of `ISearchClient` is not available (e.g. during debugging if the production client cannot be used during development).
 1. Add a page with the following content to your client:
@@ -126,7 +126,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
     services.Configure<JsonOptions>(options =>
         options.JsonSerializerOptions.TypeInfoResolver = resolver);
    ```
-1. Call one of the overloads of `AddWiki` on an `IServiceCollection` instance in your `Program.cs` file. `AddWiki` has two required parameters and four optional parameters.
+1. Call one of the overloads of `AddWikiServer` on an `IServiceCollection` instance in your `Program.cs` file. `AddWikiServer` has two required parameters and four optional parameters.
    
    The first parameter is either an instance of `IWikiUserManager`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. This interface allows the wiki to get information about users. Typically this will be a wrapper around your actual user persistence mechanism (e.g. [ASP.NET Core Identity](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity)).
 

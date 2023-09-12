@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2-preview
+### Updated
+- Update to .NET 8 RC1
+### Changed
+- Rename `AddTavenemWikiClient` to `AddWikiClient`
+- Rename `AddWiki` to `AddWikiServer`
+
 ## 0.6.1-preview
 ### Changed
 - Make `WikiState` public
@@ -51,7 +58,7 @@
 - Remove `[Authorize]` attribute from server methods, check `IsAuthorized` directly
 
 ## 0.4.0-preview
-### Changed
+### Updated
 - Update to .NET 8 preview
 
 ## 0.3.0-preview

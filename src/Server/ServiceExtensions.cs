@@ -46,7 +46,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddWiki(
+    public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         IWikiUserManager userManager,
         IWikiGroupManager groupManager,
@@ -137,7 +137,7 @@ public static class ServiceExtensions
     /// The options used to configure the wiki Blazor system.
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddWiki(
+    public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         Type userManagerType,
         Type groupManagerType,
@@ -225,7 +225,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddWiki(
+    public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         Func<IServiceProvider, IWikiUserManager> userManagerBuilder,
         Func<IServiceProvider, IWikiGroupManager> groupManagerBuilder,
@@ -309,7 +309,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddWiki(
+    public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         IWikiUserManager userManager,
         IWikiGroupManager groupManager,
@@ -383,7 +383,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddWiki(
+    public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         Type userManagerType,
         Type groupManagerType,
@@ -454,7 +454,7 @@ public static class ServiceExtensions
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
-    public static IServiceCollection AddWiki(
+    public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         Func<IServiceProvider, IWikiUserManager> userManagerBuilder,
         Func<IServiceProvider, IWikiGroupManager> groupManagerBuilder,
