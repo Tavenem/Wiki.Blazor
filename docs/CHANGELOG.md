@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.6.1-preview
+### Changed
+- Make `WikiState` public
+
 ## 0.6.0-preview
 ### Updated
-- Update dependencies 
+- Update dependencies
 
 ## 0.5.8-preview
 ### Changed

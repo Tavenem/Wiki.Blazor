@@ -71,7 +71,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// <summary>
     /// An injected <see cref="Client.WikiState"/> instance.
     /// </summary>
-    [Inject, NotNull] private protected WikiState? WikiState { get; set; }
+    [Inject, NotNull] protected WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
     protected override void OnInitialized()
