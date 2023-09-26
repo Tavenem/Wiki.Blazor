@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using System.Text.Json.Serialization.Metadata;
 using Tavenem.Wiki;
@@ -100,7 +99,7 @@ public static class ServiceExtensions
             services.AddScoped(_ => searchClient);
         }
 
-        return services;
+        return services.AddWikiJsonContext();
     }
 
     /// <summary>
@@ -188,7 +187,7 @@ public static class ServiceExtensions
             services.AddScoped(typeof(ISearchClient), searchClientType);
         }
 
-        return services;
+        return services.AddWikiJsonContext();
     }
 
     /// <summary>
@@ -276,7 +275,7 @@ public static class ServiceExtensions
             services.AddScoped(searchClientBuilder);
         }
 
-        return services;
+        return services.AddWikiJsonContext();
     }
 
     /// <summary>
@@ -346,7 +345,7 @@ public static class ServiceExtensions
             services.AddScoped(_ => searchClient);
         }
 
-        return services;
+        return services.AddWikiJsonContext();
     }
 
     /// <summary>
@@ -417,7 +416,7 @@ public static class ServiceExtensions
             services.AddScoped(typeof(ISearchClient), searchClientType);
         }
 
-        return services;
+        return services.AddWikiJsonContext();
     }
 
     /// <summary>
@@ -488,7 +487,7 @@ public static class ServiceExtensions
             services.AddScoped(searchClientBuilder);
         }
 
-        return services;
+        return services.AddWikiJsonContext();
     }
 
     /// <summary>
@@ -519,18 +518,20 @@ public static class ServiceExtensions
 
     /// <summary>
     /// Adds the <see cref="WikiBlazorJsonSerializerContext"/> and <see
-    /// cref="WikiJsonSerializerContext"/> to the <see cref="JsonTypeInfo"/> contract resolver used
+    /// cref="WikiJsonSerializerContext"/> to the <see cref="IJsonTypeInfoResolver"/> chain resolver used
     /// by Mvc.
     /// </summary>
     /// <param name="services">An <see cref="IServiceCollection"/> instance.</param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    /// <remarks>
+    /// This is called by all overloads of <c>AddWikiServer</c> and should not be called separately.
+    /// </remarks>
     public static IServiceCollection AddWikiJsonContext(this IServiceCollection services)
     {
-        var resolver = JsonTypeInfoResolver.Combine(
-            WikiBlazorJsonSerializerContext.Default,
-            WikiJsonSerializerContext.Default,
-            new DefaultJsonTypeInfoResolver());
-        return services.Configure<JsonOptions>(options =>
-            options.JsonSerializerOptions.TypeInfoResolver = resolver);
+        return services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, WikiJsonSerializerContext.Default);
+            options.SerializerOptions.TypeInfoResolverChain.Insert(0, WikiBlazorJsonSerializerContext.Default);
+        });
     }
 }
