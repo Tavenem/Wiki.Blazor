@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
 
-<FrameworkLayout Class="wiki-layout">
+<FrameworkLayout Class="wiki-layout"
+                 ContentsMinHeadings="@WikiOptions.MinimumTableOfContentsHeadings"
+                 ContentsMaxLevelOffset="@(WikiOptions.DefaultTableOfContentsDepth - 1)">
     <FrameworkContent>
         @if (WikiBlazorClientOptions.AppBar is not null)
         {
@@ -8,9 +10,10 @@
         }
         else
         {
-            <AppBar Side="VerticalSide.Top" ControlsDrawerSide="Side.Left" Class="d-print-none">
-                <LightDarkToggle Class="ms-auto" />
-            </AppBar>
+            <div class="appbar d-print-none">
+                <DrawerToggle Side="Side.Left" />
+                <tf-darkmode-toggle class="ms-auto" />
+            </div>
         }
         <WikiLeftDrawer />
     </FrameworkContent>

@@ -22,11 +22,4 @@ export default [{
         sourcemap: true,
     },
     plugins: plugins,
-}, {
-    input: "./scripts/tavenem-timezone.js",
-    output: {
-        format: 'es',
-        sourcemap: true,
-    },
-    plugins: jsPlugins,
 }];

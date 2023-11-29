@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.6.2-preview
+## 0.6.4-preview
+### Updated
+- Update to .NET 8
+
+## 0.6.3-preview
 ### Changed
 - Add automatic `TypeInfoResolverChain` configuration to server
 

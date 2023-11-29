@@ -4,7 +4,8 @@
 
 <LayoutView Layout="typeof(WikiLayout)">
     <div id="@Id" class="wiki">
-        <header class="wiki-header d-flex flex-wrap d-print-none" style="background-image:linear-gradient(to bottom, var(--tavenem-color-bg) 0, transparent 2.5em)">
+        <header class="wiki-header d-flex flex-wrap d-print-none"
+                style="background-image:linear-gradient(to bottom, var(--tavenem-color-bg) 0, transparent 2.5em)">
             <nav>
                 <ul>
                     @if (WikiState.IsSystem)
@@ -86,25 +87,28 @@
                         }
                     </ul>
                 }
-                <div class="d-flex align-items-end">
-                    <TextInput Autocomplete="false"
-                               LoadSuggestions="GetSearchSuggestions"
-                               Placeholder="Search the wiki"
-                               @bind-Value="@SearchText"
-                               @bind-Value:after="OnSetSearchText"
-                               Class="dense"
-                               Style="max-width:75vw;width:20rem"
-                               role="search">
-                        <PostfixContent>
-                            <button class="btn btn-icon" @onclick="OnSetSearchText">
-                                <tf-icon>search</tf-icon>
-                            </button>
-                        </PostfixContent>
-                    </TextInput>
-                </div>
+                @if (IsInteractive)
+                {
+                    <div class="d-flex align-items-end">
+                        <TextInput Autocomplete="false"
+                                   LoadSuggestions="GetSearchSuggestions"
+                                   Placeholder="Search the wiki"
+                                   @bind-Value="@SearchText"
+                                   @bind-Value:after="OnSetSearchText"
+                                   Class="dense"
+                                   Style="max-width:75vw;width:20rem"
+                                   role="search">
+                            <PostfixContent>
+                                <button class="btn btn-icon" @onclick="OnSetSearchText">
+                                    <tf-icon>search</tf-icon>
+                                </button>
+                            </PostfixContent>
+                        </TextInput>
+                    </div>
+                }
                 @if (WikiState.IsCompact)
                 {
-                    <LightDarkToggle />
+                    <tf-darkmode-toggle />
                 }
             </nav>
         </header>
@@ -169,138 +173,144 @@
                 </h1>
                 @if (WikiState.IsCompact && CanEdit && !IsEditing)
                 {
-                    <a href="@WikiState.LinkHere(edit: true)" class="btn primary outlined ms-2 align-self-start d-print-none" style="vertical-align: text-top" title="Edit this page">Edit</a>
+                    <a href="@WikiState.LinkHere(edit: true)"
+                       class="btn primary outlined ms-2 align-self-start d-print-none"
+                       style="vertical-align: text-top"
+                       title="Edit this page">Edit</a>
                 }
             </div>
             <div class="wiki-body">
-                @if (WikiState.LoadError)
-                {
-                    <p class="danger">An error occurred while loading this item.</p>
-                    <p>You can try refreshing the page to see if that helps.</p>
-                    <p>
-                        If this error is still here after refreshing, the page may be configured
-                        incorrectly. Please contact the author of the page.
-                    </p>
-                    @if (!string.IsNullOrEmpty(WikiOptions.HelpPageTitle))
+                <CascadingValue Name="@nameof(IsInteractive)" Value="IsInteractive">
+                    @if (WikiState.LoadError)
+                    {
+                        <p class="danger">An error occurred while loading this item.</p>
+                        <p>You can try refreshing the page to see if that helps.</p>
+                        <p>
+                            If this error is still here after refreshing, the page may be configured
+                            incorrectly. Please contact the author of the page.
+                        </p>
+                        @if (!string.IsNullOrEmpty(WikiOptions.HelpPageTitle))
+                        {
+                            <p>
+                                If you <em>are</em> the author of the page and you're having trouble, please see the
+                                <a href="@WikiState.Link(WikiOptions.HelpPageTitle, WikiOptions.SystemNamespace)"
+                                   class="wiki-link wiki-link-exists"
+                                   title="Visit the main help page">help page</a>
+                                for information that may help.
+                            </p>
+                        }
+                        else
+                        {
+                            <p>
+                                If you <em>are</em> the author of the page and you're having trouble,
+                                please contact site administrator for help.
+                            </p>
+                        }
+                    }
+                    else if (WikiState.NotAuthorized)
+                    {
+                        <Unauthorized ForEdit="IsEditing"
+                                      ForCreate="@(!CanCreate && IsEditing && WikiPage?.Exists != true)"
+                                      Unauthenticated="Unauthenticated" />
+                    }
+                    else if (IsSearch)
+                    {
+                        <Search Descending="Descending"
+                                PageNumber="PageNumber"
+                                PageSize="PageSize"
+                                Query="@Filter"
+                                SearchDomain="@SearchDomain"
+                                SearchNamespace="@SearchNamespace"
+                                SearchOwner="@SearchOwner"
+                                Sort="@Sort" />
+                    }
+                    else if (IsUpload)
+                    {
+                        <Upload />
+                    }
+                    else if (IsAllSpecials)
+                    {
+                        <AllSpecials />
+                    }
+                    else if (IsSpecialList)
+                    {
+                        <SpecialList Descending="Descending"
+                                     Filter="@Filter"
+                                     PageNumber="PageNumber"
+                                     PageSize="PageSize"
+                                     Sort="@Sort"
+                                     SpecialListType="SpecialListType"
+                                     TargetDomain="@TargetDomain"
+                                     TargetNamespace="@TargetNamespace"
+                                     TargetTitle="@TargetTitle" />
+                    }
+                    else if (ShowHistory)
+                    {
+                        <HistoryView Editor="@Editor"
+                                     End="End"
+                                     PageNumber="PageNumber"
+                                     PageSize="PageSize"
+                                     Start="Start" />
+                    }
+                    else if (IsEditing && CanEdit)
+                    {
+                        <EditView CanRename="CanRename" Page="WikiPage" User="User" />
+                    }
+                    else if (IsCategory && !IsRevisionRequested)
+                    {
+                        <CategoryView />
+                    }
+                    else if (IsGroupPage && !IsRevisionRequested)
+                    {
+                        <GroupView />
+                    }
+                    else if (WikiPage?.Exists != true)
                     {
                         <p>
-                            If you <em>are</em> the author of the page and you're having trouble, please see the
-                            <a href="@WikiState.Link(WikiOptions.HelpPageTitle, WikiOptions.SystemNamespace)"
-                                class="wiki-link wiki-link-exists"
-                                title="Visit the main help page">help page</a>
-                            for information that may help.
+                            <span>This</span>
+                            <span>@(IsFile ? "file" : "page")</span>
+                            <span>does not exist.</span>
+                            @if (!IsFile && CanCreate)
+                            {
+                                <a href="@WikiState.LinkHere(edit: true)" class="ms-1 wiki-link wiki-link-missing">Create it?</a>
+                            }
                         </p>
+                    }
+                    else if (WikiState.IsTalk)
+                    {
+                        <Talk TopicId="@WikiPage.Id" />
+                    }
+                    else if (IsFile)
+                    {
+                        <FileView Content="Content" WikiFile="WikiPage as WikiFile" />
                     }
                     else
                     {
-                        <p>
-                            If you <em>are</em> the author of the page and you're having trouble,
-                            please contact site administrator for help.
-                        </p>
+                        <ArticleView Page="WikiPage"
+                                     CanEdit="CanEdit"
+                                     Content="Content"
+                                     IsDiff="IsDiff"
+                                     User="User" />
                     }
-                }
-                else if (WikiState.NotAuthorized)
-                {
-                    <Unauthorized ForEdit="IsEditing"
-                                  ForCreate="@(!CanCreate && IsEditing && WikiPage?.Exists != true)"
-                                  Unauthenticated="Unauthenticated" />
-                }
-                else if (IsSearch)
-                {
-                    <Search Descending="Descending"
-                            PageNumber="PageNumber"
-                            PageSize="PageSize"
-                            Query="@Filter"
-                            SearchDomain="@SearchDomain"
-                            SearchNamespace="@SearchNamespace"
-                            SearchOwner="@SearchOwner"
-                            Sort="@Sort" />
-                }
-                else if (IsUpload)
-                {
-                    <Upload />
-                }
-                else if (IsAllSpecials)
-                {
-                    <AllSpecials />
-                }
-                else if (IsSpecialList)
-                {
-                    <SpecialList Descending="Descending"
-                                 Filter="@Filter"
-                                 PageNumber="PageNumber"
-                                 PageSize="PageSize"
-                                 Sort="@Sort"
-                                 SpecialListType="SpecialListType"
-                                 TargetDomain="@TargetDomain"
-                                 TargetNamespace="@TargetNamespace"
-                                 TargetTitle="@TargetTitle" />
-                }
-                else if (ShowHistory)
-                {
-                    <HistoryView Editor="@Editor"
-                                 End="End"
-                                 PageNumber="PageNumber"
-                                 PageSize="PageSize"
-                                 Start="Start" />
-                }
-                else if (IsEditing && CanEdit)
-                {
-                    <EditView CanRename="CanRename" Page="WikiPage" User="User" />
-                }
-                else if (IsCategory && !IsRevisionRequested)
-                {
-                    <CategoryView />
-                }
-                else if (IsGroupPage && !IsRevisionRequested)
-                {
-                    <GroupView />
-                }
-                else if (WikiPage?.Exists != true)
-                {
-                    <p>
-                        <span>This</span>
-                        <span>@(IsFile ? "file" : "page")</span>
-                        <span>does not exist.</span>
-                        @if (!IsFile && CanCreate)
-                        {
-                            <a href="@WikiState.LinkHere(edit: true)" class="ms-1 wiki-link wiki-link-missing">Create it?</a>
-                        }
-                    </p>
-                }
-                else if (WikiState.IsTalk)
-                {
-                    <Talk TopicId="@WikiPage.Id" />
-                }
-                else if (IsFile)
-                {
-                    <FileView Content="Content" WikiFile="WikiPage as WikiFile" />
-                }
-                else
-                {
-                    <ArticleView Page="WikiPage"
-                                 CanEdit="CanEdit"
-                                 Content="Content"
-                                 IsDiff="IsDiff"
-                                 User="User" />
-                }
-                @if (!WikiState.IsCompact
-                    && !WikiState.IsTalk
-                    && !ShowHistory
-                    && WikiPage?.Categories?.Count > 0)
-                {
-                    <section class="wiki-category-list-section">
-                        <a href="@WikiState.Link(WikiOptions.CategoriesTitle)" class="wiki-category-list-category-link">@WikiOptions.CategoriesTitle</a>
-                        <ul class="inline">
-                            @foreach (var category in WikiPage.Categories)
-                            {
-                                <li>
-                                    <a href="@WikiState.Link(category)">@(category.Title ?? WikiOptions.MainPageTitle)</a>
-                                </li>
-                            }
-                        </ul>
-                    </section>
-                }
+                    @if (!WikiState.IsCompact
+                        && !WikiState.IsTalk
+                        && !ShowHistory
+                        && WikiPage?.Categories?.Count > 0)
+                    {
+                        <section class="wiki-category-list-section">
+                            <a href="@WikiState.Link(WikiOptions.CategoriesTitle)"
+                               class="wiki-category-list-category-link">@WikiOptions.CategoriesTitle</a>
+                            <ul class="inline">
+                                @foreach (var category in WikiPage.Categories)
+                                {
+                                    <li>
+                                        <a href="@WikiState.Link(category)">@(category.Title ?? WikiOptions.MainPageTitle)</a>
+                                    </li>
+                                }
+                            </ul>
+                        </section>
+                    }
+                </CascadingValue>
             </div>
         </div>
         @if (!WikiState.IsCompact)
@@ -317,11 +327,17 @@
                         }
                         @if (!string.IsNullOrWhiteSpace(WikiOptions.CopyrightPageTitle))
                         {
-                            <li>The content of this page is available under the terms of the site's <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</li>
+                            <li>
+                                The content of this page is available under the terms of the site's
+                                <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.
+                            </li>
                         }
                         @if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
                         {
-                            <li>By using this site you agree to the site's <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</li>
+                            <li>
+                                By using this site you agree to the site's
+                                <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.
+                            </li>
                         }
                     </ul>
                 </div>

@@ -3,12 +3,13 @@
 /// <summary>
 /// Represents a talk message.
 /// </summary>
-public class TalkMessageModel
+/// <param name="message"></param>
+public class TalkMessageModel(MessageResponse message)
 {
     /// <summary>
     /// The message.
     /// </summary>
-    public MessageResponse Message { get; set; }
+    public MessageResponse Message { get; set; } = message;
 
     /// <summary>
     /// Any reactions.
@@ -19,10 +20,4 @@ public class TalkMessageModel
     /// Any replies.
     /// </summary>
     public List<TalkMessageModel>? Replies { get; set; }
-
-    /// <summary>
-    /// Constructs a new instance of <see cref="TalkMessageModel"/>.
-    /// </summary>
-    /// <param name="message"></param>
-    public TalkMessageModel(MessageResponse message) => Message = message;
 }

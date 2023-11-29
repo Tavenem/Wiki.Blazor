@@ -34,9 +34,9 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     protected AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
     /// <summary>
-    /// An injected <see cref="System.Net.Http.HttpClient"/> instance.
+    /// An <see cref="System.Net.Http.HttpClient"/> instance.
     /// </summary>
-    [Inject, NotNull] protected HttpClient? HttpClient { get; set; }
+    protected HttpClient? HttpClient { get; set; }
 
     /// <summary>
     /// An injected <see cref="Microsoft.AspNetCore.Components.NavigationManager"/> instance.
@@ -44,7 +44,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     [Inject, NotNull] protected NavigationManager? NavigationManager { get; set; }
 
     /// <summary>
-    /// An injected <see cref="System.IServiceProvider"/> instance.
+    /// An injected <see cref="IServiceProvider"/> instance.
     /// </summary>
     [Inject, NotNull] protected IServiceProvider? ServiceProvider { get; set; }
 
@@ -77,6 +77,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     protected override void OnInitialized()
     {
         AuthenticationStateProvider = ServiceProvider.GetService<AuthenticationStateProvider>();
+        HttpClient = ServiceProvider.GetService<HttpClient>();
         if (AuthenticationStateProvider is not null)
         {
             AuthenticationStateProvider.AuthenticationStateChanged += OnStateChanged;
@@ -118,121 +119,22 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// </summary>
     /// <typeparam name="T">The type of data to retrieve.</typeparam>
     /// <param name="url">The URL to call when online.</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
-    /// <returns>The result.</returns>
-    [RequiresUnreferencedCode(
-        "Calls System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsync<T>(JsonSerializerOptions, CancellationToken)")]
-    protected async Task<T?> FetchDataAsync<T>(
-        string url,
-        Func<ClaimsPrincipal?, Task<T?>> fetchOffline)
-    {
-        T? result = default;
-
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
-            && WikiBlazorClientOptions.IsOfflineDomain is not null)
-        {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
-        }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        if (AuthenticationStateProvider is not null)
-        {
-            state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
-        var triedServer = false;
-        var fetchedFromServer = false;
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
-        {
-            triedServer = true;
-            try
-            {
-                var response = await HttpClient.GetAsync(url);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized(state);
-                    return default;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    SnackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    result = await response.Content.ReadFromJsonAsync<T>();
-                    fetchedFromServer = true;
-                }
-            }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                SnackbarService.Add("An error occurred", ThemeColor.Danger);
-                return default;
-            }
-        }
-
-        if (!fetchedFromServer)
-        {
-            if (WikiBlazorClientOptions.DataStore is not null)
-            {
-                try
-                {
-                    result = await fetchOffline.Invoke(user);
-                }
-                catch (WikiUnauthorizedException)
-                {
-                    HandleUnauthorized(state);
-                    return default;
-                }
-                catch (InvalidOperationException ex)
-                {
-                    SnackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                catch (ArgumentException ex)
-                {
-                    SnackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-            }
-            else if (triedServer)
-            {
-                WikiState.LoadError = true;
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// Fetches data from the wiki server, or the offline store.
-    /// </summary>
-    /// <typeparam name="T">The type of data to retrieve.</typeparam>
-    /// <param name="url">The URL to call when online.</param>
     /// <param name="type">THe JSON type info</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="fetchLocal">The function to execute when offline.</param>
     /// <returns>The result.</returns>
     protected async Task<T?> FetchDataAsync<T>(
         string url,
         JsonTypeInfo<T> type,
-        Func<ClaimsPrincipal?, Task<T?>> fetchOffline)
+        Func<ClaimsPrincipal?, Task<T?>> fetchLocal)
     {
         T? result = default;
 
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+        var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+        if (!isLocal
+            && !string.IsNullOrEmpty(WikiState.WikiDomain)
             && WikiBlazorClientOptions.IsOfflineDomain is not null)
         {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+            isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -241,12 +143,9 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
             state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             user = state.User;
         }
-        var triedServer = false;
         var fetchedFromServer = false;
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        if (!isLocal && HttpClient is not null)
         {
-            triedServer = true;
             try
             {
                 var response = await HttpClient.GetAsync(url);
@@ -282,31 +181,20 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
 
         if (!fetchedFromServer)
         {
-            if (WikiBlazorClientOptions.DataStore is not null)
+            try
             {
-                try
-                {
-                    result = await fetchOffline.Invoke(user);
-                }
-                catch (WikiUnauthorizedException)
-                {
-                    HandleUnauthorized(state);
-                    return default;
-                }
-                catch (InvalidOperationException ex)
-                {
-                    SnackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                catch (ArgumentException ex)
-                {
-                    SnackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
+                result = await fetchLocal.Invoke(user);
             }
-            else if (triedServer)
+            catch (WikiUnauthorizedException)
+            {
+                HandleUnauthorized(state);
+                return default;
+            }
+            catch (Exception ex)
             {
                 WikiState.LoadError = true;
+                SnackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
+                return default;
             }
         }
 
@@ -317,17 +205,18 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// Fetches an integer from the wiki server, or the offline store.
     /// </summary>
     /// <param name="url">The URL to call when online.</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="fetchLocal">The function to execute when offline.</param>
     /// <returns>The result.</returns>
     protected async Task<int> FetchIntAsync(
         string url,
-        Func<ClaimsPrincipal?, Task<int>> fetchOffline)
+        Func<ClaimsPrincipal?, Task<int>> fetchLocal)
     {
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+        var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+        if (!isLocal
+            && !string.IsNullOrEmpty(WikiState.WikiDomain)
             && WikiBlazorClientOptions.IsOfflineDomain is not null)
         {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+            isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -336,8 +225,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
             state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             user = state.User;
         }
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        if (!isLocal && HttpClient is not null)
         {
             try
             {
@@ -379,7 +267,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         {
             try
             {
-                return await fetchOffline.Invoke(user);
+                return await fetchLocal.Invoke(user);
             }
             catch (WikiUnauthorizedException)
             {
@@ -405,17 +293,18 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// Fetches a string from the wiki server, or the offline store.
     /// </summary>
     /// <param name="url">The URL to call when online.</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="fetchLocal">The function to execute when offline.</param>
     /// <returns>The result.</returns>
     protected async Task<string?> FetchStringAsync(
         string url,
-        Func<ClaimsPrincipal?, Task<string?>> fetchOffline)
+        Func<ClaimsPrincipal?, Task<string?>> fetchLocal)
     {
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+        var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+        if (!isLocal
+            && !string.IsNullOrEmpty(WikiState.WikiDomain)
             && WikiBlazorClientOptions.IsOfflineDomain is not null)
         {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+            isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -424,8 +313,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
             state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             user = state.User;
         }
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        if (!isLocal && HttpClient is not null)
         {
             try
             {
@@ -467,7 +355,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         {
             try
             {
-                return await fetchOffline.Invoke(user);
+                return await fetchLocal.Invoke(user);
             }
             catch (WikiUnauthorizedException)
             {
@@ -498,22 +386,23 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// <param name="value">The data to send.</param>
     /// <param name="postedType">JSON type info for the data sent.</param>
     /// <param name="returnType">JSON type info for the data to be returned.</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="fetchLocal">The function to execute when offline.</param>
     /// <returns>The result.</returns>
     protected async Task<TReturn?> PostAsync<TSend, TReturn>(
         string url,
         TSend value,
         JsonTypeInfo<TSend> postedType,
         JsonTypeInfo<TReturn> returnType,
-        Func<ClaimsPrincipal?, Task<TReturn?>> fetchOffline)
+        Func<ClaimsPrincipal?, Task<TReturn?>> fetchLocal)
     {
         TReturn? result = default;
 
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+        var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+        if (!isLocal
+            && !string.IsNullOrEmpty(WikiState.WikiDomain)
             && WikiBlazorClientOptions.IsOfflineDomain is not null)
         {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+            isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -524,8 +413,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         }
         var triedServer = false;
         var fetchedFromServer = false;
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        if (!isLocal && HttpClient is not null)
         {
             triedServer = true;
             try
@@ -567,7 +455,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
             {
                 try
                 {
-                    result = await fetchOffline.Invoke(user);
+                    result = await fetchLocal.Invoke(user);
                 }
                 catch (WikiUnauthorizedException)
                 {
@@ -601,7 +489,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// <param name="url">The URL to call when online.</param>
     /// <param name="value">The data to send.</param>
     /// <param name="type">JSON type info for the data sent.</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="fetchLocal">The function to execute when offline.</param>
     /// <param name="failMessage">
     /// A message to supply when the operation fails, and no message is returned.
     /// </param>
@@ -612,14 +500,15 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         string url,
         T value,
         JsonTypeInfo<T> type,
-        Func<ClaimsPrincipal?, Task<bool>> fetchOffline,
+        Func<ClaimsPrincipal?, Task<bool>> fetchLocal,
         string? failMessage = null)
     {
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+        var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+        if (!isLocal
+            && !string.IsNullOrEmpty(WikiState.WikiDomain)
             && WikiBlazorClientOptions.IsOfflineDomain is not null)
         {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+            isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -628,8 +517,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
             state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             user = state.User;
         }
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        if (!isLocal && HttpClient is not null)
         {
             try
             {
@@ -667,7 +555,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         {
             try
             {
-                var success = await fetchOffline.Invoke(user);
+                var success = await fetchLocal.Invoke(user);
                 return new FetchResult(true, success ? null : failMessage);
             }
             catch (WikiUnauthorizedException)
@@ -697,21 +585,22 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
     /// <param name="url">The URL to call when online.</param>
     /// <param name="value">The data to send.</param>
     /// <param name="type">JSON type info for the data sent.</param>
-    /// <param name="fetchOffline">The function to execute when offline.</param>
+    /// <param name="fetchLocal">The function to execute when offline.</param>
     /// <returns>A string.</returns>
     protected async Task<string?> PostForStringAsync<T>(
         string url,
         T value,
         JsonTypeInfo<T> type,
-        Func<ClaimsPrincipal?, Task<string?>> fetchOffline)
+        Func<ClaimsPrincipal?, Task<string?>> fetchLocal)
     {
         string? result = null;
 
-        var isOfflineDomain = false;
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+        var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+        if (!isLocal
+            && !string.IsNullOrEmpty(WikiState.WikiDomain)
             && WikiBlazorClientOptions.IsOfflineDomain is not null)
         {
-            isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+            isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -721,8 +610,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
             user = state.User;
         }
         var fetchedFromServer = false;
-        if (!isOfflineDomain
-            && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+        if (!isLocal && HttpClient is not null)
         {
             try
             {
@@ -762,7 +650,7 @@ public class OfflineSupportComponent : ComponentBase, IDisposable
         {
             try
             {
-                result = await fetchOffline.Invoke(user);
+                result = await fetchLocal.Invoke(user);
             }
             catch (WikiUnauthorizedException)
             {

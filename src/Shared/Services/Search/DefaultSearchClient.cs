@@ -72,7 +72,7 @@ public class DefaultSearchClient(
         }
 
         var namespaces = namespaceEmpty
-            ? Array.Empty<string>()
+            ? []
             : request.Namespace!.Split(';');
         var excludedNamespaces = namespaces
             .Where(x => x[0] == '!')
@@ -85,7 +85,7 @@ public class DefaultSearchClient(
         var anyIncludedNamespaces = includedNamespaces.Count > 0;
 
         var owners = ownerEmpty
-            ? Array.Empty<string>()
+            ? []
             : request.Owner!.Split(';');
         var excludedOwners = owners
             .Where(x => x[0] == '!')
@@ -98,7 +98,7 @@ public class DefaultSearchClient(
         var anyIncludedOwners = includedOwners.Count > 0;
 
         var uploaders = uploaderEmpty
-            ? Array.Empty<string>()
+            ? []
             : request.Uploader!.Split(';');
         var excludedUploaders = uploaders
             .Where(x => x[0] == '!')

@@ -3,7 +3,7 @@
 <div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
 @if (Category is not null)
 {
-    <SyntaxHighlighter Class="wiki-parser-output wiki-parser-output-category">@Content</SyntaxHighlighter>
+    <tf-syntax-highlight class="wiki-parser-output wiki-parser-output-category">@Content</tf-syntax-highlight>
     if (Category.Subcategories is not null
         && Category.Subcategories.Count > 0)
     {

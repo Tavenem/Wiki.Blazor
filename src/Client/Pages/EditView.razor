@@ -29,7 +29,7 @@
         </div>
     }
 </div>
-@if (CanRename)
+@if (IsInteractive && CanRename)
 {
     <TextInput Label="Title"
                @bind-Value="Title"
@@ -38,11 +38,14 @@
                DisplayHelpTextOnFocus="true"
                HelpText="Move this article by changing its title" />
 }
-@if (RedirectEnabled)
+@if (IsInteractive && RedirectEnabled)
 {
-    <Tooltip TooltipText="You are renaming this article, which changes its URL. Leaving a redirect behind ensures that people who visit the original URL will be redirected to the new page.">
-        <Checkbox @bind-Value="Redirect" Label="Leave a redirect behind" />
-    </Tooltip>
+    <Checkbox @bind-Value="Redirect" Label="Leave a redirect behind">
+        <Tooltip>
+            You are renaming this article, which changes its URL. Leaving a redirect behind ensures
+            that people who visit the original URL will be redirected to the new page.
+        </Tooltip>
+    </Checkbox>
 }
 <Tabs TTabItem="object" ActivePanelIndexChanged="OnTabChangedAsync" Class="align-self-stretch">
     <TabPanel Title="Editor">
@@ -52,49 +55,52 @@
                 @bind-Value="Content" />
     </TabPanel>
     <TabPanel Title="Preview">
-        <SyntaxHighlighter Style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
+        <tf-syntax-highlight style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
             @HtmlContent
-        </SyntaxHighlighter>
+        </tf-syntax-highlight>
     </TabPanel>
 </Tabs>
-<TextInput Label="Revision comment"
-           @bind-Value="Comment"
-           Spellcheck="true"
-           DisplayHelpTextOnFocus="true"
-           HelpText="Briefly describe your changes"
-           Class="align-self-stretch" />
-<div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
-    <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" Style="flex-basis:20rem" />
-    <UserSelector Label="Owner (optional)"
-                  @bind-SelectedUsers="Owner"
-                  AllowGroups="true"
-                  Disabled="OwnerSelf"
-                  DisplayHelpTextOnFocus="true"
-                  HelpText="May be a user or a group. Can be left blank to make the article community-owned."
-                  Class="flex-grow-1" />
-</div>
-<div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
-    <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" Style="flex-basis:20rem" />
-    <UserSelector Label="Allowed editors (optional)"
-                  @bind-SelectedUsers="Editors"
-                  AllowGroups="true"
-                  Disabled="EditorSelf || NoOwner"
-                  Multiple="true"
-                  DisplayHelpTextOnFocus="true"
-                  HelpText="May be users or groups. The owner is automatically included."
-                  Class="flex-grow-1" />
-</div>
-<div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
-    <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" Style="flex-basis:20rem" />
-    <UserSelector Label="Allowed viewers (optional)"
-                  @bind-SelectedUsers="Viewers"
-                  AllowGroups="true"
-                  Disabled="ViewerSelf || NoOwner"
-                  Multiple="true"
-                  DisplayHelpTextOnFocus="true"
-                  HelpText="May be users or groups. The owner is automatically included."
-                  Class="flex-grow-1" />
-</div>
+@if (IsInteractive)
+{
+    <TextInput Label="Revision comment"
+               @bind-Value="Comment"
+               Spellcheck="true"
+               DisplayHelpTextOnFocus="true"
+               HelpText="Briefly describe your changes"
+               Class="align-self-stretch" />
+    <div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
+        <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" Style="flex-basis:20rem" />
+        <UserSelector Label="Owner (optional)"
+                      @bind-SelectedUsers="Owner"
+                      AllowGroups="true"
+                      Disabled="OwnerSelf"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be a user or a group. Can be left blank to make the article community-owned."
+                      Class="flex-grow-1" />
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
+        <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" Style="flex-basis:20rem" />
+        <UserSelector Label="Allowed editors (optional)"
+                      @bind-SelectedUsers="Editors"
+                      AllowGroups="true"
+                      Disabled="EditorSelf || NoOwner"
+                      Multiple="true"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be users or groups. The owner is automatically included."
+                      Class="flex-grow-1" />
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-self-stretch justify-content-space-between">
+        <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" Style="flex-basis:20rem" />
+        <UserSelector Label="Allowed viewers (optional)"
+                      @bind-SelectedUsers="Viewers"
+                      AllowGroups="true"
+                      Disabled="ViewerSelf || NoOwner"
+                      Multiple="true"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be users or groups. The owner is automatically included."
+                      Class="flex-grow-1" />
+    </div>
+}
 <div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
     {
@@ -124,24 +130,27 @@
         </div>
     }
 </div>
-<div class="d-flex flex-wrap m-3 gap-3">
-    <button class="btn primary" disabled="@SubmitDisabled" @onclick="ReviseAsync">Publish</button>
-    <a class="btn" href="@(Page is null ? WikiState.Link() : WikiState.LinkHere())">Cancel</a>
-    @if (Page is not null)
-    {
-        <button class="btn danger" @onclick="DeleteAsync">Delete</button>
-    }
-</div>
-@if (AllowDrafts)
+@if (IsInteractive)
 {
     <div class="d-flex flex-wrap m-3 gap-3">
-        <button class="btn primary" disabled="@SubmitDisabled" @onclick="SaveDraftAsync">Save Draft</button>
-        @if (HasDraft)
+        <button class="btn primary" disabled="@SubmitDisabled" @onclick="ReviseAsync">Publish</button>
+        <a class="btn" href="@(Page is null ? WikiState.Link() : WikiState.LinkHere())">Cancel</a>
+        @if (Page is not null)
         {
-            <button class="btn" @onclick="LoadDraftAsync">Load Saved Draft</button>
-            <button class="btn warning" disabled="@SubmitDisabled" @onclick="DeleteDraftAsync">Delete Saved Draft</button>
+            <button class="btn danger" @onclick="DeleteAsync">Delete</button>
         }
     </div>
+    @if (AllowDrafts)
+    {
+        <div class="d-flex flex-wrap m-3 gap-3">
+            <button class="btn primary" disabled="@SubmitDisabled" @onclick="SaveDraftAsync">Save Draft</button>
+            @if (HasDraft)
+            {
+                <button class="btn" @onclick="LoadDraftAsync">Load Saved Draft</button>
+                <button class="btn warning" disabled="@SubmitDisabled" @onclick="DeleteDraftAsync">Delete Saved Draft</button>
+            }
+        </div>
+    }
 }
 @if (Page?.Transclusions is not null && Page.Transclusions.Count > 0)
 {

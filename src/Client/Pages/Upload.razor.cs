@@ -22,11 +22,11 @@ public partial class Upload : OfflineSupportComponent
 
     private string? Content { get; set; }
 
-    [Inject] private DialogService DialogService { get; set; } = default!;
+    [Inject, NotNull] private DialogService? DialogService { get; set; }
 
     private string DragAreaClass { get; set; } = _baseDragAreaClass;
 
-    private List<IWikiOwner> Editors { get; set; } = new();
+    private List<IWikiOwner> Editors { get; set; } = [];
 
     private bool EditorSelf { get; set; }
 
@@ -36,11 +36,13 @@ public partial class Upload : OfflineSupportComponent
 
     private bool InsufficientSpace { get; set; }
 
+    [CascadingParameter] private bool IsInteractive { get; set; }
+
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
     private bool NotAuthorized { get; set; }
 
-    private List<IWikiOwner> Owner { get; set; } = new();
+    private List<IWikiOwner> Owner { get; set; } = [];
 
     private bool OwnerSelf { get; set; }
 
@@ -53,7 +55,7 @@ public partial class Upload : OfflineSupportComponent
 
     private string? Title { get; set; }
 
-    private List<IWikiOwner> Viewers { get; set; } = new();
+    private List<IWikiOwner> Viewers { get; set; } = [];
 
     private bool ViewerSelf { get; set; }
 
@@ -215,14 +217,14 @@ public partial class Upload : OfflineSupportComponent
                     new System.Net.Http.Headers.MediaTypeHeaderValue("application/json")),
                 "\"options\"");
 
-            var isOfflineDomain = false;
-            if (!string.IsNullOrEmpty(WikiState.WikiDomain)
+            var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
+            if (!isLocal
+                && !string.IsNullOrEmpty(WikiState.WikiDomain)
                 && WikiBlazorClientOptions.IsOfflineDomain is not null)
             {
-                isOfflineDomain = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+                isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
             }
-            if (!isOfflineDomain
-                && !string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute))
+            if (!isLocal && HttpClient is not null)
             {
                 var response = await HttpClient.PostAsync(
                     $"{WikiBlazorClientOptions.WikiServerApiRoute}/upload",

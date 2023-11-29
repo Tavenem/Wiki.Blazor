@@ -51,8 +51,7 @@ public class WikiBlazorClientOptions
 
     /// <summary>
     /// <para>
-    /// The type of an optional component (typically containing an <see
-    /// cref="Tavenem.Blazor.Framework.AppBar"/>) which will appear at the top of wiki pages.
+    /// The type of an optional component which will appear at the top of wiki pages.
     /// </para>
     /// <para>
     /// The type must implement <see cref="IComponent"/>, and require no parameters.
@@ -216,8 +215,9 @@ public class WikiBlazorClientOptions
     /// <remarks>
     /// <para>
     /// If the local <see cref="DataStore"/> has also been defined, the client will try to reach the
-    /// server first for all wiki operations. If the server cannot be reached or the requested
-    /// content is unavailable at the server, the client will fall back to the local data store.
+    /// server first for all wiki operations. If this property is left empty, or the server cannot
+    /// be reached, or the requested content is unavailable at the server, the client will fall back
+    /// to the local data store.
     /// </para>
     /// <para>
     /// If both the server and the local data store are unavailable, the wiki will remain

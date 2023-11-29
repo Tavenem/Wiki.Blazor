@@ -42,7 +42,7 @@ public partial class UserSelector : OfflineSupportComponent
     /// <summary>
     /// The list of deselected users.
     /// </summary>
-    [Parameter] public List<IWikiOwner> DeselectedUsers { get; set; } = new();
+    [Parameter] public List<IWikiOwner> DeselectedUsers { get; set; } = [];
 
     /// <summary>
     /// The list of deselected users.
@@ -55,6 +55,11 @@ public partial class UserSelector : OfflineSupportComponent
     [Parameter] public string? HelpText { get; set; }
 
     /// <summary>
+    /// A semicolon-delimited collection of user queries to preselect.
+    /// </summary>
+    [Parameter] public string? InitialUsers { get; set; }
+
+    /// <summary>
     /// A label for the control.
     /// </summary>
     [Parameter] public string? Label { get; set; }
@@ -62,7 +67,7 @@ public partial class UserSelector : OfflineSupportComponent
     /// <summary>
     /// The list of selected users.
     /// </summary>
-    [Parameter] public List<IWikiOwner> SelectedUsers { get; set; } = new();
+    [Parameter] public List<IWikiOwner> SelectedUsers { get; set; } = [];
 
     /// <summary>
     /// The list of selected users.
@@ -86,6 +91,61 @@ public partial class UserSelector : OfflineSupportComponent
     private bool InputDisabled => Disabled || (!Multiple && SelectedUsers.Count > 0);
 
     private string? InputText { get; set; }
+
+    private bool IsInteractive { get; set; }
+
+    /// <inheritdoc />
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(InitialUsers))
+        {
+            return;
+        }
+        foreach (var query in InitialUsers.Split(
+            ';',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            await OnAddUserAsync(query);
+        }
+    }
+
+    /// <inheritdoc />
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsInteractive = true;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Adds a user matching the given search <paramref name="query"/>.
+    /// </summary>
+    /// <param name="query">A wiki user ID or username.</param>
+    /// <returns>
+    /// The added user, if any.
+    /// </returns>
+    /// <remarks>
+    /// Has no effect if no user matches the <paramref name="query"/>.
+    /// </remarks>
+    public async Task<IWikiOwner?> OnAddUserAsync(string query)
+    {
+        var wikiOwner = await FetchDataAsync(
+            $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiowner?query={query}",
+            WikiJsonSerializerContext.Default.IWikiOwner,
+            async user =>
+            {
+                IWikiOwner? wikiOwner = await WikiDataManager.GetWikiUserAsync(user, query);
+                wikiOwner ??= await WikiDataManager.GetWikiGroupAsync(user, query);
+                return wikiOwner;
+            });
+        if (wikiOwner is not null)
+        {
+            await OnAddUserAsync(wikiOwner);
+        }
+        return wikiOwner;
+    }
 
     private static string GetItemStyle(IWikiOwner user)
         => $"background-color:hsl({20 + (user.Id.GetHashCode() % 320)}, --tavenem-color-default-saturation, --tavenem-color-default-lightness)";
@@ -116,14 +176,12 @@ public partial class UserSelector : OfflineSupportComponent
             return;
         }
 
-        if (SelectedUsers.Contains(user))
+        if (SelectedUsers.Remove(user))
         {
-            SelectedUsers.Remove(user);
             DeselectedUsers.Add(user);
         }
-        else if (DeselectedUsers.Contains(user))
+        else if (DeselectedUsers.Remove(user))
         {
-            DeselectedUsers.Remove(user);
             SelectedUsers.Add(user);
         }
         else
@@ -150,19 +208,6 @@ public partial class UserSelector : OfflineSupportComponent
             return;
         }
 
-        var query = InputText.Trim();
-        var wikiOwner = await FetchDataAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiowner?query={query}",
-            WikiJsonSerializerContext.Default.IWikiOwner,
-            async user =>
-            {
-                IWikiOwner? wikiOwner = await WikiDataManager.GetWikiUserAsync(user, query);
-                wikiOwner ??= await WikiDataManager.GetWikiGroupAsync(user, query);
-                return wikiOwner;
-            });
-        if (wikiOwner is not null)
-        {
-            await OnAddUserAsync(wikiOwner);
-        }
+        await OnAddUserAsync(InputText.Trim());
     }
 }

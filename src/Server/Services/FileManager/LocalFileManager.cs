@@ -12,25 +12,11 @@ namespace Tavenem.Wiki.Blazor.Services.FileManager;
 /// in the "files" folder. Files are given random filenames (i.e. the filename specified when
 /// saving is not used to determine the actual name of the file), for security purposes.
 /// </summary>
-public class LocalFileManager : IFileManager
+public class LocalFileManager(
+    IWebHostEnvironment environment,
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<IFileManager> logger) : IFileManager
 {
-    private readonly IWebHostEnvironment _environment;
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly ILogger<IFileManager> _logger;
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="LocalFileManager"/>.
-    /// </summary>
-    public LocalFileManager(
-        IWebHostEnvironment environment,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<IFileManager> logger)
-    {
-        _environment = environment;
-        _httpContextAccessor = httpContextAccessor;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Remove the given file from a persistence store.
     /// </summary>
@@ -49,12 +35,9 @@ public class LocalFileManager : IFileManager
         }
         try
         {
-            var request = _httpContextAccessor.HttpContext?.Request;
-            if (request is null)
-            {
-                throw new Exception("Files cannot be deleted outside of an HTTP request context.");
-            }
-            var filePath = Path.Combine(_environment.WebRootPath, "files", path);
+            var request = (httpContextAccessor.HttpContext?.Request)
+                ?? throw new Exception("Files cannot be deleted outside of an HTTP request context.");
+            var filePath = Path.Combine(environment.WebRootPath, "files", path);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -63,7 +46,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception deleting file at path {Path}", path);
+            logger.LogError(ex, "Exception deleting file at path {Path}", path);
             return new ValueTask<bool>(false);
         }
     }
@@ -109,7 +92,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception getting free storage space for user {User}", user.Id);
+            logger.LogError(ex, "Exception getting free storage space for user {User}", user.Id);
             return 0;
         }
     }
@@ -139,7 +122,7 @@ public class LocalFileManager : IFileManager
         }
         try
         {
-            var filesPath = Path.Combine(_environment.WebRootPath, "files");
+            var filesPath = Path.Combine(environment.WebRootPath, "files");
             if (!Directory.Exists(filesPath))
             {
                 return new ValueTask<long>(0);
@@ -165,7 +148,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception getting storage usage for user {User}", userId);
+            logger.LogError(ex, "Exception getting storage usage for user {User}", userId);
             return new ValueTask<long>(0);
         }
     }
@@ -204,7 +187,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception getting free storage space availability for user {User} for item with size {Size}", user.Id, size);
+            logger.LogError(ex, "Exception getting free storage space availability for user {User} for item with size {Size}", user.Id, size);
             return false;
         }
     }
@@ -225,11 +208,8 @@ public class LocalFileManager : IFileManager
         }
         try
         {
-            var request = _httpContextAccessor.HttpContext?.Request;
-            if (request is null)
-            {
-                throw new Exception("Files cannot be loaded outside of an HTTP request context.");
-            }
+            var request = (httpContextAccessor.HttpContext?.Request)
+                ?? throw new Exception("Files cannot be loaded outside of an HTTP request context.");
             var baseUrl = new Uri(request.Scheme + "://" + request.Host + request.PathBase);
             using var client = new HttpClient { BaseAddress = baseUrl };
             return await client
@@ -238,7 +218,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception loading file at path {Path}", path);
+            logger.LogError(ex, "Exception loading file at path {Path}", path);
             return null;
         }
     }
@@ -263,7 +243,7 @@ public class LocalFileManager : IFileManager
         {
             return null;
         }
-        var filesPath = Path.Combine(_environment.WebRootPath, "files");
+        var filesPath = Path.Combine(environment.WebRootPath, "files");
         try
         {
             if (!Directory.Exists(filesPath))
@@ -273,7 +253,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during 'files' directory creation.");
+            logger.LogError(ex, "Error during 'files' directory creation.");
             return null;
         }
 
@@ -295,7 +275,7 @@ public class LocalFileManager : IFileManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during 'files' subfolder creation for owner {Owner}.", userId);
+                logger.LogError(ex, "Error during 'files' subfolder creation for owner {Owner}.", userId);
                 return null;
             }
             filePath = Path.Combine(ownerPath, filePathName);
@@ -312,7 +292,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception saving file at path {Path}.", filePath);
+            logger.LogError(ex, "Exception saving file at path {Path}.", filePath);
             return null;
         }
 
@@ -341,7 +321,7 @@ public class LocalFileManager : IFileManager
         {
             return null;
         }
-        var filesPath = Path.Combine(_environment.WebRootPath, "files");
+        var filesPath = Path.Combine(environment.WebRootPath, "files");
         try
         {
             if (!Directory.Exists(filesPath))
@@ -351,7 +331,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during 'files' directory creation.");
+            logger.LogError(ex, "Error during 'files' directory creation.");
             return null;
         }
 
@@ -373,7 +353,7 @@ public class LocalFileManager : IFileManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during 'files' subfolder creation for owner {Owner}.", userId);
+                logger.LogError(ex, "Error during 'files' subfolder creation for owner {Owner}.", userId);
                 return null;
             }
             filePath = Path.Combine(ownerPath, filePathName);
@@ -390,7 +370,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception saving file at path {Path}.", filePath);
+            logger.LogError(ex, "Exception saving file at path {Path}.", filePath);
             return null;
         }
 
@@ -415,11 +395,8 @@ public class LocalFileManager : IFileManager
         }
         try
         {
-            var request = _httpContextAccessor.HttpContext?.Request;
-            if (request is null)
-            {
-                throw new Exception("Files cannot be loaded outside of an HTTP request context.");
-            }
+            var request = (httpContextAccessor.HttpContext?.Request)
+                ?? throw new Exception("Files cannot be loaded outside of an HTTP request context.");
             var baseUrl = new Uri(request.Scheme + "://" + request.Host + request.PathBase);
             using var client = new HttpClient { BaseAddress = baseUrl };
             return await client
@@ -428,7 +405,7 @@ public class LocalFileManager : IFileManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception loading file at path {Path}", path);
+            logger.LogError(ex, "Exception loading file at path {Path}", path);
             return null;
         }
     }

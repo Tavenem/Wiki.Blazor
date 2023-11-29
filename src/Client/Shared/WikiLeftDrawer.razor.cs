@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
@@ -17,7 +18,7 @@ public partial class WikiLeftDrawer
     /// </remarks>
     [Parameter] public bool ShowPageTools { get; set; } = true;
 
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 }

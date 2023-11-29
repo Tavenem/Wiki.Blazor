@@ -35,17 +35,19 @@ public partial class EditView : WikiEditComponent
 
     private string? Comment { get; set; }
 
-    [Inject] DialogService DialogService { get; set; } = default!;
+    [Inject, NotNull] DialogService? DialogService { get; set; }
 
-    private List<IWikiOwner> Editors { get; set; } = new();
+    private List<IWikiOwner> Editors { get; set; } = [];
 
     private bool EditorSelf { get; set; }
 
     private bool HasDraft { get; set; } = true;
 
+    [CascadingParameter] private bool IsInteractive { get; set; }
+
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
-    private List<IWikiOwner> Owner { get; set; } = new();
+    private List<IWikiOwner> Owner { get; set; } = [];
 
     private bool OwnerSelf { get; set; }
 
@@ -58,7 +60,7 @@ public partial class EditView : WikiEditComponent
     private bool SubmitDisabled => User is null
         || string.IsNullOrWhiteSpace(Title);
 
-    private List<IWikiOwner> Viewers { get; set; } = new();
+    private List<IWikiOwner> Viewers { get; set; } = [];
 
     private bool ViewerSelf { get; set; }
 

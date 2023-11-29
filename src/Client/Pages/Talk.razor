@@ -1,8 +1,8 @@
-﻿<SyntaxHighlighter Class="wiki-talk-messages">
+﻿<tf-syntax-highlight class="wiki-talk-messages">
     <ul>
         @foreach (var message in TalkMessages)
         {
-            <TalkMessage CanPost="CanTalk && CanPost"
+            <TalkMessage CanPost="CanTalk && CanPost && IsInteractive"
                          Message="message"
                          Post="OnPostAsync"
                          TimezoneOffset="TimezoneOffset"
@@ -13,12 +13,12 @@
     {
         <div class="wiki-talk-nomessages"><p>No messages yet</p></div>
     }
-</SyntaxHighlighter>
-@if (CanPost)
+</tf-syntax-highlight>
+@if (CanPost && IsInteractive)
 {
     <TalkCompose TopicId="@TopicId" Post="OnPostAsync" />
 }
-else if (CanTalk)
+else if (CanTalk && IsInteractive)
 {
     <div class="wiki-talk-signin-prompt">Sign in to post your own messages</div>
 }

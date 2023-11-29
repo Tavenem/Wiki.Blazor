@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Diagnostics.CodeAnalysis;
+using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
 using Tavenem.Wiki.Blazor.Client.Shared;
@@ -28,7 +30,7 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
     /// <summary>
     /// The requested page number.
     /// </summary>
-    [Parameter] public int? PageNumber { get; set; }
+    [Parameter] public long? PageNumber { get; set; }
 
     /// <summary>
     /// The requested page size.
@@ -50,19 +52,73 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
 
     private long? FirstRevision { get; set; }
 
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [CascadingParameter] private bool IsInteractive { get; set; }
+
+    [Inject, NotNull] private IJSRuntime? JSRuntime { get; set; }
+
+    [Inject, NotNull] private QueryStateService? QueryStateService { get; set; }
 
     private IPagedList<RevisionInfo>? Revisions { get; set; }
 
     private long? SecondRevision { get; set; }
 
-    private List<IWikiOwner> SelectedEditor { get; set; } = new();
+    private List<IWikiOwner> SelectedEditor { get; set; } = [];
 
     private TimeSpan TimezoneOffset { get; set; }
+
+    private UserSelector? UserSelector { get; set; }
 
     /// <inheritdoc/>
     protected override Task OnParametersSetAsync()
         => RefreshAsync();
+
+    /// <inheritdoc/>
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        var pageSizes = QueryStateService.RegisterProperty(
+            "pg",
+            "ps",
+            OnPageSizeChangedAsync,
+            50);
+        if (pageSizes?.Count > 0
+            && int.TryParse(pageSizes[0], out var pageSize))
+        {
+            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
+        }
+
+        var starts = QueryStateService.RegisterProperty(
+            "h",
+            "s",
+            OnStartChangedAsync);
+        if (starts?.Count > 0
+            && long.TryParse(starts[0], out var start))
+        {
+            CurrentStart = new DateTimeOffset(start, TimeSpan.Zero);
+        }
+
+        var ends = QueryStateService.RegisterProperty(
+            "h",
+            "e",
+            OnEndChangedAsync,
+            false);
+        if (ends?.Count > 0
+            && long.TryParse(ends[0], out var end))
+        {
+            CurrentEnd = new DateTimeOffset(end, TimeSpan.Zero);
+        }
+
+        var editors = QueryStateService.RegisterProperty(
+            "h",
+            "ed",
+            OnEditorChangedAsync,
+            false);
+        if (editors?.Count > 0)
+        {
+            Editor = editors[0];
+        }
+    }
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -107,10 +163,18 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
     protected override async Task RefreshAsync()
     {
         Revisions = null;
+        CurrentEnd = End.HasValue
+            ? new DateTimeOffset(End.Value, TimeSpan.Zero)
+            : null;
+        CurrentPageNumber = (ulong)Math.Max(0, PageNumber ?? 1);
+        CurrentPageSize = PageSize ?? 50;
+        CurrentStart = Start.HasValue
+            ? new DateTimeOffset(Start.Value, TimeSpan.Zero)
+            : null;
 
         var request = new HistoryRequest(
             new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain),
-            PageNumber ?? 1,
+            (int)CurrentPageNumber,
             PageSize ?? 50,
             Editor,
             Start,
@@ -156,35 +220,95 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
             query: $"rev={FirstRevision.Value}&diff={SecondRevision.Value}"));
     }
 
-    private void OnFilter() => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(
-        new Dictionary<string, object?>
+    private async Task OnEditorChangedAsync(QueryChangeEventArgs args)
+    {
+        if (UserSelector is not null
+            && !string.Equals(args.Value, Editor))
         {
-            { nameof(Wiki.Editor), SelectedEditor.FirstOrDefault()?.Id },
-            { nameof(Wiki.End), CurrentEnd },
-            { nameof(Wiki.Start), CurrentStart },
-        }));
+            Editor = args.Value;
+            var editor = string.IsNullOrEmpty(args.Value)
+                ? null
+                : await UserSelector.OnAddUserAsync(args.Value);
+            SelectedEditor = editor is null
+                ? []
+                : [editor];
+            await RefreshAsync();
+        }
+    }
 
-    private void OnNextRequested()
+    private async Task OnEndChangedAsync(QueryChangeEventArgs args)
+    {
+        if (long.TryParse(args.Value, out var end)
+            && end != CurrentEnd?.Ticks)
+        {
+            CurrentEnd = new DateTimeOffset(end, TimeSpan.Zero);
+            End = end;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnFilterAsync()
+    {
+        Editor = SelectedEditor.FirstOrDefault()?.Id;
+        End = CurrentEnd?.UtcTicks;
+        Start = CurrentStart?.UtcTicks;
+
+        QueryStateService.SetPropertyValue(
+            "h",
+            "ed",
+            Editor);
+
+        QueryStateService.SetPropertyValue(
+            "h",
+            "e",
+            End);
+
+        QueryStateService.SetPropertyValue(
+            "h",
+            "s",
+            Start);
+
+        await RefreshAsync();
+    }
+
+    private async Task OnNextRequestedAsync()
     {
         if (Revisions?.HasNextPage == true)
         {
             CurrentPageNumber++;
-            NavigationManager.NavigateTo(
-                NavigationManager.GetUriWithQueryParameter(
-                    nameof(Wiki.PageNumber),
-                    (int)(CurrentPageNumber + 1)));
+            PageNumber = (long)CurrentPageNumber;
+            await RefreshAsync();
         }
     }
 
-    private void OnPageNumberChanged() => NavigationManager.NavigateTo(
-        NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.PageNumber),
-            (int)(CurrentPageNumber + 1)));
+    private async Task OnPageNumberChangedAsync()
+    {
+        PageNumber = (long)CurrentPageNumber;
+        await RefreshAsync();
+    }
 
-    private void OnPageSizeChanged() => NavigationManager.NavigateTo(
-        NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.PageSize),
-            CurrentPageSize));
+    private async Task OnPageSizeChangedAsync()
+    {
+        PageSize = CurrentPageSize;
+
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "ps",
+            CurrentPageSize);
+
+        await RefreshAsync();
+    }
+
+    private async Task OnPageSizeChangedAsync(QueryChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value, out var pageSize)
+            && pageSize != CurrentPageSize)
+        {
+            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
+            PageSize = CurrentPageSize;
+            await RefreshAsync();
+        }
+    }
 
     private void OnSelectRevision(RevisionInfo revision, bool value)
     {
@@ -212,6 +336,17 @@ public partial class HistoryView : OfflineSupportComponent, IAsyncDisposable
                 FirstRevision = SecondRevision;
                 SecondRevision = null;
             }
+        }
+    }
+
+    private async Task OnStartChangedAsync(QueryChangeEventArgs args)
+    {
+        if (long.TryParse(args.Value, out var start)
+            && start != CurrentStart?.Ticks)
+        {
+            CurrentStart = new DateTimeOffset(start, TimeSpan.Zero);
+            Start = start;
+            await RefreshAsync();
         }
     }
 }

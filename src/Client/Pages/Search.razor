@@ -2,22 +2,33 @@
 
 <div style="min-height: 7.5rem">
     <div class="d-flex flex-wrap align-items-center gap-3">
-        <TextInput Autocomplete="false"
-                    LoadSuggestions="GetSearchSuggestions"
-                    Placeholder="Search the wiki"
-                    @bind-Value="@CurrentQuery"
-                    role="search">
-            <PostfixContent>
-                <button class="btn btn-icon" @onclick="OnSearch">
-                    <tf-icon>search</tf-icon>
-                </button>
-            </PostfixContent>
-        </TextInput>
+        @if (IsInteractive)
+        {
+            <TextInput Autocomplete="false"
+                       LoadSuggestions="GetSearchSuggestions"
+                       Placeholder="Search the wiki"
+                       @bind-Value="@CurrentQuery"
+                       role="search">
+                <PostfixContent>
+                    <button class="btn btn-icon" @onclick="OnSearchAsync">
+                        <tf-icon>search</tf-icon>
+                    </button>
+                </PostfixContent>
+            </TextInput>
+        }
+        else
+        {
+            <span>Search query: <span>@CurrentQuery</span></span>
+        }
         @if (Result is not null)
         {
             <div class="wiki-search-resultcount">
                 <span>Results</span>
-                <strong>@((Result.SearchHits.FirstIndexOnPage + 1).ToString("N0")) &mdash; @((Result.SearchHits.LastIndexOnPage + 1).ToString("N0"))</strong>
+                <strong>
+                    <span>@((Result.SearchHits.FirstIndexOnPage + 1).ToString("N0"))</span>
+                    <span>&mdash;</span>
+                    <span>@((Result.SearchHits.LastIndexOnPage + 1).ToString("N0"))</span>
+                </strong>
                 @if (Result.SearchHits.TotalCount.HasValue)
                 {
                     <span>of</span>
@@ -26,31 +37,72 @@
             </div>
         }
     </div>
-    <Collapse Title="Advanced search:" class="wiki-search-advanced">
-        <TextInput Label="Restrict results to Domain" @bind-Value="CurrentDomain" />
-        <TextInput Label="Restrict results to Namespace"
-                    @bind-Value="CurrentNamespace"
-                    DisplayHelpTextOnFocus="true"
-                    HelpText="Multiple namespaces can be separated with semicolons (;). Exclude a namespace by prefixing it with '!'" />
-        <TextInput Label="Restrict results to Owner(s)"
-                    @bind-Value="CurrentOwner"
-                    DisplayHelpTextOnFocus="true"
-                    HelpText="Specify an owner by ID or name. Multiple owners can be separated with semicolons (;). Exclude an owner by prefixing it with '!'" />
-        <UserSelector Label="Restrict results to Owner(s)"
-                        Multiple="true"
-                        @bind-DeselectedUsers="DeselectedOwners"
-                        @bind-SelectedUsers="SelectedOwners"
-                        DisplayHelpTextOnFocus="true"
-                        HelpText="Specify one or more owners. Exclude an owner by clicking the chip." />
-        <Select Label="Sort by" @bind-Value="CurrentSort">
-            <Option Label="Default" Value="@("default")" />
-            <Option Label="Last revision date/time" Value="@("timestamp")" />
-        </Select>
-        <Switch Label="Descending"
-                UncheckedLabel="Ascending"
-                @bind-Value="CurrentDescending" />
-        <button class="btn primary" @onclick="OnSetSearch">Filter</button>
-    </Collapse>
+    @if (IsInteractive)
+    {
+        <Collapse Title="Advanced search:" class="wiki-search-advanced">
+            <TextInput Label="Restrict results to Domain" @bind-Value="CurrentDomain" />
+            <TextInput Label="Restrict results to Namespace"
+                       @bind-Value="CurrentNamespace"
+                       DisplayHelpTextOnFocus="true"
+                       HelpText="Multiple namespaces can be separated with semicolons (;). Exclude a namespace by prefixing it with '!'" />
+            <TextInput Label="Restrict results to Owner(s)"
+                       @bind-Value="CurrentOwner"
+                       DisplayHelpTextOnFocus="true"
+                       HelpText="Specify an owner by ID or name. Multiple owners can be separated with semicolons (;). Exclude an owner by prefixing it with '!'" />
+            <UserSelector Label="Restrict results to Owner(s)"
+                          Multiple="true"
+                          @bind-DeselectedUsers="DeselectedOwners"
+                          @bind-SelectedUsers="SelectedOwners"
+                          DisplayHelpTextOnFocus="true"
+                          HelpText="Specify one or more owners. Exclude an owner by clicking the chip."
+                          InitialUsers="@CurrentOwner" />
+            <Select Label="Sort by" @bind-Value="CurrentSort">
+                <Option Label="Default" Value="@("default")" />
+                <Option Label="Last revision date/time" Value="@("timestamp")" />
+            </Select>
+            <Switch Label="Descending"
+                    UncheckedLabel="Ascending"
+                    @bind-Value="CurrentDescending" />
+            <button class="btn primary" @onclick="OnSetSearchAsync">Filter</button>
+        </Collapse>
+    }
+    else if (!string.IsNullOrEmpty(CurrentDomain)
+        || !string.IsNullOrEmpty(CurrentNamespace)
+        || !string.IsNullOrEmpty(CurrentOwner)
+        || CurrentDescending)
+    {
+        <Collapse Title="Advanced search:" class="wiki-search-advanced">
+            @if (!string.IsNullOrEmpty(CurrentDomain))
+            {
+                <p>Restrict results to Domain: <span>@CurrentDomain</span></p>
+            }
+            @if (!string.IsNullOrEmpty(CurrentNamespace))
+            {
+                <p>Restrict results to Namespace(s): <span>@CurrentNamespace</span></p>
+                @if (CurrentNamespace.Contains('!'))
+                {
+                    <p class="text-muted">Excluded namespaces are prefixed with '!'</p>
+                }
+            }
+            @if (!string.IsNullOrEmpty(CurrentOwner))
+            {
+                <UserSelector Label="Restrict results to Owner(s)"
+                              Multiple="true"
+                              @bind-DeselectedUsers="DeselectedOwners"
+                              @bind-SelectedUsers="SelectedOwners"
+                              DisplayHelpTextOnFocus="true"
+                              InitialUsers="@CurrentOwner" />
+            }
+            @if (CurrentSort?.Equals("timestamp") == true)
+            {
+                <p>Sorted by: Last revision date/time</p>
+            }
+            @if (CurrentDescending)
+            {
+                <p>Descending</p>
+            }
+        </Collapse>
+    }
 </div>
 <div class="wiki-search-results">
     @if (ExactMatch is not null)
@@ -79,18 +131,27 @@
         @if (Result.SearchHits.TotalPages > 1)
         {
             <div class="d-flex flex-wrap align-items-baseline gap-3">
-                <Pagination @bind-CurrentPage="CurrentPageNumber"
-                            @bind-CurrentPage:after="OnPageNumberChanged"
-                            NextRequested="OnNextRequested"
-                            PageCount="(ulong?)Result?.SearchHits.TotalPages" />
-                <Select Label="Number of results per page:"
-                        @bind-Value="CurrentPageSize"
-                        @bind-Value:after="OnPageSizeChanged"
-                        Class="dense">
-                    <Option Label="50" Value="50" />
-                    <Option Label="100" Value="100" />
-                    <Option Label="200" Value="200" />
-                </Select>
+                <Pagination Id="pg"
+                            @bind-CurrentPage="CurrentPageNumber"
+                            @bind-CurrentPage:after="OnPageNumberChangedAsync"
+                            NextRequested="OnNextRequestedAsync"
+                            PageCount="(ulong?)Result?.SearchHits.TotalPages"
+                            PersistState="true" />
+                @if (IsInteractive)
+                {
+                    <Select Label="Number of results per page:"
+                            @bind-Value="CurrentPageSize"
+                            @bind-Value:after="OnPageSizeChangedAsync"
+                            Class="dense">
+                        <Option Label="50" Value="50" />
+                        <Option Label="100" Value="100" />
+                        <Option Label="200" Value="200" />
+                    </Select>
+                }
+                else
+                {
+                    <span>Number of results per page: <span>@CurrentPageSize</span></span>
+                }
             </div>
         }
     }

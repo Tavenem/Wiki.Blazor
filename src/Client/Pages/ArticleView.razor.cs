@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 using Tavenem.Blazor.Framework;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -6,12 +7,8 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// The article view.
 /// </summary>
-public partial class ArticleView : IDisposable
+public partial class ArticleView
 {
-    private readonly List<HeadingInfo> _headings = new();
-
-    private bool _disposedValue;
-
     /// <summary>
     /// The article to display.
     /// </summary>
@@ -25,7 +22,7 @@ public partial class ArticleView : IDisposable
     /// <summary>
     /// The content to display.
     /// </summary>
-    [Parameter] public MarkupString? Content { get; set; }
+    [Parameter] public MarkupString Content { get; set; }
 
     /// <summary>
     /// Whether to display a diff.
@@ -41,13 +38,13 @@ public partial class ArticleView : IDisposable
 
     private Type? FrontMatterType { get; set; }
 
-    private Dictionary<string, object> FrontEndMatterParameters { get; set; } = new();
+    private Dictionary<string, object> FrontEndMatterParameters { get; set; } = [];
 
     [CascadingParameter] private FrameworkLayout? FrameworkLayout { get; set; }
 
-    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
 
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
     /// <inheritdoc/>
     protected override void OnParametersSet()
@@ -70,69 +67,5 @@ public partial class ArticleView : IDisposable
 
         EndMatterType = WikiBlazorClientOptions.GetArticleEndMatter(Page);
         FrontMatterType = WikiBlazorClientOptions.GetArticleFrontMatter(Page);
-
-        ClearHeadings();
-        if (FrameworkLayout is not null)
-        {
-            var topHeading = new HeadingInfo()
-            {
-                Id = "wiki-main-heading",
-                Level = HeadingLevel.H1,
-                Title = "[Top]",
-            };
-            _headings.Add(topHeading);
-            FrameworkLayout.AddHeading(topHeading);
-            if (Page.Headings is not null)
-            {
-                foreach (var heading in Page.Headings.Where(x => !string.IsNullOrWhiteSpace(x.Text)))
-                {
-                    var headingInfo = new HeadingInfo()
-                    {
-                        Id = heading.Id,
-                        Level = (HeadingLevel)Math.Clamp(heading.OffsetLevel, 1, 6),
-                        Title = heading.Text,
-                    };
-                    _headings.Add(headingInfo);
-                    FrameworkLayout.AddHeading(headingInfo);
-                }
-            }
-        }
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        Dispose(disposing: true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <summary>
-    /// Performs application-defined tasks associated with freeing, releasing, or resetting
-    /// unmanaged resources.
-    /// </summary>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposedValue)
-        {
-            if (disposing)
-            {
-                ClearHeadings();
-            }
-
-            _disposedValue = true;
-        }
-    }
-
-    private void ClearHeadings()
-    {
-        if (FrameworkLayout is not null
-            && _headings.Count > 0)
-        {
-            foreach (var heading in _headings)
-            {
-                FrameworkLayout.RemoveHeading(heading);
-            }
-        }
     }
 }

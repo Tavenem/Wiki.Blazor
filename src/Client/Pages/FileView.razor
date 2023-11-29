@@ -22,5 +22,5 @@ else
         <a href="@WikiFile.FilePath" title="View this file">@WikiFile.Title</a>
         <span>(file size: @WikiFile.GetFileSizeString(WikiFile.FileSize), MIME type: @WikiFile.FileType)</span>
     </p>
-    <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
+    <tf-syntax-highlight class="wiki-parser-output">@Content</tf-syntax-highlight>
 }

@@ -62,22 +62,35 @@ else
 {
     <p>This form allows authorized users to upload files to the wiki.</p>
     <p>
-        Images will be avilable for embedding in wiki articles. Many common audio/video files can
+        Images will be available for embedding in wiki articles. Many common audio/video files can
         also be embedded. Other file types will only be available as links to their wiki page, where
         the file can be either downloaded, or viewed in the browser when applicable.
     </p>
     <p>
         @if (!string.IsNullOrWhiteSpace(WikiOptions.CopyrightPageTitle))
         {
-            <span>Please note that all files submitted to this wiki are implicitly made available under the terms of the site's <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</span>
+            <span>
+                Please note that all files submitted to this wiki are implicitly made available
+                under the terms of the site's <a
+                href="@WikiState.Link(WikiOptions.CopyrightPageTitle,
+                WikiOptions.SystemNamespace)">copyright policy</a>.
+            </span>
             @if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
             {
-                <span>Other <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to content policies, may also apply.</span>
+                <span>
+                    Other <a href="@WikiState.Link(WikiOptions.PolicyPageTitle,
+                    WikiOptions.SystemNamespace)">policies</a>, including but not limited to content
+                    policies, may also apply.
+                </span>
             }
         }
         else if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
         {
-            <span>Please note that all files submitted to this wiki are subject to the site's <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</span>
+            <span>
+                Please note that all files submitted to this wiki are subject to the site's <a
+                href="@WikiState.Link(WikiOptions.PolicyPageTitle,
+                WikiOptions.SystemNamespace)">policies</a>.
+            </span>
         }
         else
         {
@@ -93,22 +106,25 @@ else
         </span>
     </p>
     <h2>Upload</h2>
-    <div class="@DragAreaClass"
-         style="border-style: dashed; border-width: 2px; height: 10rem"
-         @ondragenter="OnDragEnter"
-         @ondragleave="OnDragEnd"
-         @ondragend="OnDragEnd">
-         <InputFile OnChange="OnInputChanged" style="height: 100%; opacity: 0; overflow: hidden; position: absolute; width: 100%; z-index: 2" />
-         <h6>Drag and drop a file, or click here to browse your device</h6>
-         @if (File is not null)
-         {
-             <span class="chip primary">@(FileName ?? "file")</span>
-         }
-    </div>
-    <div class="d-flex justify-content-center">
-        <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
-    </div>
-    <TextInput Label="Title" @bind-Value="Title" Required="true" Validation="TitleValidation" />
+    @if (IsInteractive)
+    {
+        <div class="@DragAreaClass"
+             style="border-style: dashed; border-width: 2px; height: 10rem"
+             @ondragenter="OnDragEnter"
+             @ondragleave="OnDragEnd"
+             @ondragend="OnDragEnd">
+             <InputFile OnChange="OnInputChanged" style="height: 100%; opacity: 0; overflow: hidden; position: absolute; width: 100%; z-index: 2" />
+             <h6>Drag and drop a file, or click here to browse your device</h6>
+             @if (File is not null)
+             {
+                 <span class="chip primary">@(FileName ?? "file")</span>
+             }
+        </div>
+        <div class="d-flex justify-content-center">
+            <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+        </div>
+        <TextInput Label="Title" @bind-Value="Title" Required="true" Validation="TitleValidation" />
+    }
     <Tabs TTabItem="object">
         <TabPanel Title="Editor">
             <Editor Height="20rem"
@@ -126,40 +142,43 @@ else
             </TabPanel>
         }
     </Tabs>
-    <TextInput Label="Revision comment"
-               @bind-Value="Comment"
-               Spellcheck="true"
-               DisplayHelpTextOnFocus="true"
-               HelpText="Briefly describe your changes" />
-    <div class="d-flex flex-wrap gap-3 align-items-center">
-        <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
-        <UserSelector Label="Owner (optional)"
-                      @bind-SelectedUsers="Owner"
-                      AllowGroups="true"
-                      Disabled="OwnerSelf"
-                      DisplayHelpTextOnFocus="true"
-                      HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
-    </div>
-    <div class="d-flex flex-wrap gap-3 align-items-center">
-        <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
-        <UserSelector Label="Allowed editors (optional)"
-                      @bind-SelectedUsers="Editors"
-                      AllowGroups="true"
-                      Disabled="EditorSelf || NoOwner"
-                      Multiple="true"
-                      DisplayHelpTextOnFocus="true"
-                      HelpText="May be users or groups. The owner is automatically included." />
-    </div>
-    <div class="d-flex flex-wrap gap-3 align-items-center">
-        <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
-        <UserSelector Label="Allowed viewers (optional)"
-                      @bind-SelectedUsers="Viewers"
-                      AllowGroups="true"
-                      Disabled="ViewerSelf || NoOwner"
-                      Multiple="true"
-                      DisplayHelpTextOnFocus="true"
-                      HelpText="May be users or groups. The owner is automatically included." />
-    </div>
+    @if (IsInteractive)
+    {
+        <TextInput Label="Revision comment"
+                   @bind-Value="Comment"
+                   Spellcheck="true"
+                   DisplayHelpTextOnFocus="true"
+                   HelpText="Briefly describe your changes" />
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
+            <UserSelector Label="Owner (optional)"
+                          @bind-SelectedUsers="Owner"
+                          AllowGroups="true"
+                          Disabled="OwnerSelf"
+                          DisplayHelpTextOnFocus="true"
+                          HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
+            <UserSelector Label="Allowed editors (optional)"
+                          @bind-SelectedUsers="Editors"
+                          AllowGroups="true"
+                          Disabled="EditorSelf || NoOwner"
+                          Multiple="true"
+                          DisplayHelpTextOnFocus="true"
+                          HelpText="May be users or groups. The owner is automatically included." />
+        </div>
+        <div class="d-flex flex-wrap gap-3 align-items-center">
+            <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
+            <UserSelector Label="Allowed viewers (optional)"
+                          @bind-SelectedUsers="Viewers"
+                          AllowGroups="true"
+                          Disabled="ViewerSelf || NoOwner"
+                          Multiple="true"
+                          DisplayHelpTextOnFocus="true"
+                          HelpText="May be users or groups. The owner is automatically included." />
+        </div>
+    }
     <div class="wiki-edit-terms-notice">
         @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
         {
@@ -189,9 +208,12 @@ else
             </div>
         }
     </div>
-    <div class="d-flex flex-wrap m-3 gap-3 justify-content-center">
-        <button class="btn primary" disabled="@SubmitDisabled" @onclick="@(_ => UploadAsync())">Upload</button>
-        <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
-        <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
-    </div>
+    @if (IsInteractive)
+    {
+        <div class="d-flex flex-wrap m-3 gap-3 justify-content-center">
+            <button class="btn primary" disabled="@SubmitDisabled" @onclick="@(_ => UploadAsync())">Upload</button>
+            <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
+            <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+        </div>
+    }
 }

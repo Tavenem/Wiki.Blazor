@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
+using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Blazor.Services.Search;
 
@@ -18,7 +19,7 @@ public partial class Search : OfflineSupportComponent
     /// <summary>
     /// The requested page number.
     /// </summary>
-    [Parameter] public int? PageNumber { get; set; }
+    [Parameter] public long? PageNumber { get; set; }
 
     /// <summary>
     /// The requested page size.
@@ -66,19 +67,71 @@ public partial class Search : OfflineSupportComponent
 
     private string? CurrentSort { get; set; }
 
-    private List<IWikiOwner> DeselectedOwners { get; set; } = new();
+    private List<IWikiOwner> DeselectedOwners { get; set; } = [];
+
+    [CascadingParameter] private bool IsInteractive { get; set; }
 
     private Page? ExactMatch { get; set; }
 
+    [Inject, NotNull] private QueryStateService? QueryStateService { get; set; }
+
     private ISearchResult? Result { get; set; }
 
-    [Inject] ISearchClient SearchClient { get; set; } = default!;
+    [Inject, NotNull] ISearchClient? SearchClient { get; set; }
 
-    private List<IWikiOwner> SelectedOwners { get; set; } = new();
+    private List<IWikiOwner> SelectedOwners { get; set; } = [];
 
     /// <inheritdoc/>
     protected override Task OnParametersSetAsync()
         => RefreshAsync();
+
+    /// <inheritdoc/>
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        var pageSizes = QueryStateService.RegisterProperty(
+            "pg",
+            "ps",
+            OnPageSizeChangedAsync,
+            50);
+        if (pageSizes?.Count > 0
+            && int.TryParse(pageSizes[0], out var pageSize))
+        {
+            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
+        }
+
+        var sorts = QueryStateService.RegisterProperty(
+            "pg",
+            "s",
+            OnSortChangedAsync,
+            50);
+        if (sorts?.Count > 0)
+        {
+            CurrentSort = sorts[0];
+        }
+
+        var descendings = QueryStateService.RegisterProperty(
+            "pg",
+            "d",
+            OnDescendingChangedAsync,
+            false);
+        if (descendings?.Count > 0
+            && bool.TryParse(descendings[0], out var descending))
+        {
+            CurrentDescending = descending;
+        }
+
+        var filters = QueryStateService.RegisterProperty(
+            "pg",
+            "f",
+            OnFilterChangedAsync,
+            false);
+        if (filters?.Count > 0)
+        {
+            CurrentQuery = filters[0];
+        }
+    }
 
     /// <inheritdoc/>
     protected override async Task RefreshAsync()
@@ -87,10 +140,12 @@ public partial class Search : OfflineSupportComponent
         CurrentDomain = SearchDomain;
         CurrentNamespace = SearchNamespace;
         CurrentOwner = SearchOwner;
-        CurrentQuery = Query?.Trim() ?? string.Empty;
-        CurrentPageNumber = (ulong)Math.Max(0, (PageNumber ?? 1) - 1);
-        CurrentPageSize = PageSize ?? 50;
-        CurrentSort = Sort;
+        CurrentQuery = Query?.Trim();
+        CurrentPageNumber = (ulong)Math.Max(1, PageNumber ?? 1);
+        CurrentPageSize = Math.Clamp(PageSize ?? 50, 5, 200);
+        CurrentSort = string.Equals(Sort, "timestamp")
+            ? Sort
+            : "default";
         Result = null;
         ExactMatch = null;
 
@@ -122,10 +177,6 @@ public partial class Search : OfflineSupportComponent
         Result = results;
     }
 
-    [UnconditionalSuppressMessage(
-        "Trimming",
-        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "List<string> will not be trimmed.")]
     private async Task<IEnumerable<KeyValuePair<string, object>>> GetSearchSuggestions(string input)
     {
         if (string.IsNullOrEmpty(input))
@@ -135,6 +186,7 @@ public partial class Search : OfflineSupportComponent
 
         var suggestions = await FetchDataAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/searchsuggest?input={input}",
+            WikiBlazorJsonSerializerContext.Default.ListString,
             async user => await WikiDataManager.GetSearchSuggestionsAsync(
                 SearchClient,
                 user,
@@ -143,44 +195,115 @@ public partial class Search : OfflineSupportComponent
             ?? Enumerable.Empty<KeyValuePair<string, object>>();
     }
 
-    private void OnNextRequested()
+    private async Task OnDescendingChangedAsync(QueryChangeEventArgs args)
     {
-        if (Result?.SearchHits.HasNextPage == true)
+        if (bool.TryParse(args.Value, out var descending)
+            && descending != CurrentDescending)
         {
-            CurrentPageNumber++;
-            NavigationManager.NavigateTo(
-                NavigationManager.GetUriWithQueryParameter(
-                    nameof(Wiki.PageNumber),
-                    (int)(CurrentPageNumber + 1)));
+            CurrentDescending = descending;
+            Descending = descending;
+            await RefreshAsync();
         }
     }
 
-    private void OnPageNumberChanged() => NavigationManager.NavigateTo(
-        NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.PageNumber),
-            (int)(CurrentPageNumber + 1)));
+    private async Task OnFilterChangedAsync(QueryChangeEventArgs args)
+    {
+        if (!string.Equals(args.Value, CurrentQuery))
+        {
+            Query = args.Value;
+            CurrentQuery = args.Value;
+            await RefreshAsync();
+        }
+    }
 
-    private void OnPageSizeChanged() => NavigationManager.NavigateTo(
-        NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.PageSize),
-            CurrentPageSize));
+    private async Task OnNextRequestedAsync()
+    {
+        if (Result?.SearchHits?.HasNextPage == true)
+        {
+            CurrentPageNumber++;
+            PageNumber = (long)CurrentPageNumber;
+            await RefreshAsync();
+        }
+    }
 
-    private void OnSearch()
+    private async Task OnPageNumberChangedAsync()
+    {
+        PageNumber = (long)CurrentPageNumber;
+        await RefreshAsync();
+    }
+
+    private async Task OnPageSizeChangedAsync()
+    {
+        PageSize = CurrentPageSize;
+
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "ps",
+            CurrentPageSize);
+
+        await RefreshAsync();
+    }
+
+    private async Task OnPageSizeChangedAsync(QueryChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value, out var pageSize)
+            && pageSize != CurrentPageSize)
+        {
+            CurrentPageSize = Math.Clamp(pageSize, 5, 200);
+            PageSize = CurrentPageSize;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnSearchAsync()
     {
         if (string.IsNullOrWhiteSpace(CurrentQuery))
         {
             return;
         }
 
-        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
-        {
-            { nameof(Wiki.Filter), CurrentQuery.Trim() },
-            { nameof(Wiki.PageNumber), 1 },
-        }));
+        Query = CurrentQuery.Trim();
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "f",
+            Query);
+
+        PageNumber = 1;
+        CurrentPageNumber = 1;
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "p",
+            Query);
+
+        await RefreshAsync();
     }
 
-    private void OnSetSearch()
+    private async Task OnSetSearchAsync()
     {
+        Descending = CurrentDescending;
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "d",
+            CurrentDescending);
+
+        Descending = CurrentDescending;
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "d",
+            CurrentDescending);
+
+        SearchDomain = CurrentDomain;
+        QueryStateService.SetPropertyValue(
+            "s",
+            "d",
+            CurrentDomain);
+
+        SearchNamespace = CurrentNamespace;
+        QueryStateService.SetPropertyValue(
+            "s",
+            "n",
+            CurrentNamespace);
+
         string? owners = null;
         if (SelectedOwners is not null)
         {
@@ -198,15 +321,32 @@ public partial class Search : OfflineSupportComponent
                 owners += ';' + nonOwners;
             }
         }
-        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+
+        CurrentOwner = owners;
+        SearchOwner = CurrentOwner;
+        QueryStateService.SetPropertyValue(
+            "s",
+            "o",
+            owners);
+
+        Sort = string.Equals(CurrentSort, "timestamp")
+            ? CurrentSort
+            : null;
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "s",
+            Sort);
+
+        await RefreshAsync();
+    }
+
+    private async Task OnSortChangedAsync(QueryChangeEventArgs args)
+    {
+        if (!string.Equals(args.Value, CurrentSort))
         {
-            { nameof(Wiki.Descending), CurrentDescending },
-            { nameof(Wiki.SearchDomain), CurrentDomain },
-            { nameof(Wiki.SearchNamespace), CurrentNamespace },
-            { nameof(Wiki.SearchOwner), owners },
-            { nameof(Wiki.Sort), string.Equals(CurrentSort, "timestamp")
-                ? CurrentSort
-                : null },
-        }));
+            Sort = args.Value;
+            CurrentSort = args.Value;
+            await RefreshAsync();
+        }
     }
 }

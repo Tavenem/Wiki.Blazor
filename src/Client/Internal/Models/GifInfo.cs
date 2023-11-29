@@ -1,7 +1,7 @@
 ﻿namespace Tavenem.Wiki.Blazor.Client.Internal.Models;
 
 /// <summary>
-/// Used by javascript interop.
+/// Used by JavaScript interop.
 /// </summary>
 public class GifInfo
 {

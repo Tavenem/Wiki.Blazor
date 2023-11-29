@@ -119,7 +119,7 @@ public class WikiDataManager(
         List<string>? allAllowedEditors = null;
         if (request.EditorSelf)
         {
-            allAllowedEditors = new List<string>();
+            allAllowedEditors = [];
         }
         else if (request.AllowedEditors is not null)
         {
@@ -129,7 +129,7 @@ public class WikiDataManager(
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
-                    (allAllowedEditors ??= new()).Add(editor.Id);
+                    (allAllowedEditors ??= []).Add(editor.Id);
                 }
             }
         }
@@ -143,7 +143,7 @@ public class WikiDataManager(
                 var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
-                    (allAllowedEditorGroups ??= new()).Add(editor.Id);
+                    (allAllowedEditorGroups ??= []).Add(editor.Id);
                 }
             }
         }
@@ -151,7 +151,7 @@ public class WikiDataManager(
         List<string>? allAllowedViewers = null;
         if (request.EditorSelf)
         {
-            allAllowedViewers = new List<string>();
+            allAllowedViewers = [];
         }
         else if (request.AllowedViewers is not null)
         {
@@ -161,7 +161,7 @@ public class WikiDataManager(
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
-                    (allAllowedViewers ??= new()).Add(editor.Id);
+                    (allAllowedViewers ??= []).Add(editor.Id);
                 }
             }
         }
@@ -175,7 +175,7 @@ public class WikiDataManager(
                 var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
-                    (allAllowedViewerGroups ??= new()).Add(editor.Id);
+                    (allAllowedViewerGroups ??= []).Add(editor.Id);
                 }
             }
         }
@@ -612,12 +612,12 @@ public class WikiDataManager(
     {
         if (string.IsNullOrEmpty(input))
         {
-            return new();
+            return [];
         }
         var title = PageTitle.Parse(input);
         if (string.IsNullOrEmpty(title.Title))
         {
-            return new();
+            return [];
         }
 
         var request = new SearchRequest
@@ -675,7 +675,7 @@ public class WikiDataManager(
         }
         if (!result.Exists)
         {
-            return new();
+            return [];
         }
 
         var topic = await Topic.GetTopicAsync(dataStore, result.Title);
@@ -981,7 +981,7 @@ public class WikiDataManager(
             }
             if (!result.Exists)
             {
-                return new();
+                return [];
             }
         }
 
@@ -1434,7 +1434,7 @@ public class WikiDataManager(
         List<string>? allAllowedEditors = null;
         if (options.EditorSelf)
         {
-            allAllowedEditors = new List<string>();
+            allAllowedEditors = [];
         }
         else if (options.AllowedEditors is not null)
         {
@@ -1444,7 +1444,7 @@ public class WikiDataManager(
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
-                    (allAllowedEditors ??= new()).Add(editor.Id);
+                    (allAllowedEditors ??= []).Add(editor.Id);
                 }
             }
         }
@@ -1458,7 +1458,7 @@ public class WikiDataManager(
                 var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
-                    (allAllowedEditorGroups ??= new()).Add(editor.Id);
+                    (allAllowedEditorGroups ??= []).Add(editor.Id);
                 }
             }
         }
@@ -1466,7 +1466,7 @@ public class WikiDataManager(
         List<string>? allAllowedViewers = null;
         if (options.EditorSelf)
         {
-            allAllowedViewers = new List<string>();
+            allAllowedViewers = [];
         }
         else if (options.AllowedViewers is not null)
         {
@@ -1476,7 +1476,7 @@ public class WikiDataManager(
                 if (editor?.IsDisabled == false
                     && !editor.IsDisabled)
                 {
-                    (allAllowedViewers ??= new()).Add(editor.Id);
+                    (allAllowedViewers ??= []).Add(editor.Id);
                 }
             }
         }
@@ -1490,7 +1490,7 @@ public class WikiDataManager(
                 var editor = await groupManager.FindByIdAsync(id);
                 if (editor is not null)
                 {
-                    (allAllowedViewerGroups ??= new()).Add(editor.Id);
+                    (allAllowedViewerGroups ??= []).Add(editor.Id);
                 }
             }
         }

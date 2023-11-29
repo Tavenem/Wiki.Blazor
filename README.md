@@ -98,15 +98,6 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 1. (Optional) In your main `App.razor` component, place a `Wiki` component in the `NotFound` content slot of your `Router` component. This will allow the wiki to handle requests for unrecognized routes (i.e. users who do not add your wiki prefix to a typed URL will still get to the expected page). Routes which do not match wiki content will display an "article not found" wiki page.
 
    If you prefer not to handle unrecognized routes as requests for wiki pages, this step can be skipped.
-1. In your `index.html` page, add the following content to the `head` section:
-   ```html
-   <link href="https://fonts.googleapis.com/css2?family=Encode+Sans+SC:wdth,wght@75,100..900&family=Recursive:slnt,wght,CASL,MONO@-15..0,300..1000,0..1,0..1&display=swap" rel="stylesheet">
-   <link href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Outlined" rel="stylesheet">
-   <link href="_content/Tavenem.Blazor.Framework/framework.css" rel="stylesheet">
-   <link href="_content/Tavenem.Wiki.Blazor.Client/wiki.css" rel="stylesheet">
-   <link href="_content/Tavenem.Wiki.Blazor.Client/Tavenem.Wiki.Blazor.Client.bundle.scp.css" rel="stylesheet">
-   ```
-   This adds `Tavenem.Wiki.Blazor` styles, and dependency styles for the [Tavenem Blazor Framework](https://tavenem.com/Blazor.Framework/). The font choices can be adapted to suit your needs. See the Tavenem Blazor Framework documentation for details.
 
 ### The Server App
 

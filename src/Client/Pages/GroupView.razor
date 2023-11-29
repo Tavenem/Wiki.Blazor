@@ -3,7 +3,7 @@
 <div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
 @if (GroupPage is not null)
 {
-    <SyntaxHighlighter Class="wiki-parser-output">@Content</SyntaxHighlighter>
+    <tf-syntax-highlight class="wiki-parser-output">@Content</tf-syntax-highlight>
     if (GroupPage.Users is not null
         && GroupPage.Users.Count > 0)
     {

@@ -1,57 +1,59 @@
 ﻿@namespace Tavenem.Wiki.Blazor.Client
 
-<Drawer Side="Side.Left" Class="bg-alt d-print-none" Style="background-image:linear-gradient(to bottom, var(--tavenem-color-bg) 0, transparent 2.5em)">
+<Drawer Side="Side.Left"
+        Class="bg-alt d-print-none"
+        Style="background-image:linear-gradient(to bottom, var(--tavenem-color-bg) 0, transparent 2.5em)">
     <div class="wiki-sidebar-logo" role="banner">
         <a class="wiki-sidebar-logo-link" href="/" title="Visit the site home page"></a>
     </div>
     <div class="list dense" role="navigation">
-        <AnchorLink href="@WikiState.Link()"
-                    class="wiki-link wiki-link-exists"
-                    title="Visit the main page">@WikiOptions.MainPageTitle</AnchorLink>
+        <NavLink href="@WikiState.Link()"
+                 class="wiki-link wiki-link-exists"
+                 title="Visit the main page">@WikiOptions.MainPageTitle</NavLink>
         @if (!string.IsNullOrEmpty(WikiOptions.ContentsPageTitle))
         {
-            <AnchorLink href="@WikiState.Link(WikiOptions.ContentsPageTitle, WikiOptions.SystemNamespace)"
-                    class="wiki-link wiki-link-exists"
-                    title="Visit the main contents page">@WikiOptions.ContentsPageTitle</AnchorLink>
+            <NavLink href="@WikiState.Link(WikiOptions.ContentsPageTitle, WikiOptions.SystemNamespace)"
+                     class="wiki-link wiki-link-exists"
+                     title="Visit the main contents page">@WikiOptions.ContentsPageTitle</NavLink>
         }
         @if (!string.IsNullOrEmpty(WikiOptions.HelpPageTitle))
         {
-            <AnchorLink href="@WikiState.Link(WikiOptions.HelpPageTitle, WikiOptions.SystemNamespace)"
-                    class="wiki-link wiki-link-exists"
-                    title="Visit the main help page">@WikiOptions.HelpPageTitle</AnchorLink>
+            <NavLink href="@WikiState.Link(WikiOptions.HelpPageTitle, WikiOptions.SystemNamespace)"
+                     class="wiki-link wiki-link-exists"
+                     title="Visit the main help page">@WikiOptions.HelpPageTitle</NavLink>
         }
         @if (!string.IsNullOrEmpty(WikiOptions.AboutPageTitle))
         {
-            <AnchorLink href="@WikiState.Link(WikiOptions.AboutPageTitle, WikiOptions.SystemNamespace)"
-                    class="wiki-link wiki-link-exists"
-                    title="Learn about this site">@WikiOptions.AboutPageTitle</AnchorLink>
+            <NavLink href="@WikiState.Link(WikiOptions.AboutPageTitle, WikiOptions.SystemNamespace)"
+                     class="wiki-link wiki-link-exists"
+                     title="Learn about this site">@WikiOptions.AboutPageTitle</NavLink>
         }
         @if (!string.IsNullOrEmpty(WikiOptions.ContactPageTitle))
         {
-            <AnchorLink href="@WikiState.Link(WikiOptions.ContactPageTitle, WikiOptions.SystemNamespace)"
-                    class="wiki-link wiki-link-exists"
-                    title="Contact the site administrators">@WikiOptions.ContactPageTitle</AnchorLink>
+            <NavLink href="@WikiState.Link(WikiOptions.ContactPageTitle, WikiOptions.SystemNamespace)"
+                     class="wiki-link wiki-link-exists"
+                     title="Contact the site administrators">@WikiOptions.ContactPageTitle</NavLink>
         }
     </div>
     <div class="list dense" role="navigation">
         <div class="subheader">Tools</div>
         <hr style="background-color:transparent;background-image:linear-gradient(to right, transparent, var(--tavenem-color-divider) 50%, transparent)">
-        <AnchorLink href="@WikiState.Link("All_Pages", WikiOptions.SystemNamespace, query: "sort=timestamp&descending=true")"
-                    class="wiki-link wiki-link-exists"
-                    title="A list of recent revisions">Recent changes</AnchorLink>
+        <NavLink href="@WikiState.Link("All_Pages", WikiOptions.SystemNamespace, query: "sort=timestamp&descending=true")"
+                 class="wiki-link wiki-link-exists"
+                 title="A list of recent revisions">Recent changes</NavLink>
         @if (ShowPageTools && !WikiState.IsSystem)
         {
-            <AnchorLink href="@WikiState.LinkHere(whatLinksHere: true)"
-                    class="wiki-link wiki-link-exists"
-                    title="A list of articles with links to this one">What links here</AnchorLink>
+            <NavLink href="@WikiState.LinkHere(whatLinksHere: true)"
+                     class="wiki-link wiki-link-exists"
+                     title="A list of articles with links to this one">What links here</NavLink>
         }
         @if (WikiOptions.MaxFileSize != 0)
         {
-            <AnchorLink href="@WikiState.Link("Upload", WikiOptions.SystemNamespace)"
-                    class="wiki-link wiki-link-exists">Upload files</AnchorLink>
+            <NavLink href="@WikiState.Link("Upload", WikiOptions.SystemNamespace)"
+                     class="wiki-link wiki-link-exists">Upload files</NavLink>
         }
-        <AnchorLink href="@WikiState.Link("Special", WikiOptions.SystemNamespace)"
-                    class="wiki-link wiki-link-exists"
-                    title="A list of all special pages">Special pages</AnchorLink>
+        <NavLink href="@WikiState.Link("Special", WikiOptions.SystemNamespace)"
+                 class="wiki-link wiki-link-exists"
+                 title="A list of all special pages">Special pages</NavLink>
     </div>
 </Drawer>

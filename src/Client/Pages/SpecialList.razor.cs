@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Client.Shared;
 using Tavenem.Wiki.Queries;
@@ -24,7 +26,7 @@ public partial class SpecialList : OfflineSupportComponent
     /// <summary>
     /// The requested page number.
     /// </summary>
-    [Parameter] public int? PageNumber { get; set; }
+    [Parameter] public long? PageNumber { get; set; }
 
     /// <summary>
     /// The requested page size.
@@ -68,7 +70,11 @@ public partial class SpecialList : OfflineSupportComponent
 
     private string? Description { get; set; }
 
+    [CascadingParameter] private bool IsInteractive { get; set; }
+
     private IPagedList<LinkInfo>? Items { get; set; }
+
+    [Inject, NotNull] private QueryStateService? QueryStateService { get; set; }
 
     private string? SecondaryDescription { get; set; }
 
@@ -77,13 +83,63 @@ public partial class SpecialList : OfflineSupportComponent
         => RefreshAsync();
 
     /// <inheritdoc/>
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        var pageSizes = QueryStateService.RegisterProperty(
+            "pg",
+            "ps",
+            OnPageSizeChangedAsync,
+            50);
+        if (pageSizes?.Count > 0
+            && int.TryParse(pageSizes[0], out var pageSize))
+        {
+            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
+        }
+
+        var sorts = QueryStateService.RegisterProperty(
+            "pg",
+            "s",
+            OnSortChangedAsync,
+            50);
+        if (sorts?.Count > 0)
+        {
+            CurrentSort = sorts[0];
+        }
+
+        var descendings = QueryStateService.RegisterProperty(
+            "pg",
+            "d",
+            OnDescendingChangedAsync,
+            false);
+        if (descendings?.Count > 0
+            && bool.TryParse(descendings[0], out var descending))
+        {
+            CurrentDescending = descending;
+        }
+
+        var filters = QueryStateService.RegisterProperty(
+            "pg",
+            "f",
+            OnFilterChangedAsync,
+            false);
+        if (filters?.Count > 0)
+        {
+            CurrentFilter = filters[0];
+        }
+    }
+
+    /// <inheritdoc/>
     protected override async Task RefreshAsync()
     {
         CurrentDescending = Descending;
         CurrentFilter = Filter;
-        CurrentPageNumber = (ulong)Math.Max(0, (PageNumber ?? 1) - 1);
-        CurrentPageSize = PageSize ?? 50;
-        CurrentSort = Sort;
+        CurrentPageNumber = (ulong)Math.Max(1, PageNumber ?? 1);
+        CurrentPageSize = Math.Clamp(PageSize ?? 50, 5, 500);
+        CurrentSort = string.Equals(Sort, "timestamp")
+            ? Sort
+            : "alpha";
         Description = null;
         Items = null;
         SecondaryDescription = null;
@@ -183,38 +239,111 @@ public partial class SpecialList : OfflineSupportComponent
         return null;
     }
 
-    private void OnDescendingChanged()
-        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Wiki.Descending), CurrentDescending));
+    private async Task OnDescendingChangedAsync()
+    {
+        Descending = CurrentDescending;
 
-    private void OnFilterChanged()
-        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Wiki.Filter), CurrentFilter));
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "d",
+            Descending);
 
-    private void OnNextRequested()
+        await RefreshAsync();
+    }
+
+    private async Task OnDescendingChangedAsync(QueryChangeEventArgs args)
+    {
+        if (bool.TryParse(args.Value, out var descending)
+            && descending != CurrentDescending)
+        {
+            CurrentDescending = descending;
+            Descending = descending;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnFilterChangedAsync()
+    {
+        Filter = CurrentFilter;
+
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "f",
+            Filter);
+
+        await RefreshAsync();
+    }
+
+    private async Task OnFilterChangedAsync(QueryChangeEventArgs args)
+    {
+        if (!string.Equals(args.Value, CurrentFilter))
+        {
+            Filter = args.Value;
+            CurrentFilter = args.Value;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnNextRequestedAsync()
     {
         if (Items?.HasNextPage == true)
         {
             CurrentPageNumber++;
-            NavigationManager.NavigateTo(
-                NavigationManager.GetUriWithQueryParameter(
-                    nameof(Wiki.PageNumber),
-                    (int)(CurrentPageNumber + 1)));
+            PageNumber = (long)CurrentPageNumber;
+            await RefreshAsync();
         }
     }
 
-    private void OnPageNumberChanged() => NavigationManager.NavigateTo(
-        NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.PageNumber),
-            (int)(CurrentPageNumber + 1)));
+    private async Task OnPageNumberChangedAsync()
+    {
+        PageNumber = (long)CurrentPageNumber;
+        await RefreshAsync();
+    }
 
-    private void OnPageSizeChanged() => NavigationManager.NavigateTo(
-        NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.PageSize),
-            CurrentPageSize));
+    private async Task OnPageSizeChangedAsync()
+    {
+        PageSize = CurrentPageSize;
 
-    private void OnSortChanged()
-        => NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(
-            nameof(Wiki.Sort),
-            string.Equals(CurrentSort, "timestamp")
-                ? CurrentSort
-                : null));
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "ps",
+            CurrentPageSize);
+
+        await RefreshAsync();
+    }
+
+    private async Task OnPageSizeChangedAsync(QueryChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value, out var pageSize)
+            && pageSize != CurrentPageSize)
+        {
+            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
+            PageSize = CurrentPageSize;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnSortChangedAsync(QueryChangeEventArgs args)
+    {
+        if (!string.Equals(args.Value, CurrentSort))
+        {
+            Sort = args.Value;
+            CurrentSort = args.Value;
+            await RefreshAsync();
+        }
+    }
+
+    private async Task OnSortChangedAsync()
+    {
+        Sort = string.Equals(CurrentSort, "timestamp")
+            ? CurrentSort
+            : null;
+
+        QueryStateService.SetPropertyValue(
+            "pg",
+            "s",
+            Sort);
+
+        await RefreshAsync();
+    }
 }

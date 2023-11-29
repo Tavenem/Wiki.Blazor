@@ -13,30 +13,28 @@
                 <span class="wiki-message-reactions">
                     @foreach (var emoji in Message.Reactions.Keys)
                     {
-                        <Tooltip>
-                            <TooltipContent>
+                        <span>
+                            <span class="wiki-message-reaction-icon" @onclick="@(_ => OnReactionAsync(emoji))">@emoji</span>
+                            @if (Message.Reactions[emoji].Count > 1)
+                            {
+                                <span class="wiki-message-reaction-count">@Message.Reactions[emoji].Count.ToString("N0")</span>
+                            }
+                            <Tooltip>
                                 <ul class="wiki-message-reaction-list">
                                     @foreach (var reaction in Message.Reactions[emoji])
                                     {
                                         <li>
                                             <span class="wiki-reaction-sender">
                                                 <a class="@GetUserLinkClass(reaction)"
-                                                   href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
-                                                   title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
+                                                    href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
+                                                    title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
                                             </span>
                                             <span class="wiki-reaction-timestamp">@reaction.GetTimestamp(TimezoneOffset)</span>
                                         </li>
                                     }
                                 </ul>
-                            </TooltipContent>
-                            <ChildContent>
-                                <span class="wiki-message-reaction-icon" @onclick="@(_ => OnReactionAsync(emoji))">@emoji</span>
-                                @if (Message.Reactions[emoji].Count > 1)
-                                {
-                                    <span class="wiki-message-reaction-count">@Message.Reactions[emoji].Count.ToString("N0")</span>
-                                }
-                            </ChildContent>
-                        </Tooltip>
+                            </Tooltip>
+                        </span>
                     }
                 </span>
             }

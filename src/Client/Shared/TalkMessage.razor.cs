@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
@@ -37,9 +38,9 @@ public partial class TalkMessage
 
     private bool ShowReply { get; set; }
 
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
     protected override void OnInitialized()

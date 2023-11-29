@@ -31,16 +31,19 @@
                      OnChipClosed="@(v => OnRemoveUserAsync(v))" />
         }
     }
-    <TextInput @bind-Value="InputText"
-               @bind-Value:after="OnTextEnteredAsync"
-               Disabled="InputDisabled"
-               DisplayHelpTextOnFocus="DisplayHelpTextOnFocus"
-               HelpText="@HelpText"
-               Class="wiki-user-input">
-        <PostfixContent>
-            <button class="btn btn-icon" disabled="@Disabled">
-                <tf-icon>search</tf-icon>
-            </button>
-        </PostfixContent>
-    </TextInput>
+    @if (IsInteractive)
+    {
+        <TextInput @bind-Value="InputText"
+                   @bind-Value:after="OnTextEnteredAsync"
+                   Disabled="InputDisabled"
+                   DisplayHelpTextOnFocus="DisplayHelpTextOnFocus"
+                   HelpText="@HelpText"
+                   Class="wiki-user-input">
+            <PostfixContent>
+                <button class="btn btn-icon" disabled="@Disabled">
+                    <tf-icon>search</tf-icon>
+                </button>
+            </PostfixContent>
+        </TextInput>
+    }
 </div>

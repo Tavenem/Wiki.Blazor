@@ -23,6 +23,7 @@ namespace Tavenem.Wiki.Blazor;
 [JsonSerializable(typeof(SearchResult))]
 [JsonSerializable(typeof(UploadRequest))]
 [JsonSerializable(typeof(List<WikiLink>))]
+[JsonSerializable(typeof(List<string>))]
 public partial class WikiBlazorJsonSerializerContext
     : JsonSerializerContext
 { }

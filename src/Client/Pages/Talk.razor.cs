@@ -30,23 +30,25 @@ public partial class Talk : IAsyncDisposable
 
     private bool CanTalk { get; set; }
 
-    [Inject] private HttpClient HttpClient { get; set; } = default!;
+    [Inject, NotNull] private HttpClient? HttpClient { get; set; }
 
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
+    [CascadingParameter] private bool IsInteractive { get; set; }
 
-    private List<TalkMessageModel> TalkMessages { get; set; } = new();
+    [Inject, NotNull] private IJSRuntime? JSRuntime { get; set; }
 
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject, NotNull] private NavigationManager? Navigation { get; set; }
 
-    [Inject] IServiceProvider ServiceProvider { get; set; } = default!;
+    [Inject, NotNull] private IServiceProvider? ServiceProvider { get; set; }
 
-    [Inject] private SnackbarService SnackbarService { get; set; } = default!;
+    [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
+
+    private List<TalkMessageModel> TalkMessages { get; set; } = [];
 
     private TimeSpan TimezoneOffset { get; set; }
 
-    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
 
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
@@ -66,16 +68,28 @@ public partial class Talk : IAsyncDisposable
                 ? null
                 : await AuthenticationStateProvider.GetAuthenticationStateAsync();
             CanPost = state?.User.Identity?.IsAuthenticated == true;
+
+            await ReloadAsync();
         }
+    }
 
-        _module = await JSRuntime.InvokeAsync<IJSObjectReference>(
-            "import",
-            "./_content/Tavenem.Wiki.Blazor.Client/tavenem-timezone.js");
+    /// <inheritdoc/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./_content/Tavenem.Wiki.Blazor.Client/tavenem-timezone.js");
 
-        var offset = await _module.InvokeAsync<int>("getTimezoneOffset");
-        TimezoneOffset = TimeSpan.FromMinutes(offset);
+            var offset = await _module.InvokeAsync<int>("getTimezoneOffset");
+            TimezoneOffset = TimeSpan.FromMinutes(offset);
 
-        await ReloadAsync();
+            if (TimezoneOffset != TimeSpan.Zero)
+            {
+                StateHasChanged();
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -109,6 +123,27 @@ public partial class Talk : IAsyncDisposable
 
             _disposedValue = true;
         }
+    }
+
+    private static TalkMessageModel? FindMessage(List<TalkMessageModel> list, string id)
+    {
+        foreach (var message in list)
+        {
+            if (message.Message.Id == id)
+            {
+                return message;
+            }
+
+            if (message.Replies is not null)
+            {
+                var match = FindMessage(message.Replies, id);
+                if (match is not null)
+                {
+                    return match;
+                }
+            }
+        }
+        return null;
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
@@ -163,31 +198,6 @@ public partial class Talk : IAsyncDisposable
         UpdateMessages(messages);
     }
 
-    private TalkMessageModel? FindMessage(List<TalkMessageModel> list, string id)
-    {
-        foreach (var message in list)
-        {
-            if (message.Message.Id == id)
-            {
-                return message;
-            }
-
-            if (message.Replies is not null)
-            {
-                var match = FindMessage(message.Replies, id);
-                if (match is not null)
-                {
-                    return match;
-                }
-            }
-        }
-        return null;
-    }
-
-    [UnconditionalSuppressMessage(
-        "Trimming",
-        "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
-        Justification = "ReplyRequest will not be trimmed if this method is called")]
     private async Task OnPostAsync(ReplyRequest reply)
     {
         IList<MessageResponse>? messages = null;
@@ -197,7 +207,8 @@ public partial class Talk : IAsyncDisposable
             {
                 var response = await HttpClient.PostAsJsonAsync(
                     $"{WikiBlazorClientOptions.WikiServerApiRoute}/talk",
-                    reply);
+                    reply,
+                    WikiBlazorJsonSerializerContext.Default.ReplyRequest);
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
                     WikiState.NotAuthorized = true;
@@ -256,16 +267,18 @@ public partial class Talk : IAsyncDisposable
                             emoji = emoji[..^4];
                         }
 
-                        targetMessage!.Reactions ??= new();
-                        if (!targetMessage.Reactions.ContainsKey(emoji))
+                        targetMessage!.Reactions ??= [];
+                        if (!targetMessage.Reactions.TryGetValue(emoji, out var value))
                         {
-                            targetMessage.Reactions[emoji] = new();
+                            value = [];
+                            targetMessage.Reactions[emoji] = value;
                         }
-                        targetMessage.Reactions[emoji].Add(message);
+
+                        value.Add(message);
                     }
                     else
                     {
-                        (targetMessage!.Replies ??= new()).Add(new(message));
+                        (targetMessage!.Replies ??= []).Add(new(message));
                     }
                 }
                 else

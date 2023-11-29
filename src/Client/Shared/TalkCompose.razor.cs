@@ -37,13 +37,13 @@ public partial class TalkCompose : IAsyncDisposable
 
     private string EmojiButtonId { get; set; } = Guid.NewGuid().ToHtmlId();
 
-    private List<GifCategory> GifCategories { get; set; } = new();
+    private List<GifCategory> GifCategories { get; set; } = [];
 
     private List<string>? GifSuggestions { get; set; }
 
-    private List<GifInfo> Gifs { get; set; } = new();
+    private List<GifInfo> Gifs { get; set; } = [];
 
-    [Inject] private JSRuntime JSRuntime { get; set; } = default!;
+    [Inject, NotNull] private JSRuntime? JSRuntime { get; set; }
 
     private string? NewMessage { get; set; }
 
@@ -55,7 +55,7 @@ public partial class TalkCompose : IAsyncDisposable
 
     private bool ShowGifSearch { get; set; }
 
-    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
 
     /// <inheritdoc/>
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -150,7 +150,7 @@ public partial class TalkCompose : IAsyncDisposable
     public void PopulateGifSearch(GifSearchResults results)
     {
         NextGifs = results.Next;
-        Gifs = results.Gifs?.ToList() ?? new();
+        Gifs = results.Gifs?.ToList() ?? [];
     }
 
     /// <summary>

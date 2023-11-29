@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
@@ -12,11 +13,9 @@ namespace Tavenem.Wiki.Blazor.Client.Shared;
 /// </summary>
 public partial class MainLayout
 {
-    [Inject] private WikiBlazorClientOptions WikiBlazorClientOptions { get; set; } = default!;
+    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
 
-    [Inject] private WikiOptions WikiOptions { get; set; } = default!;
-
-    [Inject] private WikiState WikiState { get; set; } = default!;
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
     private RenderFragment? AppBarRender { get; set; }
 
