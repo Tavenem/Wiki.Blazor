@@ -311,7 +311,6 @@ public class WikiDataManager(
     /// </summary>
     /// <param name="user">The user making the request (if any).</param>
     /// <param name="title">The requested category title.</param>
-    /// <param name="domain">The requested category domain (if any).</param>
     /// <returns>
     /// A <see cref="CategoryInfo"/> object.
     /// </returns>
@@ -703,7 +702,7 @@ public class WikiDataManager(
     /// </returns>
     public async Task<int> GetUploadLimitAsync(ClaimsPrincipal? user)
     {
-        if (user is null)
+        if (user?.Identity?.IsAuthenticated != true)
         {
             return 0;
         }
@@ -809,7 +808,7 @@ public class WikiDataManager(
     /// </returns>
     public async Task<List<WikiLink>?> GetWikiLinksAsync(ClaimsPrincipal? user, PreviewRequest request)
     {
-        if (user is null)
+        if (user?.Identity?.IsAuthenticated != true)
         {
             return null;
         }
@@ -841,7 +840,7 @@ public class WikiDataManager(
     /// </returns>
     public async Task<WikiUser?> GetWikiUserAsync(ClaimsPrincipal? user)
     {
-        if (user is null)
+        if (user?.Identity?.IsAuthenticated != true)
         {
             return null;
         }
@@ -1010,7 +1009,7 @@ public class WikiDataManager(
     /// </returns>
     public async Task<string?> RenderHtmlAsync(ClaimsPrincipal? user, PreviewRequest request)
     {
-        if (user is null)
+        if (user?.Identity?.IsAuthenticated != true)
         {
             return null;
         }
@@ -1042,7 +1041,7 @@ public class WikiDataManager(
     /// </returns>
     public async Task<string?> RenderPreviewAsync(ClaimsPrincipal? user, PreviewRequest request)
     {
-        if (user is null)
+        if (user?.Identity?.IsAuthenticated != true)
         {
             return null;
         }

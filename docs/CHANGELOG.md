@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.5-preview
+### Changed
+- Improve security
+
 ## 0.6.4-preview
 ### Updated
 - Update to .NET 8

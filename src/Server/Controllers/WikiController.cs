@@ -218,10 +218,6 @@ public class WikiController(
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Html([FromBody] PreviewRequest request)
     {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return NoContent();
-        }
         var result = await _dataManager.RenderHtmlAsync(User, request);
         if (string.IsNullOrEmpty(result))
         {
@@ -269,10 +265,6 @@ public class WikiController(
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Preview([FromBody] PreviewRequest request)
     {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return NoContent();
-        }
         var result = await _dataManager.RenderPreviewAsync(User, request);
         if (string.IsNullOrEmpty(result))
         {
@@ -396,7 +388,7 @@ public class WikiController(
 
         try
         {
-            using var stream = file.OpenReadStream();
+            await using var stream = file.OpenReadStream();
             _ = await _dataManager.UploadAsync(
                 User,
                 fileManager,
@@ -426,15 +418,7 @@ public class WikiController(
 
     [HttpGet]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
-    public async Task<int> UploadLimit()
-    {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return 0;
-        }
-
-        return await _dataManager.GetUploadLimitAsync(User);
-    }
+    public Task<int> UploadLimit() => _dataManager.GetUploadLimitAsync(User);
 
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
@@ -446,10 +430,6 @@ public class WikiController(
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> WikiLinks([FromBody] PreviewRequest request)
     {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return NoContent();
-        }
         var result = await _dataManager.GetWikiLinksAsync(User, request);
         if (result is null)
         {
