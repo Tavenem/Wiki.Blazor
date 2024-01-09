@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.6-preview
+### Fixed
+- Link preview
+
 ## 0.6.5-preview
 ### Changed
 - Improve security

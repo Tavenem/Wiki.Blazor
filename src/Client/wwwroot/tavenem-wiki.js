@@ -45,7 +45,7 @@ window.wikiblazor.hidePreview = function () {
         clearTimeout(window.wikiblazor.timer);
     }
 
-    for (const ref of window.wikiblazor.references) {
-        ref.invokeMethodAsync('HidePreview');
+    for (const refId in window.wikiblazor.references) {
+        window.wikiblazor.references[refId].invokeMethodAsync('HidePreview');
     }
 }
