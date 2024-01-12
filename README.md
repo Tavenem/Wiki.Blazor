@@ -36,9 +36,11 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
    The second parameter is either an instance of `WikiBlazorClientOptions` or a function which provides one.
    This interface allows you to configure the wiki's Blazor implementation features, and includes the following properties:
    - `AppBar`: The type of an optional component (typically containing an [AppBar](https://tavenem.com/Blazor.Framework/components/appbar) from the [Tavenem Blazor Framework](https://tavenem.com/Blazor.Framework/)) which will appear at the top of wiki pages.
+   - `AppBarRenderMode`: The [render mode](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes) to use for the `AppBar` component, or `null` to use static rendering.
    
      The type must implement `IComponent`.
    - `ArticleFrontMatter` and `ArticleEndMatter`: these can be set to functions which accept an `Article` parameter and should return type of a component which should be displayed before or after the content of the given wiki article (before the category list), or null if no additional component should be displayed.
+   - `ArticleFrontMatterRenderMode` and `ArticleEndMatterRenderMode`: The [render mode](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes) to use for the `ArticleFrontMatter` and `ArticleEndMatter` components, or `null` to use static rendering.
    - `CanEditOffline`: Can be set to a function which determines whether content may be edited locally.
 
      If this function is not defined, no content may be edited locally (i.e. local content may only be viewed).

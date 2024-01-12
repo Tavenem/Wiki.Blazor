@@ -27,6 +27,7 @@ public partial class MainLayout
         if (WikiBlazorClientOptions.AppBar is not null)
         {
             builder.OpenComponent(0, WikiBlazorClientOptions.AppBar);
+            builder.AddComponentRenderMode(WikiBlazorClientOptions.AppBarRenderMode);
             builder.CloseComponent();
         }
     };

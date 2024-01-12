@@ -13,6 +13,15 @@ namespace Tavenem.Wiki.Blazor.Client;
 public delegate Type? GetArticleComponent(Page page);
 
 /// <summary>
+/// Gets the render mode of a component for a given wiki page.
+/// </summary>
+/// <param name="page">The page for which to get a component's render mode.</param>
+/// <returns>
+/// The render mode of a component, or <see langword="null"/> for static rendering.
+/// </returns>
+public delegate IComponentRenderMode? GetArticleRenderMode(Page page);
+
+/// <summary>
 /// Determines whether the given content may be edited locally.
 /// </summary>
 /// <param name="title">The title of the content to be edited.</param>
@@ -61,6 +70,12 @@ public class WikiBlazorClientOptions
     public Type? AppBar { get; set; }
 
     /// <summary>
+    /// The render mode to use for the <see cref="AppBar"/> component, or <see langword="null"/> to
+    /// use static rendering.
+    /// </summary>
+    public IComponentRenderMode? AppBarRenderMode { get; set; }
+
+    /// <summary>
     /// The link template to be used for the Blazor wiki system.
     /// </summary>
     public const string DefaultLinkTemplate = "onmousemove=\"wikiblazor.showPreview(event, '{LINK}');\" onmouseleave=\"wikiblazor.hidePreview();\"";
@@ -72,10 +87,20 @@ public class WikiBlazorClientOptions
     public GetArticleComponent? ArticleEndMatter { get; set; }
 
     /// <summary>
+    /// A function which gets the render mode of the component indicated by <see cref="ArticleEndMatter"/>.
+    /// </summary>
+    public GetArticleRenderMode? ArticleEndMatterRenderMode { get; set; }
+
+    /// <summary>
     /// A function which gets the type of a component which should be displayed before the content
     /// of the given wiki article (after the subtitle).
     /// </summary>
     public GetArticleComponent? ArticleFrontMatter { get; set; }
+
+    /// <summary>
+    /// A function which gets the render mode of the component indicated by <see cref="ArticleFrontMatter"/>.
+    /// </summary>
+    public GetArticleRenderMode? ArticleFrontMatterRenderMode { get; set; }
 
     /// <summary>
     /// Can be set to a function which determines whether content may be edited locally.
@@ -277,6 +302,15 @@ public class WikiBlazorClientOptions
     public Type? GetArticleEndMatter(Page article) => ArticleEndMatter?.Invoke(article);
 
     /// <summary>
+    /// Gets the render mode of the component indicated by <see cref="ArticleEndMatter"/>.
+    /// </summary>
+    /// <param name="article">A wiki article.</param>
+    /// <returns>
+    /// The render mode of a component, or <see langword="null"/> for static rendering.
+    /// </returns>
+    public IComponentRenderMode? GetArticleEndMatterRenderMode(Page article) => ArticleEndMatterRenderMode?.Invoke(article);
+
+    /// <summary>
     /// Gets the type of a component which should be displayed before the content of the given wiki
     /// article (after the subtitle).
     /// </summary>
@@ -315,4 +349,13 @@ public class WikiBlazorClientOptions
     /// </remarks>
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     public Type? GetArticleFrontMatter(Page article) => ArticleFrontMatter?.Invoke(article);
+
+    /// <summary>
+    /// Gets the render mode of the component indicated by <see cref="ArticleFrontMatter"/>.
+    /// </summary>
+    /// <param name="article">A wiki article.</param>
+    /// <returns>
+    /// The render mode of a component, or <see langword="null"/> for static rendering.
+    /// </returns>
+    public IComponentRenderMode? GetArticleFrontMatterRenderMode(Page article) => ArticleFrontMatterRenderMode?.Invoke(article);
 }

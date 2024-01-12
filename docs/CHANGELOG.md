@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0-preview
+### Added
+- Render mode control for injected components
+- Web app example project
+
 ## 0.6.6-preview
 ### Fixed
 - Link preview

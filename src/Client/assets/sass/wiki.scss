@@ -88,10 +88,10 @@ a {
     }
 }
 
-.wiki-layout #main-container {
+.wiki-layout > .container {
     padding-bottom: 0;
 }
-.wiki-layout-compact #main-container {
+.wiki-layout-compact > .container {
     margin-top: 0!important;
     padding: 0;
 }

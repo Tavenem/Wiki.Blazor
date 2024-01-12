@@ -1,0 +1,16 @@
+﻿html {
+    height: 100%;
+}
+
+body {
+    min-height: 100%;
+}
+
+#app {
+    height: 100vh;
+    position: relative;
+}
+
+.wiki-sidebar-logo-link {
+    background-image: url(../tavenemlogo_sq_inset.svg);
+}

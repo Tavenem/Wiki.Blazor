@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
-using Tavenem.Blazor.Framework;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -34,13 +33,13 @@ public partial class ArticleView
     /// </summary>
     [Parameter] public IWikiUser? User { get; set; }
 
+    private IComponentRenderMode? EndMatterRenderMode { get; set; }
+
     private Type? EndMatterType { get; set; }
 
+    private IComponentRenderMode? FrontMatterRenderMode { get; set; }
+
     private Type? FrontMatterType { get; set; }
-
-    private Dictionary<string, object> FrontEndMatterParameters { get; set; } = [];
-
-    [CascadingParameter] private FrameworkLayout? FrameworkLayout { get; set; }
 
     [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
 
@@ -49,8 +48,9 @@ public partial class ArticleView
     /// <inheritdoc/>
     protected override void OnParametersSet()
     {
-        FrontEndMatterParameters.Clear();
+        EndMatterRenderMode = null;
         EndMatterType = null;
+        FrontMatterRenderMode = null;
         FrontMatterType = null;
 
         if (Page is null)
@@ -58,14 +58,16 @@ public partial class ArticleView
             return;
         }
 
-        FrontEndMatterParameters.Add("Article", Page);
-        FrontEndMatterParameters.Add("CanEdit", CanEdit);
-        if (User is not null)
+        EndMatterType = WikiBlazorClientOptions.GetArticleEndMatter(Page);
+        if (EndMatterType is not null)
         {
-            FrontEndMatterParameters.Add("User", User);
+            EndMatterRenderMode = WikiBlazorClientOptions.GetArticleEndMatterRenderMode(Page);
         }
 
-        EndMatterType = WikiBlazorClientOptions.GetArticleEndMatter(Page);
         FrontMatterType = WikiBlazorClientOptions.GetArticleFrontMatter(Page);
+        if (FrontMatterType is not null)
+        {
+            FrontMatterRenderMode = WikiBlazorClientOptions.GetArticleFrontMatterRenderMode(Page);
+        }
     }
 }
