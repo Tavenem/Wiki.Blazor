@@ -50,7 +50,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="8.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.1" />
-    <PackageReference Include="Tavenem.Blazor.Framework" Version="2.12.5" />
+    <PackageReference Include="Tavenem.Blazor.Framework" Version="2.17.5" />
   </ItemGroup>
 
   <ItemGroup>

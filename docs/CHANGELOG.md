@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1-preview
+### Changed
+- Enable dialogs and snackbars in injected components
+
 ## 0.7.0-preview
 ### Added
 - Render mode control for injected components

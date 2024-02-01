@@ -2,7 +2,8 @@
 
 <FrameworkLayout Class="wiki-layout"
                  ContentsMinHeadings="@WikiOptions.MinimumTableOfContentsHeadings"
-                 ContentsMaxLevelOffset="@(WikiOptions.DefaultTableOfContentsDepth - 1)">
+                 ContentsMaxLevelOffset="@(WikiOptions.DefaultTableOfContentsDepth - 1)"
+                 InteractiveRenderMode="InteractiveWebAssembly">
     <FrameworkContent>
         @if (WikiBlazorClientOptions.AppBar is not null)
         {
