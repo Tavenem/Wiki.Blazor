@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2-preview
+### Changed
+- Simplified NuGet package structure
+
 ## 0.7.1-preview
 ### Changed
 - Enable dialogs and snackbars in injected components
