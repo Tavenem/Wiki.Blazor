@@ -34,6 +34,15 @@ public class WikiController(
         userManager,
         wikiOptions);
 
+    /// <summary>
+    /// Retrieve a wiki archive for the given <paramref name="domain"/>, or the entire wiki.
+    /// </summary>
+    /// <param name="domain">
+    /// The domain to be archived; or <see langword="null"/> if the entire wiki is to be archived.
+    /// </param>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing an <see cref="Wiki.Archive"/> when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(Archive), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -60,6 +69,12 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Retrieve a given wiki category.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="Wiki.Category"/> when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(Category), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -79,6 +94,12 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Retrieve the current wiki user.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="Wiki.WikiUser"/> when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(WikiUser), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -96,6 +117,12 @@ public class WikiController(
         return Ok(wikiUser);
     }
 
+    /// <summary>
+    /// Perform an edit of a wiki page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/>.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -125,6 +152,12 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Gets edit information for a wiki page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="Page"/> when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -144,6 +177,12 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Gets a wiki group page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="GroupPage"/> when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(GroupPage), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
@@ -192,6 +231,12 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Gets revision information for a wiki page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="PagedRevisionInfo"/> when successful.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedRevisionInfo), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -213,6 +258,12 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Gets the HTML which would be produced for content containing wiki syntax.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing HTML text when successful.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -226,6 +277,12 @@ public class WikiController(
         return Ok(result);
     }
 
+    /// <summary>
+    /// Gets a wiki page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="Page"/> when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -255,11 +312,24 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Gets a special list of wiki links.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="PagedList{T}"/> of <see
+    /// cref="LinkInfo"/> when successful.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
     public Task<PagedList<LinkInfo>> List([FromBody] SpecialListRequest request)
         => _dataManager.GetListAsync(request);
 
+    /// <summary>
+    /// Gets the preview HTML which would be produced for content containing wiki syntax.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing HTML text when successful.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -273,6 +343,12 @@ public class WikiController(
         return Ok(result);
     }
 
+    /// <summary>
+    /// Gets the preview HTML for a given wiki link.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing HTML text when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -286,7 +362,14 @@ public class WikiController(
         return Ok(result);
     }
 
-    [HttpGet]
+    /// <summary>
+    /// Restores the given wiki archive.
+    /// </summary>
+    /// <param name="archive">The archive to restore.</param>
+    /// <returns>
+    /// An <see cref="IActionResult"/>.
+    /// </returns>
+    [HttpPost]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RestoreArchive([FromBody] Archive archive)
@@ -302,6 +385,14 @@ public class WikiController(
         return Ok();
     }
 
+    /// <summary>
+    /// Performs a search of the wiki.
+    /// </summary>
+    /// <param name="searchClient">An <see cref="ISearchClient"/> (from dependency injection).</param>
+    /// <param name="request">The <see cref="SearchRequest"/>.</param>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="SearchResult"/> when successful.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
     public Task<SearchResult> Search(
@@ -309,6 +400,14 @@ public class WikiController(
         [FromBody] SearchRequest request)
         => _dataManager.SearchAsync(searchClient, User, request);
 
+    /// <summary>
+    /// Gets search suggestions for a given input string.
+    /// </summary>
+    /// <param name="searchClient">An <see cref="ISearchClient"/> (from dependency injection).</param>
+    /// <param name="input">The search input.</param>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="List{T}"/> of strings when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
     public Task<List<string>> SearchSuggest(
@@ -316,6 +415,13 @@ public class WikiController(
         [FromQuery] string? input = null)
         => _dataManager.GetSearchSuggestionsAsync(searchClient, User, input);
 
+    /// <summary>
+    /// Gets a wiki talk page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="List{T}"/> of <see
+    /// cref="MessageResponse"/> objects when successful.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(List<MessageResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -336,6 +442,13 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Posts a message to a wiki talk page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing the new <see cref="List{T}"/> of <see
+    /// cref="MessageResponse"/> objects when successful.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(List<MessageResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -357,11 +470,25 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Fetches a list of wiki pages which satisfy the given request.
+    /// </summary>
+    /// <param name="request">A <see cref="TitleRequest"/> instance.</param>
+    /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
     public Task<PagedList<LinkInfo>> Title([FromBody] TitleRequest request)
         => _dataManager.GetTitleAsync(request);
 
+    /// <summary>
+    /// Uploads a file to the wiki.
+    /// </summary>
+    /// <param name="fileManager">An <see cref="IFileManager"/> (from dependency injection).</param>
+    /// <param name="file">An <see cref="IFormFile"/> to upload.</param>
+    /// <param name="options">An <see cref="UploadRequest"/> serialized as JSON (optional).</param>
+    /// <returns>
+    /// An <see cref="IActionResult"/>.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -416,15 +543,38 @@ public class WikiController(
         }
     }
 
+    /// <summary>
+    /// Gets the current user's upload limit.
+    /// </summary>
+    /// <returns>
+    /// <para>
+    /// The current user's upload limit, in bytes.
+    /// </para>
+    /// <para>
+    /// A value of -1 indicates no limit.
+    /// </para>
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public Task<int> UploadLimit() => _dataManager.GetUploadLimitAsync(User);
 
+    /// <summary>
+    /// Gets the list of pages which link to the given page.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> objects.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
     public Task<PagedList<LinkInfo>> WhatLinksHere([FromBody] TitleRequest request)
         => _dataManager.GetWhatLinksHereAsync(request);
 
+    /// <summary>
+    /// Gets the wiki links present in content containing wiki syntax.
+    /// </summary>
+    /// <returns>
+    /// A <see cref="List{T}"/> of <see cref="WikiLink"/> objects.
+    /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(List<WikiLink>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -438,6 +588,13 @@ public class WikiController(
         return Ok(result);
     }
 
+    /// <summary>
+    /// Gets the wiki user or group whose ID or username corresponds to the given search query.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing the <see cref="IWikiOwner"/>, or a 204 (no
+    /// content) result.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(IWikiOwner), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -454,6 +611,14 @@ public class WikiController(
             : Ok(wikiOwner);
     }
 
+    /// <summary>
+    /// Gets the <see cref="Wiki.WikiUser"/> whose ID or username corresponds to the given search
+    /// query.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing the <see cref="Wiki.WikiUser"/>, or a 204 (no
+    /// content) result.
+    /// </returns>
     [HttpGet]
     [ProducesResponseType(typeof(WikiUser), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

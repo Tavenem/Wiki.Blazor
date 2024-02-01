@@ -24,7 +24,7 @@ jobs:
         working-directory: ./src
 
       - name: Build
-        run: dotnet build --configuration Release -p:Version=${{ env.VERSION }} --no-restore --nologo
+        run: dotnet build --configuration Release -p:Version=${{ env.VERSION }} -p:ContinuousIntegrationBuild=true --no-restore --nologo
         working-directory: ./src
 
       #- name: Test
@@ -41,7 +41,7 @@ jobs:
 
       - name: Pack
         if: steps.tagged.outputs.tagged == 1
-        run: dotnet pack --include-symbols -p:SymbolPackageFormat=snupkg -p:PackageVersion=${{ env.VERSION }} --configuration Release --no-build --nologo --output .
+        run: dotnet pack -IncludeReferencedProjects --include-symbols -p:SymbolPackageFormat=snupkg -p:PackageVersion=${{ env.VERSION }} --configuration Release --no-build --nologo --output .
         working-directory: ./src
 
       - name: Push to NuGet

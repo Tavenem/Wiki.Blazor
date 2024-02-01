@@ -21,7 +21,7 @@ jobs:
         working-directory: ./src
 
       - name: Build
-        run: dotnet build --configuration Debug --no-restore --nologo
+        run: dotnet build --configuration Debug -p:ContinuousIntegrationBuild=true --no-restore --nologo
         working-directory: ./src
 
       #- name: Test

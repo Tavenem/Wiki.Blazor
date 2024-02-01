@@ -56,7 +56,7 @@ public class WikiDataManager(
     /// </returns>
     /// <exception cref="ArgumentException">
     /// The edit was attempted in the file namespace. The <see cref="UploadAsync(ClaimsPrincipal?,
-    /// IFileManager, IFormFile, UploadRequest)"/> endpoint should be used instead.
+    /// IFileManager, UploadRequest, Stream?, string?, string?)"/> endpoint should be used instead.
     /// </exception>
     /// <exception cref="InvalidOperationException">
     /// The content could not be updated (usually for permission reasons).
@@ -312,7 +312,7 @@ public class WikiDataManager(
     /// <param name="user">The user making the request (if any).</param>
     /// <param name="title">The requested category title.</param>
     /// <returns>
-    /// A <see cref="CategoryInfo"/> object.
+    /// A <see cref="Category"/> object.
     /// </returns>
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given category.
@@ -343,7 +343,7 @@ public class WikiDataManager(
     /// </summary>
     /// <param name="user">The user making the request.</param>
     /// <param name="title">The title of the requested content.</param>
-    /// <returns>A <see cref="WikiEditInfo"/> instance.</returns>
+    /// <returns>A <see cref="Page"/> instance.</returns>
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have permission to make the requested edit.
     /// </exception>
@@ -377,6 +377,7 @@ public class WikiDataManager(
     /// <summary>
     /// Fetches information about the group page with the given <paramref name="title"/>.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">
     /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
     /// </param>
@@ -498,7 +499,8 @@ public class WikiDataManager(
     /// the current version of the page is retrieved.
     /// </para>
     /// </param>
-    /// <returns>A <see cref="WikiPageInfo"/> instance.</returns>
+    /// <param name="diff">Whether a diff is requested.</param>
+    /// <returns>A <see cref="Page"/> instance.</returns>
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
     /// </exception>
@@ -647,7 +649,7 @@ public class WikiDataManager(
     /// Whether to prevent redirects when fetching content.
     /// </param>
     /// <returns>
-    /// A <see cref="TalkResponse"/> instance.
+    /// A <see cref="MessageResponse"/> instance.
     /// </returns>
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
@@ -718,6 +720,7 @@ public class WikiDataManager(
     /// <summary>
     /// Fetches information about the group page with the given <paramref name="title"/>.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">
     /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
     /// </param>
@@ -758,7 +761,7 @@ public class WikiDataManager(
     /// <summary>
     /// Fetches a list of the pages which link to a given resource.
     /// </summary>
-    /// <param name="request">a <see cref="WhatLinksHereRequest"/> instance.</param>
+    /// <param name="request">a <see cref="TitleRequest"/> instance.</param>
     /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
     public async Task<PagedList<LinkInfo>> GetWhatLinksHereAsync(TitleRequest request)
     {
@@ -772,6 +775,7 @@ public class WikiDataManager(
     /// <summary>
     /// Fetches information about a given wiki group.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="query">
     /// A wiki user ID or username.
     /// </param>
@@ -866,6 +870,7 @@ public class WikiDataManager(
     /// <summary>
     /// Fetches information about a given wiki user.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="query">
     /// A wiki user ID or username.
     /// </param>
@@ -938,7 +943,7 @@ public class WikiDataManager(
     /// <param name="user">The user making the request.</param>
     /// <param name="reply">A <see cref="ReplyRequest"/> instance.</param>
     /// <returns>
-    /// A <see cref="TalkResponse"/> instance containing all the messages for the related page.
+    /// A <see cref="MessageResponse"/> instance containing all the messages for the related page.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// The <see cref="ReplyRequest.TopicId"/> was missing.
