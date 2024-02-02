@@ -1,6 +1,5 @@
 ﻿using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
-using Tavenem.Wiki.Blazor.Models;
 using Tavenem.Wiki.Blazor.Services.Search;
 using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;

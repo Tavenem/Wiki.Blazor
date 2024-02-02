@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.3-preview
+### Changed
+- Simplified project structure
+
 ## 0.7.2-preview
 ### Changed
 - Simplified NuGet package structure
