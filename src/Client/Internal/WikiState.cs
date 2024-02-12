@@ -45,11 +45,22 @@ public class WikiState
     /// </summary>
     public bool LoadError { get; internal set; }
 
+    private bool _notAuthorized;
     /// <summary>
+    /// <para>
     /// Whether the current user is not authorized to complete the current action (e.g. view or edit
     /// a page).
+    /// </para>
+    /// <para>
+    /// This value can be set to <see langword="true"/> externally, but can only be set to <see langword="false"/> by
+    /// the library.
+    /// </para>
     /// </summary>
-    public bool NotAuthorized { get; internal set; }
+    public bool NotAuthorized
+    {
+        get => _notAuthorized;
+        set => _notAuthorized |= value;
+    }
 
     /// <summary>
     /// The full title of the current wiki page, as a string.

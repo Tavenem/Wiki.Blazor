@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.4-preview
+### Changed
+- Allow setting unauthorized to true from external code
+
 ## 0.7.3-preview
 ### Changed
 - Simplified project structure
