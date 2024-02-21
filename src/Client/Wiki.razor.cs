@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using System.Text;
+using System.Web;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Shared;
 
@@ -420,7 +421,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     {
         if (string.IsNullOrEmpty(input))
         {
-            return Enumerable.Empty<KeyValuePair<string, object>>();
+            return [];
         }
 
         var suggestions = await FetchDataAsync(
@@ -431,7 +432,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
                 user,
                 input));
         return suggestions?.Select(x => new KeyValuePair<string, object>(x, x))
-            ?? Enumerable.Empty<KeyValuePair<string, object>>();
+            ?? [];
     }
 
     private async Task GetWikiItemAsync()
@@ -682,9 +683,11 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             index = Route.IndexOf('#');
             if (index != -1)
             {
-                Fragment = Route[(index + 1)..];
+                Fragment = HttpUtility.UrlDecode(Route[(index + 1)..]);
                 Route = Route[..index];
             }
+
+            Route = HttpUtility.UrlDecode(Route);
         }
     }
 

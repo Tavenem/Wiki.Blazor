@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.8-preview
+### Fixed
+- Decode wiki route
+
 ## 0.7.5-7-preview
 ### Updated
 - Update dependencies
