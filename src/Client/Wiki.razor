@@ -96,6 +96,8 @@
                                    @bind-Value="@SearchText"
                                    @bind-Value:after="OnSetSearchText"
                                    Class="dense"
+                                   InputType="InputType.Search"
+                                   Name="filter"
                                    Style="max-width:75vw;width:20rem"
                                    role="search">
                             <PostfixContent>
@@ -105,6 +107,24 @@
                             </PostfixContent>
                         </TextInput>
                     </div>
+                }
+                else
+                {
+                    <form action="@(WikiState.Link("Search", WikiOptions.SystemNamespace))" data-enhance>
+                        <div class="field no-label dense" style="max-width:75vw;width:20rem">
+                            <div class="input">
+                                <input autocomplete="off"
+                                       class="input-core"
+                                       name="pg-f"
+                                       placeholder="Search the wiki"
+                                       size="1"
+                                       type="search" />
+                                <button class="btn btn-icon" type="submit">
+                                    <tf-icon>search</tf-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 }
                 @if (WikiState.IsCompact)
                 {

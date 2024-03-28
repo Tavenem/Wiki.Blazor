@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Tavenem.DataStorage;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Example;
@@ -19,7 +21,17 @@ builder.Services.AddWikiServer(
     null);
 
 builder.Services.AddAuthorization();
-await builder.Services.AddWikiClientAsync(true, builder.Environment.WebRootPath);
+builder.Services.AddWikiClient(true);
+
+var dataStore = new InMemoryDataStore();
+builder.Services.AddScoped<IDataStore>(_ => dataStore);
+
+var archiveText = File.ReadAllText(Path.Combine(builder.Environment.WebRootPath, "archive.json"));
+var archive = JsonSerializer.Deserialize<Archive>(archiveText, WikiArchiveJsonSerializerOptions.Instance);
+if (archive is not null)
+{
+    await archive.RestoreAsync(dataStore, ExampleWikiOptions.Instance, "sample");
+}
 
 builder.Services.AddScoped<WikiDataManager>();
 

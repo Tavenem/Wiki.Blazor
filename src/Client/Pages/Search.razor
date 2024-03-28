@@ -56,20 +56,12 @@
                           DisplayHelpTextOnFocus="true"
                           HelpText="Specify one or more owners. Exclude an owner by clicking the chip."
                           InitialUsers="@CurrentOwner" />
-            <Select Label="Sort by" @bind-Value="CurrentSort">
-                <Option Label="Default" Value="@("default")" />
-                <Option Label="Last revision date/time" Value="@("timestamp")" />
-            </Select>
-            <Switch Label="Descending"
-                    UncheckedLabel="Ascending"
-                    @bind-Value="CurrentDescending" />
             <button class="btn primary" @onclick="OnSetSearchAsync">Filter</button>
         </Collapse>
     }
     else if (!string.IsNullOrEmpty(CurrentDomain)
         || !string.IsNullOrEmpty(CurrentNamespace)
-        || !string.IsNullOrEmpty(CurrentOwner)
-        || CurrentDescending)
+        || !string.IsNullOrEmpty(CurrentOwner))
     {
         <Collapse Title="Advanced search:" class="wiki-search-advanced">
             @if (!string.IsNullOrEmpty(CurrentDomain))
@@ -93,14 +85,6 @@
                               DisplayHelpTextOnFocus="true"
                               InitialUsers="@CurrentOwner" />
             }
-            @if (CurrentSort?.Equals("timestamp") == true)
-            {
-                <p>Sorted by: Last revision date/time</p>
-            }
-            @if (CurrentDescending)
-            {
-                <p>Descending</p>
-            }
         </Collapse>
     }
 </div>
@@ -119,7 +103,7 @@
                 <li>
                     <div class="wiki-search-result-title">
                         <a href="@WikiState.Link(result.Title)"
-                           class="wiki-link wiki-link-exists">@result.Title.ToString()</a>
+                           class="wiki-link wiki-link-exists">@result.Title.ToString(WikiOptions)</a>
                     </div>
                     @if (!string.IsNullOrEmpty(result.Excerpt))
                     {

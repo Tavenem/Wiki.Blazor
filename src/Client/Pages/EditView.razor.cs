@@ -79,7 +79,7 @@ public partial class EditView : WikiEditComponent
             else
             {
                 Content = newArticle.MarkdownContent;
-                HtmlContent = new(newArticle.Html);
+                HtmlContent = new(newArticle.Html ?? string.Empty);
                 Title = newArticle.Title.ToString();
                 IsScript = string.CompareOrdinal(newArticle.Title.Namespace, WikiOptions.ScriptNamespace) == 0;
             }

@@ -109,7 +109,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     /// Expected to be provided by query string, not set explicitly.
     /// </remarks>
     [SupplyParameterFromQuery(Name = PageNumberParameter)]
-    public long? PageNumber { get; set; }
+    public int? PageNumber { get; set; }
 
     /// <summary>
     /// The requested page size for a paged set.
@@ -261,8 +261,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     private DateTimeOffset? RequestedSecondTime { get; set; }
 
     private string? Route { get; set; }
-
-    [Inject] ISearchClient SearchClient { get; set; } = default!;
 
     private string? SearchText { get; set; }
 
@@ -427,10 +425,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         var suggestions = await FetchDataAsync(
             $"{WikiBlazorClientOptions.WikiServerApiRoute}/searchsuggest?input={input}",
             WikiBlazorJsonSerializerContext.Default.ListString,
-            async user => await WikiDataManager.GetSearchSuggestionsAsync(
-                SearchClient,
-                user,
-                input));
+            async user => await WikiDataManager.GetSearchSuggestionsAsync(user, input));
         return suggestions?.Select(x => new KeyValuePair<string, object>(x, x))
             ?? [];
     }
@@ -533,7 +528,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
                     }
                 }
             }
-            Content = new MarkupString(item.DisplayHtml);
+            Content = new MarkupString(item.DisplayHtml ?? string.Empty);
             IsDiff = item.IsDiff;
             WikiState.UpdateTitle(item.DisplayTitle);
             StateHasChanged();
@@ -557,7 +552,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         NavigationManager.NavigateTo(WikiState.Link(
             "Search",
             WikiOptions.SystemNamespace,
-            query: $"filter={SearchText}"));
+            query: $"pg-f={SearchText}"));
     }
 
     private void Reset()

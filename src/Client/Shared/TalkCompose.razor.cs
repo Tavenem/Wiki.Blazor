@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using System.Diagnostics.CodeAnalysis;
-using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
@@ -13,7 +12,6 @@ public partial class TalkCompose : IAsyncDisposable
 {
     private bool _disposedValue;
     private DotNetObjectReference<TalkCompose>? _dotNetObjectReference;
-    private IJSObjectReference? _emojiModule;
     private IJSObjectReference? _module;
 
     /// <summary>
@@ -34,8 +32,6 @@ public partial class TalkCompose : IAsyncDisposable
     [MemberNotNullWhen(true, nameof(TopicId), nameof(NewMessage))]
     private bool CanPost => !string.IsNullOrEmpty(TopicId)
         && !string.IsNullOrWhiteSpace(NewMessage);
-
-    private string EmojiButtonId { get; set; } = Guid.NewGuid().ToHtmlId();
 
     private List<GifCategory> GifCategories { get; set; } = [];
 
@@ -66,18 +62,11 @@ public partial class TalkCompose : IAsyncDisposable
             _module = await JSRuntime.InvokeAsync<IJSObjectReference>(
                 "import",
                 "./_content/Tavenem.Wiki.Blazor.Client/Shared/TalkCompose.razor.js");
-            _emojiModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
-                "import",
-                "./_content/Tavenem.Wiki.Blazor.Client/tavenem-emoji.js");
 
             await _module.InvokeVoidAsync(
                 "showGifSearch",
                 _dotNetObjectReference,
                 WikiBlazorClientOptions.TenorAPIKey);
-            await _emojiModule.InvokeVoidAsync(
-                "initialize",
-                _dotNetObjectReference,
-                EmojiButtonId);
         }
     }
 
@@ -100,10 +89,6 @@ public partial class TalkCompose : IAsyncDisposable
             if (disposing)
             {
                 _dotNetObjectReference?.Dispose();
-                if (_emojiModule is not null)
-                {
-                    await _emojiModule.DisposeAsync();
-                }
                 if (_module is not null)
                 {
                     await _module.DisposeAsync();
@@ -187,7 +172,7 @@ public partial class TalkCompose : IAsyncDisposable
     {
         if (_module is null)
         {
-            return Enumerable.Empty<KeyValuePair<string, object>>();
+            return [];
         }
 
         var results = await _module.InvokeAsync<IEnumerable<string>>(

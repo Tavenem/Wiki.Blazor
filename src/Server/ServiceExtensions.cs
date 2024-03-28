@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using SmartComponents.LocalEmbeddings;
 using System.Text.Json.Serialization.Metadata;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Server;
 using Tavenem.Wiki.Blazor.Services.FileManager;
-using Tavenem.Wiki.Blazor.Services.Search;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -40,8 +40,7 @@ public static class ServiceExtensions
     /// An <see cref="ISearchClient"/> instance.
     /// </para>
     /// <para>
-    /// If omitted, an instance of <see cref="DefaultSearchClient"/> will be used. Note: the
-    /// default client is not recommended for production use.
+    /// If omitted the built-in search functionality will be used.
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
@@ -54,6 +53,10 @@ public static class ServiceExtensions
         IFileManager? fileManager = null,
         ISearchClient? searchClient = null)
     {
+        services
+            .AddSingleton<LocalEmbedder>()
+            .AddMemoryCache();
+
         if (wikiOptions is not null)
         {
             services.AddScoped(_ => wikiOptions);
@@ -90,11 +93,7 @@ public static class ServiceExtensions
             services.AddScoped(_ => fileManager);
         }
 
-        if (searchClient is null)
-        {
-            services.AddScoped<ISearchClient, DefaultSearchClient>();
-        }
-        else
+        if (searchClient is not null)
         {
             services.AddScoped(_ => searchClient);
         }
@@ -125,8 +124,7 @@ public static class ServiceExtensions
     /// The type of <see cref="ISearchClient"/> to register.
     /// </para>
     /// <para>
-    /// If omitted, <see cref="DefaultSearchClient"/> will be used. Note: the default client is
-    /// not recommended for production use.
+    /// If omitted the built-in search functionality will be used.
     /// </para>
     /// </param>
     /// <param name="wikiOptions">
@@ -145,6 +143,10 @@ public static class ServiceExtensions
         WikiOptions? wikiOptions = null,
         WikiBlazorServerOptions? wikiBlazorOptions = null)
     {
+        services
+            .AddSingleton<LocalEmbedder>()
+            .AddMemoryCache();
+
         if (wikiOptions is not null)
         {
             services.AddScoped(_ => wikiOptions);
@@ -178,11 +180,7 @@ public static class ServiceExtensions
             services.AddScoped(typeof(IFileManager), fileManagerType);
         }
 
-        if (searchClientType is null)
-        {
-            services.AddScoped<ISearchClient, DefaultSearchClient>();
-        }
-        else
+        if (searchClientType is not null)
         {
             services.AddScoped(typeof(ISearchClient), searchClientType);
         }
@@ -219,8 +217,7 @@ public static class ServiceExtensions
     /// A function which provides an <see cref="ISearchClient"/> instance.
     /// </para>
     /// <para>
-    /// If omitted, an instance of <see cref="DefaultSearchClient"/> will be used. Note: the
-    /// default client is not recommended for production use.
+    /// If omitted the built-in search functionality will be used.
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
@@ -233,6 +230,10 @@ public static class ServiceExtensions
         Func<IServiceProvider, IFileManager>? fileManagerBuilder = null,
         Func<IServiceProvider, ISearchClient>? searchClientBuilder = null)
     {
+        services
+            .AddSingleton<LocalEmbedder>()
+            .AddMemoryCache();
+
         if (wikiOptions is not null)
         {
             services.AddScoped(_ => wikiOptions);
@@ -266,11 +267,7 @@ public static class ServiceExtensions
             services.AddScoped(fileManagerBuilder);
         }
 
-        if (searchClientBuilder is null)
-        {
-            services.AddScoped<ISearchClient, DefaultSearchClient>();
-        }
-        else
+        if (searchClientBuilder is not null)
         {
             services.AddScoped(searchClientBuilder);
         }
@@ -303,8 +300,7 @@ public static class ServiceExtensions
     /// An <see cref="ISearchClient"/> instance.
     /// </para>
     /// <para>
-    /// If omitted, an instance of <see cref="DefaultSearchClient"/> will be used. Note: the
-    /// default client is not recommended for production use.
+    /// If omitted the built-in search functionality will be used.
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
@@ -318,6 +314,8 @@ public static class ServiceExtensions
         ISearchClient? searchClient = null)
     {
         services
+            .AddSingleton<LocalEmbedder>()
+            .AddMemoryCache()
             .AddScoped(wikiOptionsBuilder)
             .AddScoped(wikiBlazorOptionsBuilder)
             .AddScoped(_ => userManager)
@@ -336,11 +334,7 @@ public static class ServiceExtensions
             services.AddScoped(_ => fileManager);
         }
 
-        if (searchClient is null)
-        {
-            services.AddScoped<ISearchClient, DefaultSearchClient>();
-        }
-        else
+        if (searchClient is not null)
         {
             services.AddScoped(_ => searchClient);
         }
@@ -377,8 +371,7 @@ public static class ServiceExtensions
     /// The type of <see cref="ISearchClient"/> to register.
     /// </para>
     /// <para>
-    /// If omitted, <see cref="DefaultSearchClient"/> will be used. Note: the default client is
-    /// not recommended for production use.
+    /// If omitted the built-in search functionality will be used.
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
@@ -392,6 +385,8 @@ public static class ServiceExtensions
         Type? searchClientType)
     {
         services
+            .AddSingleton<LocalEmbedder>()
+            .AddMemoryCache()
             .AddScoped(wikiOptionsBuilder)
             .AddScoped(wikiBlazorOptionsBuilder)
             .AddScoped(typeof(IWikiUserManager), userManagerType)
@@ -407,11 +402,7 @@ public static class ServiceExtensions
             services.AddScoped(typeof(IFileManager), fileManagerType);
         }
 
-        if (searchClientType is null)
-        {
-            services.AddScoped<ISearchClient, DefaultSearchClient>();
-        }
-        else
+        if (searchClientType is not null)
         {
             services.AddScoped(typeof(ISearchClient), searchClientType);
         }
@@ -448,8 +439,7 @@ public static class ServiceExtensions
     /// A function which provides an <see cref="ISearchClient"/> instance.
     /// </para>
     /// <para>
-    /// If omitted, an instance of <see cref="DefaultSearchClient"/> will be used. Note: the
-    /// default client is not recommended for production use.
+    /// If omitted the built-in search functionality will be used.
     /// </para>
     /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
@@ -463,6 +453,8 @@ public static class ServiceExtensions
         Func<IServiceProvider, ISearchClient>? searchClientBuilder = null)
     {
         services
+            .AddSingleton<LocalEmbedder>()
+            .AddMemoryCache()
             .AddScoped(wikiOptionsBuilder)
             .AddScoped(wikiBlazorOptionsBuilder)
             .AddScoped(userManagerBuilder)
@@ -478,11 +470,7 @@ public static class ServiceExtensions
             services.AddScoped(fileManagerBuilder);
         }
 
-        if (searchClientBuilder is null)
-        {
-            services.AddScoped<ISearchClient, DefaultSearchClient>();
-        }
-        else
+        if (searchClientBuilder is not null)
         {
             services.AddScoped(searchClientBuilder);
         }

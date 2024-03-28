@@ -1,6 +1,6 @@
 name: publish
 env:
-  VERSION: '0.7.8-preview'
+  VERSION: '0.8.0-preview'
   PRERELEASE: true
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           # Semantic version range syntax or exact version of a dotnet version
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.x'
           include-prerelease: true
 
       - name: Install dependencies

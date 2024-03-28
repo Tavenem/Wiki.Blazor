@@ -2,12 +2,12 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using SmartComponents.LocalEmbeddings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Exceptions;
 using Tavenem.Wiki.Blazor.Models;
-using Tavenem.Wiki.Blazor.Services.Search;
 using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;
 
@@ -21,16 +21,20 @@ namespace Tavenem.Wiki.Blazor.Server.Controllers;
 [AllowAnonymous]
 public class WikiController(
     IDataStore dataStore,
+    LocalEmbedder embedder,
     IWikiGroupManager groupManager,
     ILoggerFactory loggerFactory,
+    IServiceProvider serviceProvider,
     IWikiUserManager userManager,
     WikiBlazorServerOptions wikiBlazorServerOptions,
     WikiOptions wikiOptions) : Controller
 {
     private readonly WikiDataManager _dataManager = new(
         dataStore,
+        embedder,
         groupManager,
         loggerFactory,
+        serviceProvider,
         userManager,
         wikiOptions);
 
@@ -388,7 +392,6 @@ public class WikiController(
     /// <summary>
     /// Performs a search of the wiki.
     /// </summary>
-    /// <param name="searchClient">An <see cref="ISearchClient"/> (from dependency injection).</param>
     /// <param name="request">The <see cref="SearchRequest"/>.</param>
     /// <returns>
     /// An <see cref="IActionResult"/> containing a <see cref="SearchResult"/> when successful.
@@ -396,14 +399,12 @@ public class WikiController(
     [HttpPost]
     [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
     public Task<SearchResult> Search(
-        [FromServices] ISearchClient searchClient,
         [FromBody] SearchRequest request)
-        => _dataManager.SearchAsync(searchClient, User, request);
+        => _dataManager.SearchAsync(User, request);
 
     /// <summary>
     /// Gets search suggestions for a given input string.
     /// </summary>
-    /// <param name="searchClient">An <see cref="ISearchClient"/> (from dependency injection).</param>
     /// <param name="input">The search input.</param>
     /// <returns>
     /// An <see cref="IActionResult"/> containing a <see cref="List{T}"/> of strings when successful.
@@ -411,9 +412,8 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
     public Task<List<string>> SearchSuggest(
-        [FromServices] ISearchClient searchClient,
         [FromQuery] string? input = null)
-        => _dataManager.GetSearchSuggestionsAsync(searchClient, User, input);
+        => _dataManager.GetSearchSuggestionsAsync(User, input);
 
     /// <summary>
     /// Gets a wiki talk page.

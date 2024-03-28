@@ -3,8 +3,11 @@
 <PageTitle>Home</PageTitle>
 
 @code {
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    [Inject, System.Diagnostics.CodeAnalysis.NotNull] private NavigationManager? Navigation { get; set; }
 
-    protected override void OnInitialized()
-        => Navigation.NavigateTo("/wiki");
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.NavigateTo("/wiki");
+        await Task.CompletedTask;
+    }
 }

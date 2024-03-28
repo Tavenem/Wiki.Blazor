@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0-preview
+### Changed
+- Implement built-in search
+- Replaced 3rd party emoji popup
+
 ## 0.7.8-preview
 ### Fixed
 - Decode wiki route

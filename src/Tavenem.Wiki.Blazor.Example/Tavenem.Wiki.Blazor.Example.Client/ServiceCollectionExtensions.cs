@@ -1,7 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Client;
 using Tavenem.Wiki.Blazor.Example.Client;
@@ -10,10 +8,9 @@ namespace Tavenem.Wiki.Blazor.Example.Services;
 
 public static class ServiceCollectionExtensions
 {
-    public static async Task AddWikiClientAsync(
+    public static void AddWikiClient(
         this IServiceCollection services,
-        bool server,
-        string? webRootPath = null)
+        bool server)
     {
         services.AddCascadingAuthenticationState();
         services.AddScoped<CustomAuthenticationStateProvider>();
@@ -26,29 +23,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<WikiGroupManager>();
         services.AddScoped<IWikiGroupManager>(services =>
             services.GetRequiredService<WikiGroupManager>());
-
-        if (server)
-        {
-            var dataStore = new InMemoryDataStore();
-            services.AddScoped<IDataStore>(_ => dataStore);
-
-            if (!string.IsNullOrEmpty(webRootPath))
-            {
-                var archiveText = File.ReadAllText(Path.Combine(webRootPath, "archive.json"));
-                var archive = JsonSerializer.Deserialize<Archive>(archiveText, new JsonSerializerOptions
-                {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
-                    IgnoreReadOnlyFields = true,
-                    IgnoreReadOnlyProperties = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    TypeInfoResolver = WikiArchiveJsonSerializerContext.Default,
-                });
-                if (archive is not null)
-                {
-                    await archive.RestoreAsync(dataStore, ExampleWikiOptions.Instance, "sample");
-                }
-            }
-        }
 
         services.AddWikiClient(
             _ => ExampleWikiOptions.Instance,

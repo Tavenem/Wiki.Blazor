@@ -12,6 +12,7 @@
     {
         <TextArea Autocomplete="false"
                   Placeholder="@(!string.IsNullOrEmpty(MessageId) ? "Type a reply" : "Type a new message")"
+                  ShowEmoji="true"
                   Spellcheck="true"
                   UpdateOnInput="true"
                   @bind-Value="NewMessage" />
@@ -23,7 +24,6 @@
                 <button class="btn small outlined" @onclick="@(_ => OnReactAsync("👍"))">👍</button>
                 <button class="btn small outlined" @onclick="@(_ => OnReactAsync("👎"))">👎</button>
             }
-            <button id="@EmojiButtonId" class="btn small outlined">😀</button>
             @if (!string.IsNullOrEmpty(WikiBlazorClientOptions.TenorAPIKey))
             {
                 <button class="btn small outlined" @onclick="@(_ => ShowGifSearch = !ShowGifSearch)">GIF</button>
@@ -37,12 +37,12 @@
 {
     <div class="wiki-talk-gif">
         <TextInput LoadSuggestions="GetGifSearchSuggestionsAsync"
-               Placeholder="Search Tenor"
-               PostfixIcon="search"
-               @bind-Value="@SearchGifText"
-               @bind-Value:after="OnSetSearchGifTextAsync"
-               Class="dense"
-               role="search" />
+                   Placeholder="Search Tenor"
+                   PostfixIcon="search"
+                   @bind-Value="@SearchGifText"
+                   @bind-Value:after="OnSetSearchGifTextAsync"
+                   Class="dense"
+                   role="search" />
         @if (GifSuggestions?.Count > 0)
         {
             <div class="wiki-talk-gif-suggestions">
@@ -62,10 +62,8 @@
                     </div>
                 }
                 <button class="btn primary"
-                style="align-self:center;justify-self:center"
-                @onclick="OnGetMoreGifsAsync">
-                    More
-                </button>
+                        style="align-self:center;justify-self:center"
+                        @onclick="OnGetMoreGifsAsync">More</button>
             }
             else if (GifCategories.Count > 0)
             {

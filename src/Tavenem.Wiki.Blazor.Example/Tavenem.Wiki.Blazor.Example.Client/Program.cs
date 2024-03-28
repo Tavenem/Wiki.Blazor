@@ -7,6 +7,6 @@ var httpClient = new HttpClient() { BaseAddress = new Uri(builder.HostEnvironmen
 builder.Services.AddScoped(_ => httpClient);
 
 builder.Services.AddAuthorizationCore();
-await builder.Services.AddWikiClientAsync(false);
+builder.Services.AddWikiClient(false);
 
 await builder.Build().RunAsync();

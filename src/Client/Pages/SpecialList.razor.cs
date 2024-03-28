@@ -26,7 +26,7 @@ public partial class SpecialList : OfflineSupportComponent
     /// <summary>
     /// The requested page number.
     /// </summary>
-    [Parameter] public long? PageNumber { get; set; }
+    [Parameter] public int? PageNumber { get; set; }
 
     /// <summary>
     /// The requested page size.
@@ -289,14 +289,14 @@ public partial class SpecialList : OfflineSupportComponent
         if (Items?.HasNextPage == true)
         {
             CurrentPageNumber++;
-            PageNumber = (long)CurrentPageNumber;
+            PageNumber = (int)CurrentPageNumber;
             await RefreshAsync();
         }
     }
 
     private async Task OnPageNumberChangedAsync()
     {
-        PageNumber = (long)CurrentPageNumber;
+        PageNumber = (int)CurrentPageNumber;
         await RefreshAsync();
     }
 
