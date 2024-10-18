@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using SmartComponents.LocalEmbeddings;
 using System.Security.Claims;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Exceptions;
@@ -9,17 +8,13 @@ using Tavenem.Wiki.MarkdownExtensions.Transclusions;
 using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;
 
-namespace Tavenem.Wiki.Blazor;
+namespace Tavenem.Wiki.Blazor.Client.Services;
 
 /// <summary>
 /// Facilitates data operations for the wiki.
 /// </summary>
-/// <remarks>
-/// Constructs a new instance of <see cref="WikiDataManager"/>.
-/// </remarks>
-public class WikiDataManager(
+public class LocalWikiDataService(
     IDataStore dataStore,
-    LocalEmbedder embedder,
     IWikiGroupManager groupManager,
     ILoggerFactory loggerFactory,
     IServiceProvider serviceProvider,
@@ -40,7 +35,6 @@ public class WikiDataManager(
     public const string PreviewTemplate = "<div class=\"wiki compact preview\"><div><main class=\"wiki-content\" role=\"main\"><div class=\"wiki-heading\" role=\"heading\"><h1 id=\"wiki-main-heading\">{0}{1}<span class=\"wiki-main-heading-title\">{2}</span></h1></div><div class=\"wiki-body\"><div class=\"wiki-parser-output\">{3}</div></div></main></div></div>";
     private readonly IMemoryCache? _cache = serviceProvider.GetService<IMemoryCache>();
     private readonly ILogger _logger = loggerFactory.CreateLogger("Wiki");
-    private readonly ISearchClient? _searchClient = serviceProvider.GetService<ISearchClient>();
 
     /// <summary>
     /// Performs the requested edit operation.
@@ -201,7 +195,6 @@ public class WikiDataManager(
             allAllowedViewerGroups,
             null,
             request.OriginalTitle,
-            embedder,
             _cache);
         if (!success)
         {
@@ -227,7 +220,6 @@ public class WikiDataManager(
                 allAllowedViewerGroups,
                 request.Title,
                 null,
-                embedder,
                 _cache);
             if (!redirectSuccess)
             {
@@ -580,15 +572,13 @@ public class WikiDataManager(
     /// Gets the preview content of an article.
     /// </summary>
     /// <param name="user">The user making the request.</param>
-    /// <param name="link">The wiki link to preview.</param>
+    /// <param name="title">The title of the requested page.</param>
     /// <returns>
     /// The preview content; or <see langword="null"/> if there is no such article, or the given
     /// user does not have permission to view it.
     /// </returns>
-    public async Task<string?> GetPreviewAsync(ClaimsPrincipal? user, string link)
+    public async Task<string?> GetPreviewAsync(ClaimsPrincipal? user, PageTitle title)
     {
-        var title = PageTitle.Parse(link);
-
         var wikiUser = user is null
             ? null
             : await userManager.GetUserAsync(user);
@@ -605,50 +595,6 @@ public class WikiDataManager(
             return null;
         }
         return result.Preview;
-    }
-
-    /// <summary>
-    /// Gets a list of search suggestions based on the given input.
-    /// </summary>
-    /// <param name="user">The user making the request.</param>
-    /// <param name="input">An input string.</param>
-    /// <returns>
-    /// A <see cref="List{T}"/> of the full titles of wiki articles which match the given input.
-    /// </returns>
-    public async Task<List<string>> GetSearchSuggestionsAsync(
-        ClaimsPrincipal? user,
-        string? input = null)
-    {
-        if (string.IsNullOrEmpty(input))
-        {
-            return [];
-        }
-        var title = PageTitle.Parse(input);
-        if (string.IsNullOrEmpty(title.Title))
-        {
-            return [];
-        }
-
-        var result = await dataStore.SearchWikiAsync(
-            wikiOptions,
-            groupManager,
-            new SearchRequest(
-                title.Title,
-                title.Domain,
-                title.Namespace,
-                PageSize: 10,
-                TitleMatchOnly: true),
-            user is null
-                ? null
-                : await userManager.GetUserAsync(user),
-            embedder,
-            _cache);
-
-        return result
-            .Items?
-            .Select(x => x.Title.ToString())
-            .ToList()
-            ?? [];
     }
 
     /// <summary>
@@ -729,11 +675,11 @@ public class WikiDataManager(
     }
 
     /// <summary>
-    /// Fetches information about the group page with the given <paramref name="title"/>.
+    /// Fetches information about the user page with the given <paramref name="title"/>.
     /// </summary>
     /// <param name="user">The user making the request.</param>
     /// <param name="title">
-    /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
+    /// The title of a user page (i.e. the user's <see cref="IIdItem.Id"/>).
     /// </param>
     /// <returns>
     /// A <see cref="UserPage"/> instance.
@@ -840,8 +786,8 @@ public class WikiDataManager(
             await TransclusionParser.TranscludeAsync(
                 wikiOptions,
                 dataStore,
-                request.Title,
-                request.Content),
+                request.Content,
+                request.Title),
             request.Title);
     }
 
@@ -962,7 +908,7 @@ public class WikiDataManager(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given topic.
     /// </exception>
-    public async Task<List<MessageResponse>> PostTalkAsync(
+    public async Task PostTalkAsync(
         ClaimsPrincipal? user,
         ReplyRequest reply)
     {
@@ -996,7 +942,7 @@ public class WikiDataManager(
             }
             if (!result.Exists)
             {
-                return [];
+                return;
             }
         }
 
@@ -1009,9 +955,6 @@ public class WikiDataManager(
             wikiUser.DisplayName ?? wikiUser.Id,
             reply.Markdown,
             reply.MessageId);
-
-        var topic = await dataStore.GetItemAsync<Topic>(reply.TopicId);
-        return await GetTopicMessagesAsync(topic);
     }
 
     /// <summary>
@@ -1042,8 +985,8 @@ public class WikiDataManager(
             await TransclusionParser.TranscludeAsync(
                 wikiOptions,
                 dataStore,
-                request.Title,
-                request.Content));
+                request.Content,
+                request.Title));
     }
 
     /// <summary>
@@ -1070,12 +1013,11 @@ public class WikiDataManager(
 
         return MarkdownItem.RenderPreview(
             wikiOptions,
-            dataStore,
             await TransclusionParser.TranscludeAsync(
                 wikiOptions,
                 dataStore,
-                request.Title,
-                request.Content));
+                request.Content,
+                request.Title));
     }
 
     /// <summary>
@@ -1141,7 +1083,7 @@ public class WikiDataManager(
             }
         }
 
-        await archive.RestoreAsync(dataStore, wikiOptions, wikiUser.Id, null, embedder, _cache);
+        await archive.RestoreAsync(dataStore, wikiOptions, wikiUser.Id, null, _cache);
     }
 
     /// <summary>
@@ -1203,11 +1145,6 @@ public class WikiDataManager(
             ? null
             : await userManager.GetUserAsync(user);
 
-        if (_searchClient is not null)
-        {
-            return await _searchClient.SearchAsync(request, wikiUser);
-        }
-
         var title = PageTitle.Parse(query.Trim('"'));
         if (string.IsNullOrEmpty(title.Domain)
             && !string.IsNullOrEmpty(request.Domain))
@@ -1233,7 +1170,6 @@ public class WikiDataManager(
                 groupManager,
                 request,
                 wikiUser,
-                embedder,
                 _cache),
             exactMatch);
     }
@@ -1548,7 +1484,6 @@ public class WikiDataManager(
                     allAllowedEditorGroups,
                     allAllowedViewerGroups,
                     options.LeaveRedirect ? title : null,
-                    embedder,
                     _cache);
             }
             catch (Exception ex)
@@ -1605,7 +1540,6 @@ public class WikiDataManager(
                     allAllowedEditorGroups,
                     allAllowedViewerGroups,
                     null,
-                    embedder,
                     _cache);
             }
             catch (Exception ex)
@@ -1639,7 +1573,6 @@ public class WikiDataManager(
                     allAllowedEditorGroups,
                     allAllowedViewerGroups,
                     null,
-                    embedder,
                     _cache);
             }
             catch (Exception ex)
@@ -1774,11 +1707,11 @@ public class WikiDataManager(
             foreach (var message in topic.Messages)
             {
                 var html = message.Html;
-                if (message.MarkdownContent?.StartsWith("[[") == true
-                    && message.MarkdownContent.EndsWith("]]"))
+                if (message.MarkdownContent?.StartsWith('[') == true
+                    && message.MarkdownContent.EndsWith(']'))
                 {
                     var links = MarkdownItem.GetWikiLinks(wikiOptions, dataStore, message.MarkdownContent);
-                    if (links.Count == 1
+                    if (links?.Count == 1
                         && !links[0].IsCategory
                         && !links[0].IsMissing
                         && string.IsNullOrEmpty(links[0].Action))

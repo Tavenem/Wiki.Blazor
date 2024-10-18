@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using Tavenem.Blazor.Framework;
+using Tavenem.Wiki.Blazor.Client.Services;
 using Tavenem.Wiki.Blazor.Client.Shared;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -45,6 +45,8 @@ public partial class EditView : WikiEditComponent
 
     [CascadingParameter] private bool IsInteractive { get; set; }
 
+    [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
+
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
     private List<IWikiOwner> Owner { get; set; } = [];
@@ -55,6 +57,8 @@ public partial class EditView : WikiEditComponent
 
     private bool RedirectEnabled { get; set; }
 
+    [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
+
     [MemberNotNullWhen(false, nameof(Title))]
     [MemberNotNullWhen(false, nameof(User))]
     private bool SubmitDisabled => User is null
@@ -63,6 +67,10 @@ public partial class EditView : WikiEditComponent
     private List<IWikiOwner> Viewers { get; set; } = [];
 
     private bool ViewerSelf { get; set; }
+
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
+
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
     public override Task SetParametersAsync(ParameterView parameters)
@@ -106,26 +114,8 @@ public partial class EditView : WikiEditComponent
         }
 
         var draftPageTitle = PageTitle.Parse(Title).WithDomain(User.Id);
-        var (title, @namespace, _) = draftPageTitle;
-        var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/item?title=")
-            .Append(title);
-        if (!string.IsNullOrEmpty(@namespace))
-        {
-            url.Append("&namespace=")
-                .Append(@namespace);
-        }
-        url.Append("&domain=")
-            .Append(User.Id)
-            .Append("&noRedirect=true");
 
-        var item = await FetchDataAsync(
-            url.ToString(),
-            WikiJsonSerializerContext.Default.Page,
-            async user => await WikiDataManager.GetItemAsync(
-                user,
-                draftPageTitle,
-                true));
+        var item = await WikiDataService.GetItemAsync(draftPageTitle, true);
         if (item?.Exists != true)
         {
             HasDraft = false;
@@ -162,7 +152,7 @@ public partial class EditView : WikiEditComponent
                 .ToList();
         }
 
-        var request = new EditRequest(
+        var result = await WikiDataService.EditAsync(new EditRequest(
             draftPageTitle,
             null,
             "deleted",
@@ -175,13 +165,8 @@ public partial class EditView : WikiEditComponent
             allowedEditors,
             allowedViewers,
             allowedEditorGroups,
-            allowedViewerGroups);
-        var result = await PostAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/edit",
-            request,
-            WikiBlazorJsonSerializerContext.Default.EditRequest,
-            user => WikiDataManager.EditAsync(user, request));
-        if (result.Success)
+            allowedViewerGroups));
+        if (result)
         {
             HasDraft = false;
             SnackbarService.Add("Draft deleted successfully", ThemeColor.Success);
@@ -195,27 +180,9 @@ public partial class EditView : WikiEditComponent
             return;
         }
 
-        var draftPageTitle = PageTitle.Parse(Title).WithDomain(User.Id);
-        var (title, @namespace, _) = draftPageTitle;
-        var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/item?title=")
-            .Append(title);
-        if (!string.IsNullOrEmpty(@namespace))
-        {
-            url.Append("&namespace=")
-                .Append(@namespace);
-        }
-        url.Append("&domain=")
-            .Append(User.Id)
-            .Append("&noRedirect=true");
-
-        var item = await FetchDataAsync(
-            url.ToString(),
-            WikiJsonSerializerContext.Default.Page,
-            async user => await WikiDataManager.GetItemAsync(
-                user,
-                draftPageTitle,
-                true));
+        var item = await WikiDataService.GetItemAsync(
+            PageTitle.Parse(Title).WithDomain(User.Id),
+            true);
         if (item?.Exists != true)
         {
             HasDraft = false;
@@ -269,8 +236,6 @@ public partial class EditView : WikiEditComponent
             return;
         }
 
-        FixContent();
-
         IList<string>? allowedEditors = null;
         IList<string>? allowedEditorGroups = null;
         if (!EditorSelf && Editors.Count > 0)
@@ -302,34 +267,26 @@ public partial class EditView : WikiEditComponent
         }
 
         var title = PageTitle.Parse(Title);
-        var request = new EditRequest(
-            title,
-            Content,
-            Comment?.Trim(),
-            delete,
-            Redirect,
-            OwnerSelf,
-            OwnerSelf || Owner.Count < 1 ? null : Owner[0].Id,
-            EditorSelf,
-            ViewerSelf,
-            allowedEditors,
-            allowedViewers,
-            allowedEditorGroups,
-            allowedViewerGroups,
-            RedirectEnabled
-                ? new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain)
-                : null);
-        var result = await PostAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/edit",
-            request,
-            WikiBlazorJsonSerializerContext.Default.EditRequest,
-            user => WikiDataManager.EditAsync(user, request),
+        var result = await WikiDataService.EditAsync(
+            new EditRequest(
+                title,
+                Content,
+                Comment?.Trim(),
+                delete,
+                Redirect,
+                OwnerSelf,
+                OwnerSelf || Owner.Count < 1 ? null : Owner[0].Id,
+                EditorSelf,
+                ViewerSelf,
+                allowedEditors,
+                allowedViewers,
+                allowedEditorGroups,
+                allowedViewerGroups,
+                RedirectEnabled
+                    ? new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain)
+                    : null),
             "A redirect could not be created automatically, but your revision was a success.");
-        if (!string.IsNullOrEmpty(result.Message))
-        {
-            SnackbarService.Add(result.Message, ThemeColor.Warning);
-        }
-        if (result.Success)
+        if (result)
         {
             NavigationManager.NavigateTo(WikiState.Link(title));
         }
@@ -341,8 +298,6 @@ public partial class EditView : WikiEditComponent
         {
             return;
         }
-
-        FixContent();
 
         IList<string>? allowedEditors = null;
         IList<string>? allowedEditorGroups = null;
@@ -375,7 +330,7 @@ public partial class EditView : WikiEditComponent
         }
 
         var draftPagetitle = PageTitle.Parse(Title).WithDomain(User.Id);
-        var request = new EditRequest(
+        var result = await WikiDataService.EditAsync(new EditRequest(
             draftPagetitle,
             Content,
             Comment?.Trim(),
@@ -388,13 +343,8 @@ public partial class EditView : WikiEditComponent
             allowedEditors,
             allowedViewers,
             allowedEditorGroups,
-            allowedViewerGroups);
-        var result = await PostAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/edit",
-            request,
-            WikiBlazorJsonSerializerContext.Default.EditRequest,
-            user => WikiDataManager.EditAsync(user, request));
-        if (result.Success)
+            allowedViewerGroups));
+        if (result)
         {
             HasDraft = true;
             SnackbarService.Add("Draft saved successfully", ThemeColor.Success);

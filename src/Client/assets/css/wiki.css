@@ -2,21 +2,30 @@
     :root {
         --tavenem-wiki-link-color-missing: var(--tavenem-color-danger);
         --tavenem-wiki-link-color-missing-hover: var(--tavenem-color-danger-darken);
+        --tavenem-wiki-link-color-missing-domain: var(--tavenem-color-danger-darken);
+        --tavenem-wiki-link-color-missing-domain-hover: var(--tavenem-color-danger-darken-2);
         --tavenem-wiki-link-color-missing-namespace: var(--tavenem-color-danger-darken);
         --tavenem-wiki-link-color-missing-namespace-hover: var(--tavenem-color-danger-darken-2);
         --tavenem-wiki-link-color-missing-visited: var(--tavenem-color-danger-lighten);
+        --tavenem-wiki-link-color-missing-visited-domain: var(--tavenem-color-danger);
         --tavenem-wiki-link-color-missing-visited-namespace: var(--tavenem-color-danger);
+        --tavenem-wiki-link-color-domain: var(--tavenem-color-link-hover);
         --tavenem-wiki-link-color-namespace: var(--tavenem-color-link-hover);
+        --tavenem-wiki-link-dark-color-domain-hover: #096afb;
         --tavenem-wiki-link-dark-color-namespace-hover: #096afb;
         --tavenem-wiki-link-dark-color-visited: #a0c5fe;
+        --tavenem-wiki-link-light-color-domain-hover: #002760;
         --tavenem-wiki-link-light-color-namespace-hover: #002760;
         --tavenem-wiki-link-light-color-visited: #0264f7;
+        --tavenem-wiki-link-color-domain-hover: var(--tavenem-wiki-link-light-color-domain-hover);
         --tavenem-wiki-link-color-namespace-hover: var(--tavenem-wiki-link-light-color-namespace-hover);
         --tavenem-wiki-link-color-visited: var(--tavenem-wiki-link-light-color-visited);
+        --tavenem-wiki-link-color-visited-domain: var(--tavenem-color-link);
         --tavenem-wiki-link-color-visited-namespace: var(--tavenem-color-link);
     }
 
     [data-theme="dark"] {
+        --tavenem-wiki-link-color-domain-hover: var(--tavenem-wiki-link-dark-color-domain-hover);
         --tavenem-wiki-link-color-namespace-hover: var(--tavenem-wiki-link-dark-color-namespace-hover);
         --tavenem-wiki-link-color-visited: var(--tavenem-wiki-link-dark-color-visited);
     }
@@ -30,12 +39,20 @@
             &.wiki-link-missing {
                 color: var(--tavenem-wiki-link-color-missing-hover);
 
-                &.wiki-link-namespace {
+                .wiki-link-domain {
+                    color: var(--tavenem-wiki-link-color-missing-domain-hover);
+                }
+
+                .wiki-link-namespace {
                     color: var(--tavenem-wiki-link-color-missing-namespace-hover);
                 }
             }
 
-            &.wiki-link-namespace {
+            .wiki-link-domain {
+                color: var(--tavenem-wiki-link-color-domain-hover);
+            }
+
+            .wiki-link-namespace {
                 color: var(--tavenem-wiki-link-color-namespace-hover);
             }
         }
@@ -46,12 +63,20 @@
             &.wiki-link-missing {
                 color: var(--tavenem-wiki-link-color-missing-visited);
 
-                &.wiki-link-namespace {
+                .wiki-link-domain {
+                    color: var(--tavenem-wiki-link-color-missing-visited-domain);
+                }
+
+                .wiki-link-namespace {
                     color: var(--tavenem-wiki-link-color-missing-visited-namespace);
                 }
             }
 
-            &.wiki-link-namespace {
+            .wiki-link-domain {
+                color: var(--tavenem-wiki-link-color-visited-domain);
+            }
+
+            .wiki-link-namespace {
                 color: var(--tavenem-wiki-link-color-visited-namespace);
             }
         }
@@ -60,24 +85,44 @@
             &.wiki-link-missing {
                 color: var(--tavenem-wiki-link-color-missing);
 
-                &.wiki-link-namespace {
+                .wiki-link-domain {
+                    color: var(--tavenem-wiki-link-color-missing-hover);
+                }
+
+                .wiki-link-namespace {
                     color: var(--tavenem-wiki-link-color-missing-hover);
                 }
             }
 
-            &.wiki-link-namespace {
+            .wiki-link-domain {
                 color: var(--tavenem-wiki-link-color-missing-hover);
+            }
+
+            .wiki-link-namespace {
+                color: var(--tavenem-wiki-link-color-missing-hover);
+            }
+        }
+
+        .wiki-link-domain {
+            color: var(--tavenem-wiki-link-color-domain);
+            
+            &:after {
+                content: ":";
+            }
+
+            .wiki-link-missing & {
+                color: var(--tavenem-wiki-link-color-missing-domain);
             }
         }
 
         .wiki-link-namespace {
             color: var(--tavenem-wiki-link-color-namespace);
-
+            
             &:after {
-                content: ':',
+                content: ":";
             }
 
-            &.wiki-link-missing & {
+            .wiki-link-missing & {
                 color: var(--tavenem-wiki-link-color-missing-namespace);
             }
         }

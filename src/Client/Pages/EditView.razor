@@ -1,4 +1,5 @@
 ﻿@inherits WikiEditComponent
+@rendermode RenderMode.InteractiveWebAssembly
 
 <div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
@@ -50,7 +51,7 @@
 <Tabs TTabItem="object" ActivePanelIndexChanged="OnTabChangedAsync" Class="align-self-stretch">
     <TabPanel Title="Editor">
         <Editor Height="20rem"
-                Syntax="IsScript ? EditorSyntax.JavaScript : EditorSyntax.Markdown"
+                Syntax="IsScript ? EditorSyntax.JavaScript : EditorSyntax.Handlebars"
                 Spellcheck="true"
                 @bind-Value="Content" />
     </TabPanel>

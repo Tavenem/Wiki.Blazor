@@ -1,47 +1,88 @@
-﻿@if (Message is not null)
+﻿@using Tavenem.Blazor.Framework.Utilities
+
+@if (Message is not null)
 {
     <li class="@(IsReply ? "wiki-message wiki-message-reply" : "wiki-message")">
         <div class="wiki-message-header">
             <span class="wiki-message-sender">
                 <a class="@GetUserLinkClass(Message.Message)"
-                    href="@WikiState.Link(Message.Message.SenderId, WikiOptions.UserNamespace)"
-                    title="@($"Visit the user page for {Message.Message.SenderName}")">@Message.Message.SenderName</a>
+                   href="@WikiState.Link(Message.Message.SenderId, WikiOptions.UserNamespace)"
+                   title="@($"Visit the user page for {Message.Message.SenderName}")">@Message.Message.SenderName</a>
             </span>
-            <span class="wiki-message-timestamp">@Message.Message.GetTimestamp(TimezoneOffset)</span>
+            <span class="wiki-message-timestamp">@Message.Message.GetTimestamp()</span>
             @if (Message.Reactions is not null)
             {
-                <span class="wiki-message-reactions">
-                    @foreach (var emoji in Message.Reactions.Keys)
-                    {
-                        <span>
-                            <span class="wiki-message-reaction-icon" @onclick="@(_ => OnReactionAsync(emoji))">@emoji</span>
-                            @if (Message.Reactions[emoji].Count > 1)
+                <span class="wiki-message-reaction-controls">
+                    <form class="wiki-message-reactions"
+                          method="post"
+                          action="@($"{WikiBlazorClientOptions.WikiServerApiRoute}/talk")"
+                          @formname="@($"wiki-talk-react-{Message.Message.Id}")"
+                          data-enhance>
+                        <AntiforgeryToken />
+                        <input type="hidden" name="topic" value="@TopicId" />
+                        <input type="hidden" name="message" value="@Message.Message.Id" />
+                        @foreach (var emoji in Message.Reactions.Keys)
+                        {
+                            <span>
+                                @if (PostDisabled)
+                                {
+                                    <span class="wiki-message-reaction-icon">@emoji</span>
+                                }
+                                else
+                                {
+                                    <button class="wiki-message-reaction-icon" name="content" value="@emoji" type="submit">@emoji</button>
+                                }
+                                @if (Message.Reactions[emoji].Count > 1)
+                                {
+                                    <span class="wiki-message-reaction-count">@Message.Reactions[emoji].Count.ToString("N0")</span>
+                                }
+                                <Tooltip>
+                                    <ul class="wiki-message-reaction-list">
+                                        @foreach (var reaction in Message.Reactions[emoji])
+                                        {
+                                            <li>
+                                                <span class="wiki-reaction-sender">
+                                                    <a class="@GetUserLinkClass(reaction)"
+                                                       href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
+                                                       title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
+                                                </span>
+                                                <span class="wiki-reaction-timestamp">@reaction.GetTimestamp()</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </Tooltip>
+                            </span>
+                        }
+                        @if (!PostDisabled)
+                        {
+                            if (!Message.Reactions.ContainsKey("👍"))
                             {
-                                <span class="wiki-message-reaction-count">@Message.Reactions[emoji].Count.ToString("N0")</span>
+                                <span><button class="wiki-message-reaction-icon" name="content" value="👍" type="submit">👍</button></span>
                             }
-                            <Tooltip>
-                                <ul class="wiki-message-reaction-list">
-                                    @foreach (var reaction in Message.Reactions[emoji])
-                                    {
-                                        <li>
-                                            <span class="wiki-reaction-sender">
-                                                <a class="@GetUserLinkClass(reaction)"
-                                                    href="@WikiState.Link(reaction.SenderId, WikiOptions.UserNamespace)"
-                                                    title="@($"Visit the user page for {reaction.SenderName}")">@reaction.SenderName</a>
-                                            </span>
-                                            <span class="wiki-reaction-timestamp">@reaction.GetTimestamp(TimezoneOffset)</span>
-                                        </li>
-                                    }
-                                </ul>
-                            </Tooltip>
-                        </span>
+                            if (!Message.Reactions.ContainsKey("👎"))
+                            {
+                                <span><button class="wiki-message-reaction-icon" name="content" value="👎" type="submit">👎</button></span>
+                            }
+                        }
+                    </form>
+                    @if (!PostDisabled)
+                    {
+                        <form class="wiki-message-reactions"
+                              method="post"
+                              action="@($"{WikiBlazorClientOptions.WikiServerApiRoute}/talk")"
+                              @formname="@($"wiki-talk-react-{Message.Message.Id}-emoji")"
+                              data-enhance>
+                            <tf-emoji-input class="small"
+                                            name="content"
+                                            onvaluechange="this.form.submit()"></tf-emoji-input>
+                        </form>
                     }
                 </span>
             }
         </div>
         <Collapse>
             <TitleContent>
-                <div class="@(CanPost ? "wiki-message-body" : "wiki-message-body wiki-message-readonly")">
+                <div class="@(PostDisabled ? "wiki-message-body wiki-message-readonly" : "wiki-message-body")">
                     @(new MarkupString(Message.Message.Content))
                 </div>
             </TitleContent>
@@ -51,27 +92,22 @@
                     <div class="wiki-message-replies">
                         @foreach (var reply in Message.Replies)
                         {
-                            <TalkMessage CanPost="CanPost"
-                                         Message="reply"
-                                         Post="OnPost"
-                                         TimezoneOffset="TimezoneOffset"
-                                         TopicId="@TopicId" />
+                            <TalkMessage Message="reply" TopicId="@TopicId" />
                         }
                     </div>
                 }
-                @if (CanPost && !IsReply)
+                @if (!PostDisabled && !IsReply)
                 {
-                    <div class="wiki-message-footer">
-                        <button class="btn small" @onclick="@(_ => ShowReply = !ShowReply)">Reply</button>
-                        @if (ShowReply)
-                        {
-                            <div class="wiki-talk-reply">
-                                <TalkCompose TopicId="@TopicId"
-                                             MessageId="@Message.Message.Id"
-                                             Post="OnPost" />
-                            </div>
-                        }
-                    </div>
+                    <Collapse Class="wiki-message-footer" Title="Reply">
+                        <form method="post" action="@($"{WikiBlazorClientOptions.WikiServerApiRoute}/talk")" @formname="@($"wiki-talk-reply-{Message.Message.Id}")" data-enhance>
+                            <AntiforgeryToken />
+                            <input type="hidden" name="topic" value="@TopicId" />
+                            <input type="hidden" name="message" value="@Message.Message.Id" />
+                            <tf-chat-editor data-api-key="@WikiBlazorClientOptions.TenorAPIKey"
+                                            disabled="@PostDisabled"
+                                            name="content"></tf-chat-editor>
+                        </form>
+                    </Collapse>
                 }
             </ChildContent>
         </Collapse>

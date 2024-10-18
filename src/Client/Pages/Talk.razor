@@ -1,12 +1,10 @@
-﻿<tf-syntax-highlight class="wiki-talk-messages">
+﻿@using Tavenem.Blazor.Framework.Utilities
+
+<tf-syntax-highlight class="wiki-talk-messages">
     <ul>
         @foreach (var message in TalkMessages)
         {
-            <TalkMessage CanPost="CanTalk && CanPost && IsInteractive"
-                         Message="message"
-                         Post="OnPostAsync"
-                         TimezoneOffset="TimezoneOffset"
-                         TopicId="@TopicId" />
+            <TalkMessage Message="message" TopicId="@TopicId" />
         }
     </ul>
     @if (TalkMessages.Count == 0)
@@ -14,11 +12,16 @@
         <div class="wiki-talk-nomessages"><p>No messages yet</p></div>
     }
 </tf-syntax-highlight>
-@if (CanPost && IsInteractive)
+@if (CanPost)
 {
-    <TalkCompose TopicId="@TopicId" Post="OnPostAsync" />
+    <form method="post" action="@($"{WikiBlazorClientOptions.WikiServerApiRoute}/talk")" @formname="wiki-talk-post" data-enhance>
+        <AntiforgeryToken />
+        <input type="hidden" name="topic" value="@TopicId" />
+        <tf-chat-editor data-api-key="@WikiBlazorClientOptions.TenorAPIKey"
+                        name="content"></tf-chat-editor>
+    </form>
 }
-else if (CanTalk && IsInteractive)
+else if (CanTalk)
 {
     <div class="wiki-talk-signin-prompt">Sign in to post your own messages</div>
 }

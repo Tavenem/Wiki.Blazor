@@ -1,146 +1,102 @@
-﻿@inherits OfflineSupportComponent
-
-<div style="min-height: 7.5rem">
-    <div class="d-flex flex-wrap align-items-center gap-3">
-        @if (IsInteractive)
-        {
+﻿<form action="@WikiState.Link("Search", WikiOptions.SystemNamespace)">
+    <div style="min-height: 7.5rem">
+        <div class="d-flex flex-wrap align-items-center gap-3">
             <TextInput Autocomplete="false"
-                       LoadSuggestions="GetSearchSuggestions"
                        Placeholder="Search the wiki"
-                       @bind-Value="@CurrentQuery"
+                       InputType="InputType.Search"
+                       Name="@Wiki.FilterParameter"
                        role="search">
                 <PostfixContent>
-                    <button class="btn btn-icon" @onclick="OnSearchAsync">
+                    <button class="btn btn-icon" type="submit">
                         <tf-icon>search</tf-icon>
                     </button>
                 </PostfixContent>
             </TextInput>
-        }
-        else
-        {
-            <span>Search query: <span>@CurrentQuery</span></span>
-        }
-        @if (Result is not null)
-        {
-            <div class="wiki-search-resultcount">
-                <span>Results</span>
-                <strong>
-                    <span>@((Result.SearchHits.FirstIndexOnPage + 1).ToString("N0"))</span>
-                    <span>&mdash;</span>
-                    <span>@((Result.SearchHits.LastIndexOnPage + 1).ToString("N0"))</span>
-                </strong>
-                @if (Result.SearchHits.TotalCount.HasValue)
-                {
-                    <span>of</span>
-                    <strong>@Result.SearchHits.TotalCount.Value.ToString("N0")</strong>
-                }
-            </div>
-        }
-    </div>
-    @if (IsInteractive)
-    {
-        <Collapse Title="Advanced search:" class="wiki-search-advanced">
-            <TextInput Label="Restrict results to Domain" @bind-Value="CurrentDomain" />
+            @if (Result is not null)
+            {
+                <div class="wiki-search-resultcount">
+                    <span>Results</span>
+                    <strong>
+                        <span>@((Result.SearchHits.FirstIndexOnPage + 1).ToString("N0"))</span>
+                        <span>&mdash;</span>
+                        <span>@((Result.SearchHits.LastIndexOnPage + 1).ToString("N0"))</span>
+                    </strong>
+                    @if (Result.SearchHits.TotalCount.HasValue)
+                    {
+                        <span>of</span>
+                        <strong>@Result.SearchHits.TotalCount.Value.ToString("N0")</strong>
+                    }
+                </div>
+            }
+        </div>
+        <Collapse Title="Advanced search:" Class="wiki-search-advanced">
+            <TextInput Label="Restrict results to Domain"
+                       Value="SearchDomain"
+                       Name="@Wiki.SearchDomainParameter" />
             <TextInput Label="Restrict results to Namespace"
-                       @bind-Value="CurrentNamespace"
+                       Value="SearchNamespace"
                        DisplayHelpTextOnFocus="true"
-                       HelpText="Multiple namespaces can be separated with semicolons (;). Exclude a namespace by prefixing it with '!'" />
+                       HelpText="Multiple namespaces can be separated with semicolons (;). Exclude a namespace by prefixing it with '!'"
+                       Name="@Wiki.SearchNamespaceParameter" />
             <TextInput Label="Restrict results to Owner(s)"
-                       @bind-Value="CurrentOwner"
+                       Value="SearchOwner"
                        DisplayHelpTextOnFocus="true"
-                       HelpText="Specify an owner by ID or name. Multiple owners can be separated with semicolons (;). Exclude an owner by prefixing it with '!'" />
+                       HelpText="Specify an owner by ID or name. Multiple owners can be separated with semicolons (;). Exclude an owner by prefixing it with '!'"
+                       Name="@Wiki.SearchOwnerParameter" />
             <UserSelector Label="Restrict results to Owner(s)"
-                          Multiple="true"
-                          @bind-DeselectedUsers="DeselectedOwners"
-                          @bind-SelectedUsers="SelectedOwners"
                           DisplayHelpTextOnFocus="true"
                           HelpText="Specify one or more owners. Exclude an owner by clicking the chip."
-                          InitialUsers="@CurrentOwner" />
-            <button class="btn primary" @onclick="OnSetSearchAsync">Filter</button>
+                          InitialUsers="@SearchOwner"
+                          Multiple="true"
+                          Name="@Wiki.SearchOwnerParameter" />
+            <button class="btn primary" type="submit">Filter</button>
         </Collapse>
-    }
-    else if (!string.IsNullOrEmpty(CurrentDomain)
-        || !string.IsNullOrEmpty(CurrentNamespace)
-        || !string.IsNullOrEmpty(CurrentOwner))
-    {
-        <Collapse Title="Advanced search:" class="wiki-search-advanced">
-            @if (!string.IsNullOrEmpty(CurrentDomain))
-            {
-                <p>Restrict results to Domain: <span>@CurrentDomain</span></p>
-            }
-            @if (!string.IsNullOrEmpty(CurrentNamespace))
-            {
-                <p>Restrict results to Namespace(s): <span>@CurrentNamespace</span></p>
-                @if (CurrentNamespace.Contains('!'))
-                {
-                    <p class="text-muted">Excluded namespaces are prefixed with '!'</p>
-                }
-            }
-            @if (!string.IsNullOrEmpty(CurrentOwner))
-            {
-                <UserSelector Label="Restrict results to Owner(s)"
-                              Multiple="true"
-                              @bind-DeselectedUsers="DeselectedOwners"
-                              @bind-SelectedUsers="SelectedOwners"
-                              DisplayHelpTextOnFocus="true"
-                              InitialUsers="@CurrentOwner" />
-            }
-        </Collapse>
-    }
-</div>
-<div class="wiki-search-results">
-    @if (ExactMatch is not null)
-    {
-        <p class="wiki-search-exact-match">
-            There is an article with the exact name "<a href="@WikiState.Link(ExactMatch.Title)">@ExactMatch.Title.ToString()</a>."
-        </p>
-    }
-    @if (Result?.SearchHits.Count > 0)
-    {
-        <ul>
-            @foreach (var result in Result.SearchHits)
-            {
-                <li>
-                    <div class="wiki-search-result-title">
-                        <a href="@WikiState.Link(result.Title)"
-                           class="wiki-link wiki-link-exists">@result.Title.ToString(WikiOptions)</a>
-                    </div>
-                    @if (!string.IsNullOrEmpty(result.Excerpt))
-                    {
-                        <div>@(new MarkupString(result.Excerpt))</div>
-                    }
-                </li>
-            }
-        </ul>
-        @if (Result.SearchHits.TotalPages > 1)
+    </div>
+    <div class="wiki-search-results">
+        @if (ExactMatch is not null)
         {
-            <div class="d-flex flex-wrap align-items-baseline gap-3">
-                <Pagination Id="pg"
-                            @bind-CurrentPage="CurrentPageNumber"
-                            @bind-CurrentPage:after="OnPageNumberChangedAsync"
-                            NextRequested="OnNextRequestedAsync"
-                            PageCount="(ulong?)Result?.SearchHits.TotalPages"
-                            PersistState="true" />
-                @if (IsInteractive)
+            <p class="wiki-search-exact-match">
+                There is an article with the exact name "<a href="@WikiState.Link(ExactMatch.Title)">@ExactMatch.Title.ToString()</a>."
+            </p>
+        }
+        @if (Result?.SearchHits.Count > 0)
+        {
+            <ul>
+                @foreach (var result in Result.SearchHits)
                 {
+                    <li>
+                        <div class="wiki-search-result-title">
+                            <a href="@WikiState.Link(result.Title)"
+                               class="wiki-link wiki-link-exists">@result.Title.ToString(WikiOptions)</a>
+                        </div>
+                        @if (!string.IsNullOrEmpty(result.Excerpt))
+                        {
+                            <div>@(new MarkupString(result.Excerpt))</div>
+                        }
+                    </li>
+                }
+            </ul>
+            @if (Result.SearchHits.TotalPages > 1)
+            {
+                <div class="d-flex flex-wrap align-items-baseline gap-3">
+                    <Pagination Id="pg"
+                                CurrentPage="CurrentPageNumber"
+                                PageCount="(ulong?)Result?.SearchHits.TotalPages"
+                                PersistState="true" />
                     <Select Label="Number of results per page:"
-                            @bind-Value="CurrentPageSize"
-                            @bind-Value:after="OnPageSizeChangedAsync"
+                            Value="CurrentPageSize"
+                            Name="@Wiki.PageSizeParameter"
                             Class="dense">
                         <Option Label="50" Value="50" />
                         <Option Label="100" Value="100" />
                         <Option Label="200" Value="200" />
                     </Select>
-                }
-                else
-                {
-                    <span>Number of results per page: <span>@CurrentPageSize</span></span>
-                }
-            </div>
+                </div>
+            }
         }
-    }
-    else
-    {
-        <p>No results</p>
-    }
-</div>
+        else
+        {
+            <p>No results</p>
+        }
+    </div>
+</form>

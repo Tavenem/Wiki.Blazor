@@ -1,4 +1,4 @@
-﻿@inherits OfflineSupportComponent
+﻿@rendermode RenderMode.InteractiveWebAssembly
 
 @if (NotAuthorized)
 {
@@ -22,13 +22,15 @@
     </p>
     <p>
         Images in the <a href="https://creativecommons.org">Creative Commons</a> can be easily
-        linked with a special syntax: ![[cc:filename.jpg]] will embed the image file "filename.jpg"
-        from the Creative Commons. The image will also be a link to the image's page on the Creative
-        Commons website, which should satisfy the attribution requirements of most <a
-        href="https://creativecommons.org/licenses/">CC-licensed</a> content.
+        linked with a special syntax: <code>![cc:filename.jpg]</code> will embed the image file
+        "filename.jpg" from the Creative Commons. The image will also be a link to the image's page
+        on the Creative Commons website, which should satisfy the attribution requirements of most
+        <a href="https://creativecommons.org/licenses/">CC-licensed</a> content.
     </p>
+    return;
 }
-else if (InsufficientSpace)
+
+@if (InsufficientSpace)
 {
     <h2>Insufficient space</h2>
     <p class="warning">The size of this file exceeds your upload limit.</p>
@@ -52,168 +54,166 @@ else if (InsufficientSpace)
     </p>
     <p>
         Images in the <a href="https://creativecommons.org">Creative Commons</a> can be easily
-        linked with a special syntax: ![[cc:filename.jpg]] will embed the image file
-        "filename.jpg" from the Creative Commons. The image will also be a link to the image's
-        page on the Creative Commons website, which should satisfy the attribution requirements
-        of most <a href="https://creativecommons.org/licenses/">CC-licensed</a> content.
+        linked with a special syntax: <code>![cc:filename.jpg]</code> will embed the image file
+        "filename.jpg" from the Creative Commons. The image will also be a link to the image's page
+        on the Creative Commons website, which should satisfy the attribution requirements of most
+        <a href="https://creativecommons.org/licenses/">CC-licensed</a> content.
     </p>
+    return;
 }
-else
-{
-    <p>This form allows authorized users to upload files to the wiki.</p>
-    <p>
-        Images will be available for embedding in wiki articles. Many common audio/video files can
-        also be embedded. Other file types will only be available as links to their wiki page, where
-        the file can be either downloaded, or viewed in the browser when applicable.
-    </p>
-    <p>
-        @if (!string.IsNullOrWhiteSpace(WikiOptions.CopyrightPageTitle))
-        {
-            <span>
-                Please note that all files submitted to this wiki are implicitly made available
-                under the terms of the site's <a
-                href="@WikiState.Link(WikiOptions.CopyrightPageTitle,
-                WikiOptions.SystemNamespace)">copyright policy</a>.
-            </span>
-            @if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
-            {
-                <span>
-                    Other <a href="@WikiState.Link(WikiOptions.PolicyPageTitle,
-                    WikiOptions.SystemNamespace)">policies</a>, including but not limited to content
-                    policies, may also apply.
-                </span>
-            }
-        }
-        else if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
-        {
-            <span>
-                Please note that all files submitted to this wiki are subject to the site's <a
-                href="@WikiState.Link(WikiOptions.PolicyPageTitle,
-                WikiOptions.SystemNamespace)">policies</a>.
-            </span>
-        }
-        else
-        {
-            <span>Please note that all files submitted to this wiki are subject to the site's copyright and content policies.</span>
-        }
+
+<p>This form allows authorized users to upload files to the wiki.</p>
+<p>
+    Images will be available for embedding in wiki articles. Many common audio/video files can
+    also be embedded. Other file types will only be available as links to their wiki page, where
+    the file can be either downloaded, or viewed in the browser when applicable.
+</p>
+<p>
+    @if (!string.IsNullOrWhiteSpace(WikiOptions.CopyrightPageTitle))
+    {
         <span>
-            If you are not sure whether the work you are submitting is available under the terms of
-            these policies, do not upload the file. In general, a work you have produced yourself
-            should be eligible to made available under the terms of the wiki's policies (but note
-            that you may be revoking certain rights by doing so). Works produced by others may not
-            be appropriate for upload. Consider linking such an item from its original source
-            instead, if its current host's licenses and policies allow this use.
+            Please note that all files submitted to this wiki are implicitly made available under
+            the terms of the site's <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle,
+            WikiOptions.SystemNamespace)">copyright policy</a>.
         </span>
-    </p>
-    <h2>Upload</h2>
-    @if (IsInteractive)
-    {
-        <div class="@DragAreaClass"
-             style="border-style: dashed; border-width: 2px; height: 10rem"
-             @ondragenter="OnDragEnter"
-             @ondragleave="OnDragEnd"
-             @ondragend="OnDragEnd">
-             <InputFile OnChange="OnInputChanged" style="height: 100%; opacity: 0; overflow: hidden; position: absolute; width: 100%; z-index: 2" />
-             <h6>Drag and drop a file, or click here to browse your device</h6>
-             @if (File is not null)
-             {
-                 <span class="chip primary">@(FileName ?? "file")</span>
-             }
-        </div>
-        <div class="d-flex justify-content-center">
-            <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
-        </div>
-        <TextInput Label="Title" @bind-Value="Title" Required="true" Validation="TitleValidation" />
+        @if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
+        {
+            <span>
+                Other <a href="@WikiState.Link(WikiOptions.PolicyPageTitle,
+                WikiOptions.SystemNamespace)">policies</a>, including but not limited to content
+                policies, may also apply.
+            </span>
+        }
     }
-    <Tabs TTabItem="object">
-        <TabPanel Title="Editor">
-            <Editor Height="20rem"
-                    Syntax="EditorSyntax.Markdown"
-                    Spellcheck="true"
-                    @bind-Value="Content"
-                    @bind-Value:after="OnContentUpdated" />
-        </TabPanel>
-        @if (!string.IsNullOrEmpty(Preview))
-        {
-            <TabPanel Title="Preview">
-                <div style="height:50rem;overflow:auto;width:100%">
-                    @(new MarkupString(Preview))
-                </div>
-            </TabPanel>
-        }
-    </Tabs>
-    @if (IsInteractive)
+    else if (!string.IsNullOrWhiteSpace(WikiOptions.PolicyPageTitle))
     {
-        <TextInput Label="Revision comment"
-                   @bind-Value="Comment"
-                   Spellcheck="true"
-                   DisplayHelpTextOnFocus="true"
-                   HelpText="Briefly describe your changes" />
-        <div class="d-flex flex-wrap gap-3 align-items-center">
-            <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
-            <UserSelector Label="Owner (optional)"
-                          @bind-SelectedUsers="Owner"
-                          AllowGroups="true"
-                          Disabled="OwnerSelf"
-                          DisplayHelpTextOnFocus="true"
-                          HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
-        </div>
-        <div class="d-flex flex-wrap gap-3 align-items-center">
-            <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
-            <UserSelector Label="Allowed editors (optional)"
-                          @bind-SelectedUsers="Editors"
-                          AllowGroups="true"
-                          Disabled="EditorSelf || NoOwner"
-                          Multiple="true"
-                          DisplayHelpTextOnFocus="true"
-                          HelpText="May be users or groups. The owner is automatically included." />
-        </div>
-        <div class="d-flex flex-wrap gap-3 align-items-center">
-            <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
-            <UserSelector Label="Allowed viewers (optional)"
-                          @bind-SelectedUsers="Viewers"
-                          AllowGroups="true"
-                          Disabled="ViewerSelf || NoOwner"
-                          Multiple="true"
-                          DisplayHelpTextOnFocus="true"
-                          HelpText="May be users or groups. The owner is automatically included." />
-        </div>
+        <span>
+            Please note that all files submitted to this wiki are subject to the site's <a
+            href="@WikiState.Link(WikiOptions.PolicyPageTitle,
+            WikiOptions.SystemNamespace)">policies</a>.
+        </span>
     }
-    <div class="wiki-edit-terms-notice">
-        @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+    else
+    {
+        <span>Please note that all files submitted to this wiki are subject to the site's copyright and content policies.</span>
+    }
+    <span>
+        If you are not sure whether the work you are submitting is available under the terms of
+        these policies, do not upload the file. In general, a work you have produced yourself
+        should be eligible to made available under the terms of the wiki's policies (but note
+        that you may be revoking certain rights by doing so). Works produced by others may not
+        be appropriate for upload. Consider linking such an item from its original source
+        instead, if its current host's licenses and policies allow this use.
+    </span>
+</p>
+<h2>Upload</h2>
+@if (IsInteractive)
+{
+    <div class="@DragAreaClass"
+         style="border-style: dashed; border-width: 2px; height: 10rem"
+         @ondragenter="OnDragEnter"
+         @ondragleave="OnDragEnd"
+         @ondragend="OnDragEnd">
+        <InputFile OnChange="OnInputChanged" style="height: 100%; opacity: 0; overflow: hidden; position: absolute; width: 100%; z-index: 2" />
+        <h6>Drag and drop a file, or click here to browse your device</h6>
+        @if (File is not null)
         {
-            if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
-            {
-                <div class="wiki-edit-terms-notice">
-                    <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
-                </div>
-            }
-            else
-            {
-                <div class="wiki-edit-terms-notice">
-                    <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</p>
-                </div>
-            }
-        }
-        else if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
-        {
-            <div class="wiki-edit-terms-notice">
-                <p>Content submitted to this wiki is subject to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
-            </div>
-        }
-        else
-        {
-            <div class="wiki-edit-terms-notice">
-                <p>Content submitted to this wiki is subject to each of its policies, including but not limited to its copyright policy.</p>
-            </div>
+            <span class="chip primary">@(FileName ?? "file")</span>
         }
     </div>
-    @if (IsInteractive)
+    <div class="d-flex justify-content-center">
+        <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+    </div>
+    <TextInput Label="Title" @bind-Value="Title" Required="true" Validation="TitleValidation" />
+}
+<Tabs TTabItem="object">
+    <TabPanel Title="Editor">
+        <Editor Height="20rem"
+                Syntax="EditorSyntax.Markdown"
+                Spellcheck="true"
+                @bind-Value="Content"
+                @bind-Value:after="OnContentUpdated" />
+    </TabPanel>
+    @if (!string.IsNullOrEmpty(Preview))
     {
-        <div class="d-flex flex-wrap m-3 gap-3 justify-content-center">
-            <button class="btn primary" disabled="@SubmitDisabled" @onclick="@(_ => UploadAsync())">Upload</button>
-            <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
-            <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+        <TabPanel Title="Preview">
+            <div style="height:50rem;overflow:auto;width:100%">
+                @(new MarkupString(Preview))
+            </div>
+        </TabPanel>
+    }
+</Tabs>
+@if (IsInteractive)
+{
+    <TextInput Label="Revision comment"
+               @bind-Value="Comment"
+               Spellcheck="true"
+               DisplayHelpTextOnFocus="true"
+               HelpText="Briefly describe your changes" />
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <Checkbox Label="Make me the owner" @bind-Value="OwnerSelf" />
+        <UserSelector Label="Owner (optional)"
+                      @bind-SelectedUsers="Owner"
+                      AllowGroups="true"
+                      Disabled="OwnerSelf"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be a user or a group. Can be left blank to make the article community-owned." />
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <Checkbox Label="Make me the only editor" @bind-Value="EditorSelf" Disabled="NoOwner" />
+        <UserSelector Label="Allowed editors (optional)"
+                      @bind-SelectedUsers="Editors"
+                      AllowGroups="true"
+                      Disabled="EditorSelf || NoOwner"
+                      Multiple="true"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be users or groups. The owner is automatically included." />
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+        <Checkbox Label="Make me the only viewer" @bind-Value="ViewerSelf" Disabled="NoOwner" />
+        <UserSelector Label="Allowed viewers (optional)"
+                      @bind-SelectedUsers="Viewers"
+                      AllowGroups="true"
+                      Disabled="ViewerSelf || NoOwner"
+                      Multiple="true"
+                      DisplayHelpTextOnFocus="true"
+                      HelpText="May be users or groups. The owner is automatically included." />
+    </div>
+}
+<div class="wiki-edit-terms-notice">
+    @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
+    {
+        if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>, including but not limited to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
+            </div>
+        }
+        else
+        {
+            <div class="wiki-edit-terms-notice">
+                <p>Content submitted to this wiki is subject to each of its <a href="@WikiState.Link(WikiOptions.PolicyPageTitle, WikiOptions.SystemNamespace)">policies</a>.</p>
+            </div>
+        }
+    }
+    else if (!string.IsNullOrEmpty(WikiOptions.CopyrightPageTitle))
+    {
+        <div class="wiki-edit-terms-notice">
+            <p>Content submitted to this wiki is subject to its <a href="@WikiState.Link(WikiOptions.CopyrightPageTitle, WikiOptions.SystemNamespace)">copyright policy</a>.</p>
         </div>
     }
+    else
+    {
+        <div class="wiki-edit-terms-notice">
+            <p>Content submitted to this wiki is subject to each of its policies, including but not limited to its copyright policy.</p>
+        </div>
+    }
+</div>
+@if (IsInteractive)
+{
+    <div class="d-flex flex-wrap m-3 gap-3 justify-content-center">
+        <button class="btn primary" disabled="@SubmitDisabled" @onclick="@(_ => UploadAsync())">Upload</button>
+        <button class="btn secondary" disabled="@string.IsNullOrWhiteSpace(Content)" @onclick="PreviewAsync">Preview</button>
+        <button class="btn" disabled="@(File is null)" @onclick="OnClear">Clear</button>
+    </div>
 }

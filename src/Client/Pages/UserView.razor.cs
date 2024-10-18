@@ -5,11 +5,11 @@ using Tavenem.Wiki.Blazor.Client.Services;
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
 /// <summary>
-/// The group page.
+/// The user page.
 /// </summary>
-public partial class GroupView
+public partial class UserView
 {
-    private GroupPage? GroupPage { get; set; }
+    private UserPage? UserPage { get; set; }
 
     private MarkupString Content { get; set; }
 
@@ -28,18 +28,18 @@ public partial class GroupView
             WikiOptions.GroupNamespace,
             StringComparison.OrdinalIgnoreCase))
         {
-            GroupPage = null;
+            UserPage = null;
             Content = default;
             return;
         }
 
-        GroupPage = await WikiDataService.GetGroupPageAsync(WikiState.WikiTitle);
-        Content = string.IsNullOrEmpty(GroupPage?.DisplayHtml)
+        UserPage = await WikiDataService.GetUserPageAsync(WikiState.WikiTitle);
+        Content = string.IsNullOrEmpty(UserPage?.DisplayHtml)
             ? default
-            : new MarkupString(GroupPage.DisplayHtml);
-        if (!string.IsNullOrEmpty(GroupPage?.DisplayTitle))
+            : new MarkupString(UserPage.DisplayHtml);
+        if (!string.IsNullOrEmpty(UserPage?.DisplayTitle))
         {
-            WikiState.UpdateTitle(GroupPage.DisplayTitle);
+            WikiState.UpdateTitle(UserPage.DisplayTitle);
         }
     }
 }

@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace Tavenem.Wiki.Blazor.Services.FileManager;
+namespace Tavenem.Wiki.Blazor.Services;
 
 /// <summary>
 /// A service which persists and retrieves files associated with <see cref="WikiFile"/> items.

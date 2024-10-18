@@ -3,7 +3,7 @@
 /// <summary>
 /// Represents a talk message.
 /// </summary>
-/// <param name="message"></param>
+/// <param name="message">The <see cref="MessageResponse"/>.</param>
 public class TalkMessageModel(MessageResponse message)
 {
     /// <summary>

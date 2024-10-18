@@ -30,7 +30,7 @@
     margin-left: 1em;
 }
 
-.wiki-message-reactions {
+.wiki-message-reaction-controls {
     display: flex;
     flex-wrap: wrap;
     font-size: larger;
@@ -38,7 +38,13 @@
     margin-bottom: -.5em;
 }
 
+.wiki-message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+}
+
 .wiki-message-reaction-icon {
+    appearance: none;
     vertical-align: text-bottom;
 }
 
@@ -68,12 +74,4 @@
 .wiki-message-footer {
     padding-left: 1.25em;
     padding-right: 0.25em;
-}
-
-.wiki-talk-reply {
-    display: flex;
-    flex-flow: column nowrap;
-    margin-bottom: .25em;
-    margin-top: .25em;
-    padding: .25rem;
 }

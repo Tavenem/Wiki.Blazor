@@ -1,50 +1,31 @@
-﻿@inherits OfflineSupportComponent
-
-@if (Items is null)
+﻿@if (Items is null)
 {
     <p>No data</p>
+    return;
 }
-else
-{
+
+<form action="@WikiState.LinkHere()">
     <p>@Description</p>
     @if (!string.IsNullOrEmpty(SecondaryDescription))
     {
         <p>@(new MarkupString(SecondaryDescription))</p>
     }
-    @if (IsInteractive)
-    {
-        <Collapse Title="Filter">
-            <Select Label="Sort by" @bind-Value="CurrentSort" @bind-Value:after="OnSortChangedAsync">
-                <Option Label="Alphabetical" Value="@("alpha")" />
-                <Option Label="Last revision date/time" Value="@("timestamp")" />
-            </Select>
-            <Switch Label="Descending"
-                    UncheckedLabel="Ascending"
-                    @bind-Value="CurrentDescending"
-                    @bind-Value:after="OnDescendingChangedAsync" />
-            <TextInput Label="Display entries starting with:"
-                       Autocomplete="false"
-                       MaxLength="255"
-                       @bind-Value="CurrentFilter"
-                       @bind-Value:after="OnFilterChangedAsync" />
-        </Collapse>
-    }
-    else if (CurrentDescending
-        || !string.IsNullOrEmpty(CurrentSort)
-        || !string.IsNullOrEmpty(CurrentFilter))
-    {
-        <Collapse Title="Filter">
-            <p>Sorted by: <span>@(CurrentSort?.Equals("timestamp") == true ? "Last revision date/time" : "Alphabetical")</span></p>
-            @if (CurrentDescending)
-            {
-                <p>Descending</p>
-            }
-            @if (!string.IsNullOrEmpty(CurrentFilter))
-            {
-                <p>Displaying entries starting with: <span>@CurrentFilter</span></p>
-            }
-        </Collapse>
-    }
+    <Collapse Title="Filter">
+        <Select Label="Sort by" Value="CurrentSort" Name="@Wiki.SortParameter">
+            <Option Label="Alphabetical" Value="@("alpha")" />
+            <Option Label="Last revision date/time" Value="@("timestamp")" />
+        </Select>
+        <Switch Label="Descending"
+                UncheckedLabel="Ascending"
+                Value="Descending"
+                Name="@Wiki.DescendingParameter" />
+        <TextInput Label="Display entries starting with:"
+                   Autocomplete="false"
+                   MaxLength="255"
+                   Value="@Filter"
+                   Name="@Wiki.FilterParameter" />
+        <button class="btn primary" type="submit">Filter</button>
+    </Collapse>
     @if (Items?.Count > 0)
     {
         <div class="wiki-list-articles">
@@ -78,27 +59,18 @@ else
             <div class="d-flex flex-wrap align-items-baseline gap-2 mt-3">
                 <Pagination Id="pg"
                             @bind-CurrentPage="CurrentPageNumber"
-                            @bind-CurrentPage:after="OnPageNumberChangedAsync"
-                            NextRequested="OnNextRequestedAsync"
                             PageCount="(ulong?)Items.TotalCount"
                             PersistState="true" />
-                @if (IsInteractive)
-                {
-                    <Select Label="Number of results per page:"
-                            @bind-Value="CurrentPageSize"
-                            @bind-Value:after="OnPageSizeChangedAsync"
-                            Class="dense">
-                        <Option Label="50" Value="50" />
-                        <Option Label="100" Value="100" />
-                        <Option Label="250" Value="250" />
-                        <Option Label="500" Value="500" />
-                    </Select>
-                }
-                else
-                {
-                    <span>Number of results per page: <span>@CurrentPageSize</span></span>
-                }
+                <Select Label="Number of results per page:"
+                        @bind-Value="CurrentPageSize"
+                        Name="@Wiki.PageSizeParameter"
+                        Class="dense">
+                    <Option Label="50" Value="50" />
+                    <Option Label="100" Value="100" />
+                    <Option Label="250" Value="250" />
+                    <Option Label="500" Value="500" />
+                </Select>
             </div>
         }
     }
-}
+</form>

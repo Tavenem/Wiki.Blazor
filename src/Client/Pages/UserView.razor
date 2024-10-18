@@ -1,0 +1,21 @@
+﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
+@if (UserPage is not null)
+{
+    <tf-syntax-highlight class="wiki-parser-output">@Content</tf-syntax-highlight>
+    if (UserPage.Groups is not null
+        && UserPage.Groups.Count > 0)
+    {
+        <h2>Groups</h2>
+        <p>This user belongs to the following @UserPage.Groups.Count.ToString("N0") groups.</p>
+        <ul class="wiki-group-list">
+            @foreach (var group in UserPage.Groups)
+            {
+                <li>
+                    <a href="@WikiState.Link(group.Id, WikiOptions.GroupNamespace)"
+                       class="wiki-username wiki-username-link"
+                       title="@($"Visit the group page for {group.DisplayName ?? group.Id}")">@(group.DisplayName ?? group.Id)</a>
+                </li>
+            }
+        </ul>
+    }
+}

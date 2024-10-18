@@ -1,18 +1,18 @@
 ﻿<div class="wiki-site-subtitle">From @WikiOptions.SiteName</div>
 @if (!IsDiff && FrontMatterType is not null)
 {
-    <DynamicRenderModeComponent CanEdit="CanEdit"
-                                ComponentType="FrontMatterType"
-                                Page="Page"
-                                RenderMode="FrontMatterRenderMode"
-                                User="User" />
+    <DynamicWikiComponent CanEdit="CanEdit"
+                          ComponentType="FrontMatterType"
+                          Page="Page"
+                          RenderMode="FrontMatterRenderMode"
+                          User="User" />
 }
 <tf-syntax-highlight class="wiki-parser-output">@Content</tf-syntax-highlight>
 @if (!IsDiff && EndMatterType is not null)
 {
-    <DynamicRenderModeComponent CanEdit="CanEdit"
-                                ComponentType="EndMatterType"
-                                Page="Page"
-                                RenderMode="EndMatterRenderMode"
-                                User="User" />
+    <DynamicWikiComponent CanEdit="CanEdit"
+                          ComponentType="EndMatterType"
+                          Page="Page"
+                          RenderMode="EndMatterRenderMode"
+                          User="User" />
 }

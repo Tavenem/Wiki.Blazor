@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
+using Tavenem.Wiki.Blazor.Client.Services;
 using Tavenem.Wiki.Models;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
@@ -6,7 +8,7 @@ namespace Tavenem.Wiki.Blazor.Client.Shared;
 /// <summary>
 /// A component which supports wiki editing.
 /// </summary>
-public class WikiEditComponent : OfflineSupportComponent
+public class WikiEditComponent : ComponentBase
 {
     /// <summary>
     /// The content of the wiki article.
@@ -44,24 +46,17 @@ public class WikiEditComponent : OfflineSupportComponent
     protected virtual string? Title { get; set; }
 
     /// <summary>
+    /// An injected <see cref="Services.WikiDataService"/> instance.
+    /// </summary>
+    [Inject, NotNull] protected WikiDataService? WikiDataService { get; set; }
+
+    /// <summary>
     /// Gets the wiki links in the content by calling the wiki server, or the offline data manager.
     /// </summary>
-    protected async Task<List<WikiLink>?> GetWikiLinksAsync()
-    {
-        FixContent();
-        if (string.IsNullOrWhiteSpace(Content))
-        {
-            return null;
-        }
-
-        var request = new PreviewRequest(Content, PageTitle.Parse(Title));
-        return await PostAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
-            request,
-            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-            WikiBlazorJsonSerializerContext.Default.ListWikiLink,
-            user => WikiDataManager.GetWikiLinksAsync(user, request));
-    }
+    protected async Task<List<WikiLink>?> GetWikiLinksAsync() => string.IsNullOrWhiteSpace(Content)
+        ? null
+        : await WikiDataService.GetWikiLinksAsync(
+            new PreviewRequest(Content, PageTitle.Parse(Title)));
 
     /// <summary>
     /// Renders the HTML content by calling the wiki server, or the offline data manager.
@@ -69,18 +64,13 @@ public class WikiEditComponent : OfflineSupportComponent
     protected async Task HtmlAsync()
     {
         HtmlContent = new();
-        FixContent();
         if (string.IsNullOrWhiteSpace(Content))
         {
             return;
         }
 
-        var request = new PreviewRequest(Content, PageTitle.Parse(Title));
-        var preview = await PostForStringAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/html",
-            request,
-            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-            user => WikiDataManager.RenderHtmlAsync(user, request));
+        var preview = await WikiDataService.RenderHtmlAsync(
+            new PreviewRequest(Content, PageTitle.Parse(Title)));
         HtmlContent = new(preview ?? string.Empty);
     }
 
@@ -90,31 +80,13 @@ public class WikiEditComponent : OfflineSupportComponent
     protected async Task PreviewAsync()
     {
         PreviewContent = new();
-        FixContent();
         if (string.IsNullOrWhiteSpace(Content))
         {
             return;
         }
 
-        var request = new PreviewRequest(Content, PageTitle.Parse(Title));
-        var preview = await PostForStringAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/preview",
-            request,
-            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-            user => WikiDataManager.RenderHtmlAsync(user, request));
+        var preview = await WikiDataService.RenderPreviewAsync(
+            new PreviewRequest(Content, PageTitle.Parse(Title)));
         PreviewContent = new(preview ?? string.Empty);
-    }
-
-    /// <summary>
-    /// Repair escaped characters in the raw markdown.
-    /// </summary>
-    protected void FixContent()
-    {
-        if (!IsScript)
-        {
-            Content = Content?
-                .Replace(@"\[\[", "[[")
-                .Replace(@"\]\]", "]]");
-        }
     }
 }

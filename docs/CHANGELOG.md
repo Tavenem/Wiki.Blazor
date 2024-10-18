@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0-preview
+### Changed
+- Implement new Tavenem.Wiki version
+- Reduce dependence on interactive rendering
+
 ## 0.8.0-preview
 ### Changed
 - Implement built-in search

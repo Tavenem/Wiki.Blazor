@@ -1,0 +1,8 @@
+﻿.wiki-group-list {
+    column-count: 3;
+    column-width: 24rem;
+}
+    .wiki-group-list li {
+        page-break-inside: avoid;
+        break-inside: avoid-column;
+    }

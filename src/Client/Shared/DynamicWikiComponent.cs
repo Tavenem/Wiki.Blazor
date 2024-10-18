@@ -5,17 +5,17 @@ using System.Diagnostics.CodeAnalysis;
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
 /// <summary>
-/// Dynamically renders a component with a render mode.
+/// Dynamically renders a component in the wiki page view with a render mode.
 /// </summary>
-public class DynamicRenderModeComponent : ComponentBase
+public class DynamicWikiComponent : ComponentBase
 {
     /// <summary>
-    /// Whether the current user has permission to edit this article.
+    /// Whether the current user has permission to edit this page.
     /// </summary>
     [Parameter] public bool CanEdit { get; set; }
 
     /// <summary>
-    /// The article to display.
+    /// The page to display.
     /// </summary>
     [Parameter] public Page? Page { get; set; }
 
@@ -45,7 +45,7 @@ public class DynamicRenderModeComponent : ComponentBase
         }
 
         builder.OpenComponent(0, ComponentType);
-        builder.AddAttribute(1, "Article", Page);
+        builder.AddAttribute(1, "Page", Page);
         builder.AddAttribute(2, "CanEdit", CanEdit);
         builder.AddAttribute(3, "User", User);
         builder.AddComponentRenderMode(RenderMode);

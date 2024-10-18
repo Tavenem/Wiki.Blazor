@@ -3,7 +3,7 @@
 Tavenem.Wiki.Blazor
 ==
 
-This is an implementation of [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for [Blazor](https://docs.microsoft.com/en-us/aspnet/core/blazor). It is comprised of a pair of [Razor class libraries](https://docs.microsoft.com/en-us/aspnet/core/razor-pages/ui-class): a **Client** library which can be included in a Blazor client app, and a **Server** library which can be included in an [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core) host project. Working together, this [hosted Blazor project](https://docs.microsoft.com/en-us/aspnet/core/blazor/host-and-deploy/webassembly#hosted-deployment-with-aspnet-core) will function as a complete wiki.
+This is an implementation of [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for [Blazor](https://docs.microsoft.com/en-us/aspnet/core/blazor). It is comprised of a pair of [Razor class libraries](https://docs.microsoft.com/en-us/aspnet/core/razor-pages/ui-class): a **Client** library which can be included in a Blazor client app, and a **Server** library which can be included in an [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core) host project. Working together, this will function as a complete wiki.
 
 It is also possible to use only the client library, and provide your own implementation for the server library. Its source code could easily be adapted to integrate more closely with your main server project, or reimagined as a cloud-native set of functions and APIs, or replaced by any number of other implementations.
 
@@ -29,7 +29,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
     builder.Services.AddWikiClient();
     ```
 
-   `AddWikiClient` has three optional parameters.
+   `AddWikiClient` has two optional parameters.
 
    The first parameter is either an instance of `WikiOptions` or a function which provides one. This interface allows you to configure the wiki's core features. See the README for [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for more information.
    
@@ -81,10 +81,6 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 
      
      This is initialized to <see langword="null"/> by default, `WikiBlazorClientOptions.DefaultWikiServerApiRoute` may be assigned to use the default value for a hosting server app with default values.
-
-   The third parameter to `AddWikiClient` is either an instance of `ISearchClient`, the `Type` of an implementation, or a function which provides one. This service provides search capabilities when using the local data source. If omitted, an instance of `DefaultSearchClient` will be used.
-     
-   Note: the `DefaultSearchClient` is not recommended for production use. It is provided only to ensure that basic search functionality operates when an implementation of `ISearchClient` is not available (e.g. during debugging if the production client cannot be used during development).
 1. Add a page with the following content to your client:
    ```csharp
    @page "/wiki/{*route}"
@@ -119,7 +115,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
     services.Configure<JsonOptions>(options =>
         options.JsonSerializerOptions.TypeInfoResolver = resolver);
    ```
-1. Call one of the overloads of `AddWikiServer` on an `IServiceCollection` instance in your `Program.cs` file. `AddWikiServer` has two required parameters and four optional parameters.
+1. Call one of the overloads of `AddWikiServer` on an `IServiceCollection` instance in your `Program.cs` file. `AddWikiServer` has two required parameters and three optional parameters.
    
    The first parameter is either an instance of `IWikiUserManager`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. This interface allows the wiki to get information about users. Typically this will be a wrapper around your actual user persistence mechanism (e.g. [ASP.NET Core Identity](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity)).
 
@@ -145,11 +141,6 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
      If omitted, the path "/wikiapi" will be used.
    
    The next parameter is either an instance of `IFileManager`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. If omitted, an instance of `LocalFileManager` will be used, which stores files in a subfolder of wwwroot. Note that you can disable file uploads entirely in `WikiOptions`.
-   
-   The next parameter is either an instance of `ISearchClient`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. If omitted, an instance of `DefaultSearchClient` will be used.
-     
-   Note: the `DefaultSearchClient` is not recommended for production use. It is provided only to ensure that basic search functionality operates when an implementation of `ISearchClient` is not available (e.g. during debugging if the production client cannot be used during development).
-1. Call `MapWiki` on an `IEndpointRouteBuilder` instance in your `Program.cs` file.
 
    For example:
    ```csharp
@@ -164,7 +155,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 
 Tavenem.Wiki.Blazor is currently in a **prerelease** state. Development is ongoing, and breaking changes are possible before the first production release.
 
-No release date is currently set for v1.0 of Tavenem.Wiki.Blazor. The project is currently in a "wait and see" phase while [Tavenem.DataStore](https://github.com/Tavenem/DataStore) (a dependency of Tavenem.Wiki.Blazor) is in prerelease. When that project has a stable release, a production release of Tavenem.Wiki.Blazor will follow.
+No release date is currently set for v1.0 of Tavenem.Wiki.Blazor.
 
 ## Contributing
 

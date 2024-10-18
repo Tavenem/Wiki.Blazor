@@ -1,6 +1,10 @@
-﻿@inherits OfflineSupportComponent
+﻿<PageTitle>@WikiState.PageTitle</PageTitle>
 
-<PageTitle>@WikiState.PageTitle</PageTitle>
+@if (PreviewDisplayed)
+{
+    @Preview
+    return;
+}
 
 <LayoutView Layout="typeof(WikiLayout)">
     <div id="@Id" class="wiki">
@@ -87,45 +91,23 @@
                         }
                     </ul>
                 }
-                @if (IsInteractive)
-                {
-                    <div class="d-flex align-items-end">
+                <div class="d-flex align-items-end">
+                    <form action="@(WikiState.Link("Search", WikiOptions.SystemNamespace))">
                         <TextInput Autocomplete="false"
-                                   LoadSuggestions="GetSearchSuggestions"
                                    Placeholder="Search the wiki"
-                                   @bind-Value="@SearchText"
-                                   @bind-Value:after="OnSetSearchText"
                                    Class="dense"
                                    InputType="InputType.Search"
-                                   Name="filter"
+                                   Name="pg-f"
                                    Style="max-width:75vw;width:20rem"
                                    role="search">
                             <PostfixContent>
-                                <button class="btn btn-icon" @onclick="OnSetSearchText">
+                                <button class="btn btn-icon" type="submit">
                                     <tf-icon>search</tf-icon>
                                 </button>
                             </PostfixContent>
                         </TextInput>
-                    </div>
-                }
-                else
-                {
-                    <form action="@(WikiState.Link("Search", WikiOptions.SystemNamespace))" data-enhance>
-                        <div class="field no-label dense" style="max-width:75vw;width:20rem">
-                            <div class="input">
-                                <input autocomplete="off"
-                                       class="input-core"
-                                       name="pg-f"
-                                       placeholder="Search the wiki"
-                                       size="1"
-                                       type="search" />
-                                <button class="btn btn-icon" type="submit">
-                                    <tf-icon>search</tf-icon>
-                                </button>
-                            </div>
-                        </div>
                     </form>
-                }
+                </div>
                 @if (WikiState.IsCompact)
                 {
                     <tf-darkmode-toggle />
@@ -158,6 +140,7 @@
                         }
                         if (IsCategory
                             || IsGroupPage
+                            || IsUserPage
                             || !CanEdit
                             || WikiPage?.Exists == true)
                         {
@@ -274,7 +257,7 @@
                     }
                     else if (IsEditing && CanEdit)
                     {
-                        <EditView CanRename="CanRename" Page="WikiPage" User="User" />
+                        <EditView CanRename="CanRename" Page="WikiPage" User="WikiState.User" />
                     }
                     else if (IsCategory && !IsRevisionRequested)
                     {
@@ -283,6 +266,10 @@
                     else if (IsGroupPage && !IsRevisionRequested)
                     {
                         <GroupView />
+                    }
+                    else if (IsUserPage && !IsRevisionRequested)
+                    {
+                        <UserView />
                     }
                     else if (WikiPage?.Exists != true)
                     {
@@ -310,7 +297,7 @@
                                      CanEdit="CanEdit"
                                      Content="Content"
                                      IsDiff="IsDiff"
-                                     User="User" />
+                                     User="WikiState.User" />
                     }
                     @if (!WikiState.IsCompact
                         && !WikiState.IsTalk
@@ -363,13 +350,5 @@
                 </div>
             </footer>
         }
-        <Popover IsOpen="PreviewDisplayed"
-                 AnchorOrigin="Origin.Top_Left"
-                 PopoverOrigin="Origin.Top_Left"
-                 PositionX="PreviewX"
-                 PositionY="PreviewY"
-                 Class="wiki-link-preview p-3">
-            @Preview
-        </Popover>
     </div>
 </LayoutView>

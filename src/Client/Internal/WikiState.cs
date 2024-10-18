@@ -83,6 +83,11 @@ public class WikiState
     public string? WikiTitle { get; internal set; }
 
     /// <summary>
+    /// The current user (if non-anonymous).
+    /// </summary>
+    public WikiUser? User { get; internal set; }
+
+    /// <summary>
     /// Raised when the compact view is turned on or off.
     /// </summary>
     public event EventHandler<bool>? CompactChanged;
@@ -189,6 +194,11 @@ public class WikiState
             route,
             query);
     }
+
+    /// <summary>
+    /// Gets the current <see cref="Tavenem.Wiki.PageTitle"/>.
+    /// </summary>
+    public PageTitle GetCurrentPageTitle() => new(WikiTitle, WikiNamespace, WikiDomain);
 
     /// <summary>
     /// Updates the display title of the current page.

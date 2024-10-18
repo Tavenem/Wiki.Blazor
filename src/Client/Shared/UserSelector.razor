@@ -1,38 +1,49 @@
-﻿@inherits OfflineSupportComponent
+﻿@rendermode RenderMode.InteractiveWebAssembly
 
 <div class="@CssClass" style="@Style">
-    @if (!string.IsNullOrEmpty(Label))
+    @if (!IsInteractive)
     {
-        <span class="@(Disabled ? "text-disabled" : string.Empty)">@Label</span>
+        <TextInput Value="InitialUsers"
+                   Disabled="@(Disabled || InputDisabled)"
+                   DisplayHelpTextOnFocus="DisplayHelpTextOnFocus"
+                   HelpText="@HelpText"
+                   Label="Label"
+                   Class="wiki-user-input"
+                   Name="@Name" />
     }
-    @if (SelectedUsers.Count > 0 || DeselectedUsers.Count > 0)
+    else
     {
-        if (AllowToggle)
+        @if (!string.IsNullOrEmpty(Label))
         {
-            <ChipSet TChip="IWikiOwner"
-                     ItemIsDisabled="@(_ => Disabled)"
-                     Items="SelectedUsers"
-                     ItemStyle="@(v => GetItemStyle(v))"
-                     OnChipClosed="@(v => OnRemoveUserAsync(v))"
-                     OnItemClick="@(v => OnItemClickAsync(v))" />
-            <ChipSet TChip="IWikiOwner"
-                     ItemIsDisabled="@(_ => Disabled)"
-                     Items="DeselectedUsers"
-                     ItemThemeColor="@(_ => ThemeColor.Danger)"
-                     OnChipClosed="@(v => OnRemoveUserAsync(v))"
-                     OnItemClick="@(v => OnItemClickAsync(v))" />
+            <span class="@(Disabled ? "text-disabled" : string.Empty)">@Label</span>
         }
-        else
+        @if (SelectedUsers.Count > 0 || DeselectedUsers.Count > 0)
         {
-            <ChipSet TChip="IWikiOwner"
-                     ItemIsDisabled="@(_ => Disabled)"
-                     Items="SelectedUsers"
-                     ItemStyle="@(v => GetItemStyle(v))"
-                     OnChipClosed="@(v => OnRemoveUserAsync(v))" />
+            if (AllowToggle)
+            {
+                <ChipSet TChip="IWikiOwner"
+                         ItemIsDisabled="@(_ => Disabled)"
+                         Items="SelectedUsers"
+                         ItemStyle="@(v => GetItemStyle(v))"
+                         OnChipClosed="@(v => OnRemoveUserAsync(v))"
+                         OnItemClick="@(v => OnItemClickAsync(v))" />
+                <ChipSet TChip="IWikiOwner"
+                         ItemIsDisabled="@(_ => Disabled)"
+                         Items="DeselectedUsers"
+                         ItemThemeColor="@(_ => ThemeColor.Danger)"
+                         OnChipClosed="@(v => OnRemoveUserAsync(v))"
+                         OnItemClick="@(v => OnItemClickAsync(v))" />
+            }
+            else
+            {
+                <ChipSet TChip="IWikiOwner"
+                         ItemIsDisabled="@(_ => Disabled)"
+                         Items="SelectedUsers"
+                         ItemStyle="@(v => GetItemStyle(v))"
+                         OnChipClosed="@(v => OnRemoveUserAsync(v))" />
+            }
         }
-    }
-    @if (IsInteractive)
-    {
+        <input type="hidden" @bind-value="@SearchValue" name="@Name" />
         <TextInput @bind-Value="InputText"
                    @bind-Value:after="OnTextEnteredAsync"
                    Disabled="InputDisabled"

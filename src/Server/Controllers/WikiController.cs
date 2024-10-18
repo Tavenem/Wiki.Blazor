@@ -2,10 +2,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using SmartComponents.LocalEmbeddings;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
+using Tavenem.Wiki.Blazor.Client.Services;
 using Tavenem.Wiki.Blazor.Exceptions;
 using Tavenem.Wiki.Blazor.Models;
 using Tavenem.Wiki.Models;
@@ -21,7 +21,6 @@ namespace Tavenem.Wiki.Blazor.Server.Controllers;
 [AllowAnonymous]
 public class WikiController(
     IDataStore dataStore,
-    LocalEmbedder embedder,
     IWikiGroupManager groupManager,
     ILoggerFactory loggerFactory,
     IServiceProvider serviceProvider,
@@ -29,9 +28,8 @@ public class WikiController(
     WikiBlazorServerOptions wikiBlazorServerOptions,
     WikiOptions wikiOptions) : Controller
 {
-    private readonly WikiDataManager _dataManager = new(
+    private readonly LocalWikiDataService _dataManager = new(
         dataStore,
-        embedder,
         groupManager,
         loggerFactory,
         serviceProvider,
@@ -329,6 +327,28 @@ public class WikiController(
         => _dataManager.GetListAsync(request);
 
     /// <summary>
+    /// Gets the preview HTML for a given wiki link.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing HTML text when successful.
+    /// </returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Preview(
+        [FromQuery] string? title = null,
+        [FromQuery] string? @namespace = null,
+        [FromQuery] string? domain = null)
+    {
+        var result = await _dataManager.GetPreviewAsync(User, new PageTitle(title, @namespace, domain));
+        if (string.IsNullOrEmpty(result))
+        {
+            return NoContent();
+        }
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Gets the preview HTML which would be produced for content containing wiki syntax.
     /// </summary>
     /// <returns>
@@ -348,25 +368,6 @@ public class WikiController(
     }
 
     /// <summary>
-    /// Gets the preview HTML for a given wiki link.
-    /// </summary>
-    /// <returns>
-    /// An <see cref="IActionResult"/> containing HTML text when successful.
-    /// </returns>
-    [HttpGet]
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> PreviewLink([FromQuery] string link)
-    {
-        var result = await _dataManager.GetPreviewAsync(User, link);
-        if (string.IsNullOrEmpty(result))
-        {
-            return NoContent();
-        }
-        return Ok(result);
-    }
-
-    /// <summary>
     /// Restores the given wiki archive.
     /// </summary>
     /// <param name="archive">The archive to restore.</param>
@@ -374,7 +375,7 @@ public class WikiController(
     /// An <see cref="IActionResult"/>.
     /// </returns>
     [HttpPost]
-    [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RestoreArchive([FromBody] Archive archive)
     {
@@ -401,19 +402,6 @@ public class WikiController(
     public Task<SearchResult> Search(
         [FromBody] SearchRequest request)
         => _dataManager.SearchAsync(User, request);
-
-    /// <summary>
-    /// Gets search suggestions for a given input string.
-    /// </summary>
-    /// <param name="input">The search input.</param>
-    /// <returns>
-    /// An <see cref="IActionResult"/> containing a <see cref="List{T}"/> of strings when successful.
-    /// </returns>
-    [HttpGet]
-    [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
-    public Task<List<string>> SearchSuggest(
-        [FromQuery] string? input = null)
-        => _dataManager.GetSearchSuggestionsAsync(User, input);
 
     /// <summary>
     /// Gets a wiki talk page.
@@ -450,15 +438,26 @@ public class WikiController(
     /// cref="MessageResponse"/> objects when successful.
     /// </returns>
     [HttpPost]
-    [ProducesResponseType(typeof(List<MessageResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Talk([FromBody] ReplyRequest reply)
+    public async Task<IActionResult> Talk(
+        [FromForm] string topic,
+        [FromForm] string content,
+        [FromForm] string? message = null)
     {
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            return BadRequest();
+        }
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return Ok();
+        }
         try
         {
-            var result = await _dataManager.PostTalkAsync(User, reply);
-            return Ok(result);
+            await _dataManager.PostTalkAsync(User, new ReplyRequest(topic, content, message));
+            return Ok();
         }
         catch (ArgumentException ex)
         {
@@ -557,6 +556,60 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public Task<int> UploadLimit() => _dataManager.GetUploadLimitAsync(User);
+
+    /// <summary>
+    /// Gets a wiki user page.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IActionResult"/> containing a <see cref="UserPage"/> when successful.
+    /// </returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(UserPage), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UserPage(
+        [FromQuery] string title,
+        [FromQuery] long? firstTime = null,
+        [FromQuery] long? secondTime = null,
+        [FromQuery] bool diff = false)
+    {
+        if (firstTime.HasValue
+            || secondTime.HasValue
+            || diff)
+        {
+            try
+            {
+                var result = await _dataManager.GetItemAsync(
+                    User,
+                    new PageTitle(title, wikiOptions.GroupNamespace),
+                    true,
+                    firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
+                    secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
+                    diff);
+                return Ok(result);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
+        }
+
+        try
+        {
+            var userPage = await _dataManager.GetUserPageAsync(User, title);
+            return Ok(userPage);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (WikiUnauthorizedException)
+        {
+            return Unauthorized();
+        }
+    }
 
     /// <summary>
     /// Gets the list of pages which link to the given page.

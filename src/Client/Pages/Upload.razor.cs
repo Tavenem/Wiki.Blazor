@@ -1,20 +1,19 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Tavenem.Blazor.Framework;
-using Tavenem.Wiki.Blazor.Client.Shared;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
 /// <summary>
 /// The upload page.
 /// </summary>
-public partial class Upload : OfflineSupportComponent
+public partial class Upload
 {
     private const string _baseDragAreaClass = "container rounded p-4 my-4";
 
@@ -34,9 +33,13 @@ public partial class Upload : OfflineSupportComponent
 
     private string? FileName => File?.Name;
 
+    private HttpClient? HttpClient { get; set; }
+
     private bool InsufficientSpace { get; set; }
 
     [CascadingParameter] private bool IsInteractive { get; set; }
+
+    [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
 
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
 
@@ -47,6 +50,10 @@ public partial class Upload : OfflineSupportComponent
     private bool OwnerSelf { get; set; }
 
     private string? Preview { get; set; }
+
+    [Inject, NotNull] private IServiceProvider? ServiceProvider { get; set; }
+
+    [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
 
     [MemberNotNullWhen(false, nameof(File), nameof(Title))]
     private bool SubmitDisabled => File is null
@@ -59,26 +66,19 @@ public partial class Upload : OfflineSupportComponent
 
     private bool ViewerSelf { get; set; }
 
-    /// <inheritdoc/>
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-        await RefreshAsync();
-    }
+    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+
+    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
+
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
-    protected override async Task RefreshAsync()
-    {
-        NotAuthorized = false;
+    protected override void OnInitialized() => HttpClient = ServiceProvider.GetService<HttpClient>();
 
-        var limit = await FetchIntAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/uploadlimit",
-            WikiDataManager.GetUploadLimitAsync);
-        if (limit == 0)
-        {
-            NotAuthorized = true;
-        }
-    }
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync() => NotAuthorized = await WikiDataService.GetUploadLimitAsync() == 0;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
     private static async IAsyncEnumerable<string> TitleValidation(string? value, object? _)
@@ -126,12 +126,7 @@ public partial class Upload : OfflineSupportComponent
             return;
         }
 
-        var request = new PreviewRequest(Content, title);
-        Preview = await PostForStringAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/html",
-            request,
-            WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-            user => WikiDataManager.RenderHtmlAsync(user, request));
+        Preview = await WikiDataService.RenderHtmlAsync(new PreviewRequest(Content, title));
     }
 
     private async Task UploadAsync(bool confirmOverwrite = false)
@@ -195,13 +190,6 @@ public partial class Upload : OfflineSupportComponent
             allowedEditorGroups,
             allowedViewerGroups);
 
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        if (AuthenticationStateProvider is not null)
-        {
-            state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
         try
         {
             using var content = new MultipartFormDataContent();
@@ -231,10 +219,9 @@ public partial class Upload : OfflineSupportComponent
                     content);
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    if (state?.User.Identity?.IsAuthenticated != true)
+                    if (WikiState.User is null)
                     {
-                        if (state is null
-                            || string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
+                        if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
                         {
                             NavigationManager.NavigateTo(
                                 NavigationManager.GetUriWithQueryParameter(

@@ -1,44 +1,23 @@
-﻿@inherits OfflineSupportComponent
-
-@if (Revisions is null || Revisions.Count == 0)
+﻿@if (Revisions is null || Revisions.Count == 0)
 {
     <p class="wiki-history-nocontent">No revisions match the current filter.</p>
+    return;
 }
-else
-{
-    @if (IsInteractive)
-    {
-        <Collapse Title="Filter">
-            <DateTimeInput Label="Start date" ShowTime="true" @bind-Value="@CurrentStart" />
-            <DateTimeInput Label="End date" ShowTime="true" @bind-Value="@CurrentEnd" />
-            <UserSelector @ref="UserSelector" Label="User" @bind-SelectedUsers="SelectedEditor" InitialUsers="@Editor" />
-            <button class="btn primary" @onclick="OnFilterAsync">Apply filter</button>
-        </Collapse>
-    }
-    else if (CurrentStart.HasValue
-        || CurrentEnd.HasValue
-        || !string.IsNullOrEmpty(Editor))
-    {
-        <Collapse Title="Filter">
-            @if (CurrentStart.HasValue)
-            {
-                <p>Start date: <span>@CurrentStart?.ToString("f")</span></p>
-            }
-            @if (CurrentEnd.HasValue)
-            {
-                <p>End date: <span>@CurrentEnd?.ToString("f")</span></p>
-            }
-            @if (!string.IsNullOrEmpty(Editor))
-            {
-                <UserSelector @ref="UserSelector" Label="User" @bind-SelectedUsers="SelectedEditor" InitialUsers="@Editor" />
-            }
-        </Collapse>
-    }
+
+<form action="@(WikiState.LinkHere())">
+    <Collapse Title="Filter" IsInitiallyOpen="@(!string.IsNullOrEmpty(Start) || !string.IsNullOrEmpty(End) || !string.IsNullOrEmpty(Editor))">
+        <DateTimeInput Label="Start date" Name="@Wiki.StartParameter" ShowTime="true" @bind-Value="@Start" />
+        <DateTimeInput Label="End date" Name="@Wiki.EndParameter" ShowTime="true" @bind-Value="@End" />
+        <UserSelector Label="User"
+                      @bind-SelectedUsers="SelectedEditor"
+                      InitialUsers="@Editor"
+                      Name="@Wiki.EditorParameter" />
+        <button class="btn primary" formaction="@(WikiState.LinkHere(history: true))" type="submit">Apply filter</button>
+    </Collapse>
     <p class="wiki-history-instructions">Click on the date/time to view a revision.</p>
-    if (IsInteractive
-        && !string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+    @if (!string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
     {
-        <button class="btn primary outlined my-3" @onclick="OnCompare">Compare selected versions</button>
+        <button class="btn primary outlined my-3" type="submit">Compare selected versions</button>
     }
     <ul>
         @for (int i = 0; i < Revisions.Count; i++)
@@ -64,16 +43,11 @@ else
                             <span class="text-disabled">prev</span>
                         }
                     </span>
-                    @if (IsInteractive)
-                    {
-                        <Checkbox TValue="bool"
-                                  Value="@(FirstRevision == Revisions[i].Revision.TimestampTicks || SecondRevision == Revisions[i].Revision.TimestampTicks)"
-                                  ValueChanged="@(v => OnSelectRevision(Revisions[i], v))" />
-                    }
+                    <tf-checkbox name="rev" value="@Revisions[i].Revision.TimestampTicks"></tf-checkbox>
                 }
                 <a href="@WikiState.LinkHere(query: $"rev={Revisions[i].Revision.TimestampTicks}")"
                    class="wiki-history-list-timestamp"
-                   title="@WikiState.PageTitle">@Revisions[i].Revision.GetTimestamp(TimezoneOffset)</a>
+                   title="@WikiState.PageTitle">@Revisions[i].Revision.GetTimestamp()</a>
                 <a href="@WikiState.Link(Revisions[i].Revision.Editor, WikiOptions.UserNamespace)"
                    class="wiki-username wiki-username-link wiki-history-list-editor"
                    title="@($"Visit the user page for {Revisions[i].EditorName}")">@(Revisions[i].EditorName)</a>
@@ -81,35 +55,25 @@ else
             </li>
         }
     </ul>
-    if (IsInteractive
-        && !string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
+    @if (!string.Equals(WikiState.WikiNamespace, WikiOptions.FileNamespace, StringComparison.OrdinalIgnoreCase))
     {
-        <button class="btn primary outlined my-3" @onclick="OnCompare">Compare selected versions</button>
+        <button class="btn primary outlined my-3" type="submit">Compare selected versions</button>
     }
     @if (Revisions.TotalPages > 1)
     {
         <div class="d-flex flex-wrap align-items-baseline gap-3 mt-3">
             <Pagination Id="pg"
-                        @bind-CurrentPage="CurrentPageNumber"
-                        @bind-CurrentPage:after="OnPageNumberChangedAsync"
-                        NextRequested="OnNextRequestedAsync"
+                        CurrentPage="CurrentPageNumber"
                         PageCount="(ulong?)Revisions?.TotalPages"
                         PersistState="true" />
-            @if (IsInteractive)
-            {
-                <Select Label="Number of revisions per page:"
-                        @bind-Value="CurrentPageSize"
-                        @bind-Value:after="OnPageSizeChangedAsync"
-                        Class="dense">
-                    <Option Label="50" Value="50" />
-                    <Option Label="100" Value="100" />
-                    <Option Label="200" Value="200" />
-                </Select>
-            }
-            else
-            {
-                <span>Number of revisions per page: <span>@CurrentPageSize</span></span>
-            }
+            <Select Label="Number of revisions per page:"
+                    Name="@Wiki.PageSizeParameter"
+                    Value="@(PageSize ?? 50)"
+                    Class="dense">
+                <Option Label="50" Value="50" />
+                <Option Label="100" Value="100" />
+                <Option Label="200" Value="200" />
+            </Select>
         </div>
     }
-}
+</form>

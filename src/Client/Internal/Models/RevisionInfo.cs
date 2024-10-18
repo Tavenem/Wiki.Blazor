@@ -3,7 +3,7 @@
 /// <summary>
 /// Information about a revision.
 /// </summary>
-public record RevisionInfo(Revision Revision, IWikiUser Editor)
+internal record RevisionInfo(Revision Revision, IWikiUser Editor)
 {
     /// <summary>
     /// The display name for the editor of this revision.

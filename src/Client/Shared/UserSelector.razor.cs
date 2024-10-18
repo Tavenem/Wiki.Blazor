@@ -1,13 +1,16 @@
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Components;
+using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using Tavenem.Blazor.Framework;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
 
 /// <summary>
 /// A control to select one or more wiki users and/or groups.
 /// </summary>
-public partial class UserSelector : OfflineSupportComponent
+public partial class UserSelector
 {
     /// <summary>
     /// <para>
@@ -65,6 +68,11 @@ public partial class UserSelector : OfflineSupportComponent
     [Parameter] public string? Label { get; set; }
 
     /// <summary>
+    /// THe name for the non-interactive text input.
+    /// </summary>
+    [Parameter] public string? Name { get; set; }
+
+    /// <summary>
     /// The list of selected users.
     /// </summary>
     [Parameter] public List<IWikiOwner> SelectedUsers { get; set; } = [];
@@ -94,6 +102,12 @@ public partial class UserSelector : OfflineSupportComponent
 
     private bool IsInteractive { get; set; }
 
+    private string? SearchValue { get; set; }
+
+    [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
+
+    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()
     {
@@ -107,6 +121,8 @@ public partial class UserSelector : OfflineSupportComponent
         {
             await OnAddUserAsync(query);
         }
+
+        SetSearchValue();
     }
 
     /// <inheritdoc />
@@ -131,19 +147,12 @@ public partial class UserSelector : OfflineSupportComponent
     /// </remarks>
     public async Task<IWikiOwner?> OnAddUserAsync(string query)
     {
-        var wikiOwner = await FetchDataAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/wikiowner?query={query}",
-            WikiJsonSerializerContext.Default.IWikiOwner,
-            async user =>
-            {
-                IWikiOwner? wikiOwner = await WikiDataManager.GetWikiUserAsync(user, query);
-                wikiOwner ??= await WikiDataManager.GetWikiGroupAsync(user, query);
-                return wikiOwner;
-            });
+        var wikiOwner = await WikiDataService.GetWikiOwnerAsync(query);
         if (wikiOwner is not null)
         {
             await OnAddUserAsync(wikiOwner);
         }
+
         return wikiOwner;
     }
 
@@ -179,10 +188,12 @@ public partial class UserSelector : OfflineSupportComponent
         if (SelectedUsers.Remove(user))
         {
             DeselectedUsers.Add(user);
+            SetSearchValue();
         }
         else if (DeselectedUsers.Remove(user))
         {
             SelectedUsers.Add(user);
+            SetSearchValue();
         }
         else
         {
@@ -197,6 +208,7 @@ public partial class UserSelector : OfflineSupportComponent
         if (SelectedUsers.Remove(user))
         {
             await SelectedUsersChanged.InvokeAsync(SelectedUsers);
+            SetSearchValue();
         }
     }
 
@@ -209,5 +221,25 @@ public partial class UserSelector : OfflineSupportComponent
         }
 
         await OnAddUserAsync(InputText.Trim());
+
+        SetSearchValue();
+    }
+
+    private void SetSearchValue()
+    {
+        var owners = new StringBuilder();
+        if (SelectedUsers?.Count > 0)
+        {
+            owners.AppendJoin(';', SelectedUsers.Select(x => x.Id));
+        }
+        if (DeselectedUsers?.Count > 0)
+        {
+            if (owners.Length > 0)
+            {
+                owners.Append(';');
+            }
+            owners.AppendJoin(';', DeselectedUsers.Select(x => $"!{x.Id}"));
+        }
+        SearchValue = owners.ToString();
     }
 }

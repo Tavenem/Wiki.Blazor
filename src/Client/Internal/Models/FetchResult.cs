@@ -5,4 +5,4 @@
 /// </summary>
 /// <param name="Success">Whether the call was successful.</param>
 /// <param name="Message">Any message returned by the call.</param>
-public record FetchResult(bool Success, string? Message = null);
+internal record FetchResult(bool Success, string? Message = null);

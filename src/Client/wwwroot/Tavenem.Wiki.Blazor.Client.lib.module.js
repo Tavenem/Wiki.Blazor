@@ -22,14 +22,8 @@ function addHeadContent() {
     const style = document.createElement('link');
     style.rel = 'stylesheet';
     style.type = 'text/css';
-    style.href = "_content/Tavenem.Wiki.Blazor.Client/wiki.css";
+    style.href = "_content/Tavenem.Wiki.Blazor.Client/tavenem-wiki.css";
     document.head.appendChild(style);
-
-    const bundle = document.createElement('link');
-    bundle.rel = 'stylesheet';
-    bundle.type = 'text/css';
-    bundle.href = "_content/Tavenem.Wiki.Blazor.Client/Tavenem.Wiki.Blazor.Client.bundle.scp.css";
-    document.head.appendChild(bundle);
 }
 
 function onEnhancedLoad() {

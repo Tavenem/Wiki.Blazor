@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
-using Tavenem.Wiki.Blazor.Client.Shared;
+using Tavenem.Wiki.Blazor.Client.Services;
 using Tavenem.Wiki.Queries;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -11,7 +10,7 @@ namespace Tavenem.Wiki.Blazor.Client.Pages;
 /// <summary>
 /// A common page component which displays system lists.
 /// </summary>
-public partial class SpecialList : OfflineSupportComponent
+public partial class SpecialList
 {
     /// <summary>
     /// Whether a requested sort is descending.
@@ -58,10 +57,6 @@ public partial class SpecialList : OfflineSupportComponent
     /// </summary>
     [Parameter] public string? TargetTitle { get; set; }
 
-    private bool CurrentDescending { get; set; }
-
-    private string? CurrentFilter { get; set; }
-
     private ulong CurrentPageNumber { get; set; }
 
     private int CurrentPageSize { get; set; } = 50;
@@ -70,71 +65,19 @@ public partial class SpecialList : OfflineSupportComponent
 
     private string? Description { get; set; }
 
-    [CascadingParameter] private bool IsInteractive { get; set; }
-
-    private IPagedList<LinkInfo>? Items { get; set; }
-
-    [Inject, NotNull] private QueryStateService? QueryStateService { get; set; }
+    private PagedList<LinkInfo>? Items { get; set; }
 
     private string? SecondaryDescription { get; set; }
 
-    /// <inheritdoc/>
-    protected override Task OnParametersSetAsync()
-        => RefreshAsync();
+    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
+
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
-    protected override void OnInitialized()
+    protected override async Task OnParametersSetAsync()
     {
-        base.OnInitialized();
-
-        var pageSizes = QueryStateService.RegisterProperty(
-            "pg",
-            "ps",
-            OnPageSizeChangedAsync,
-            50);
-        if (pageSizes?.Count > 0
-            && int.TryParse(pageSizes[0], out var pageSize))
-        {
-            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
-        }
-
-        var sorts = QueryStateService.RegisterProperty(
-            "pg",
-            "s",
-            OnSortChangedAsync,
-            50);
-        if (sorts?.Count > 0)
-        {
-            CurrentSort = sorts[0];
-        }
-
-        var descendings = QueryStateService.RegisterProperty(
-            "pg",
-            "d",
-            OnDescendingChangedAsync,
-            false);
-        if (descendings?.Count > 0
-            && bool.TryParse(descendings[0], out var descending))
-        {
-            CurrentDescending = descending;
-        }
-
-        var filters = QueryStateService.RegisterProperty(
-            "pg",
-            "f",
-            OnFilterChangedAsync,
-            false);
-        if (filters?.Count > 0)
-        {
-            CurrentFilter = filters[0];
-        }
-    }
-
-    /// <inheritdoc/>
-    protected override async Task RefreshAsync()
-    {
-        CurrentDescending = Descending;
-        CurrentFilter = Filter;
         CurrentPageNumber = (ulong)Math.Max(1, PageNumber ?? 1);
         CurrentPageSize = Math.Clamp(PageSize ?? 50, 5, 500);
         CurrentSort = string.Equals(Sort, "timestamp")
@@ -150,19 +93,13 @@ public partial class SpecialList : OfflineSupportComponent
 
             Description = $"The following pages link to {targetTitle}.";
 
-            var request = new TitleRequest(
+            Items = await WikiDataService.GetWhatLinksHereAsync(new TitleRequest(
                 targetTitle,
                 (int)CurrentPageNumber,
                 CurrentPageSize,
                 Descending,
                 Sort,
-                Filter);
-            Items = await PostAsync(
-                $"{WikiBlazorClientOptions.WikiServerApiRoute}/whatlinkshere",
-                request,
-                WikiJsonSerializerContext.Default.TitleRequest,
-                WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
-                async user => await WikiDataManager.GetWhatLinksHereAsync(request));
+                Filter));
         }
         else
         {
@@ -183,19 +120,13 @@ public partial class SpecialList : OfflineSupportComponent
             };
             SecondaryDescription = GetSecondaryDescription();
 
-            var request = new SpecialListRequest(
+            Items = await WikiDataService.GetListAsync(new SpecialListRequest(
                 SpecialListType,
                 (int)CurrentPageNumber,
                 CurrentPageSize,
                 Descending,
                 Sort,
-                Filter);
-            Items = await PostAsync(
-                $"{WikiBlazorClientOptions.WikiServerApiRoute}/list",
-                request,
-                WikiJsonSerializerContext.Default.SpecialListRequest,
-                WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
-                async user => await WikiDataManager.GetListAsync(request));
+                Filter));
         }
     }
 
@@ -237,113 +168,5 @@ public partial class SpecialList : OfflineSupportComponent
             return "Note that some categories may be intended to classify articles with problems, and might show up in this list deliberately when no such issues currently exist. These types of categories should not be removed even when empty.";
         }
         return null;
-    }
-
-    private async Task OnDescendingChangedAsync()
-    {
-        Descending = CurrentDescending;
-
-        QueryStateService.SetPropertyValue(
-            "pg",
-            "d",
-            Descending);
-
-        await RefreshAsync();
-    }
-
-    private async Task OnDescendingChangedAsync(QueryChangeEventArgs args)
-    {
-        if (bool.TryParse(args.Value, out var descending)
-            && descending != CurrentDescending)
-        {
-            CurrentDescending = descending;
-            Descending = descending;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task OnFilterChangedAsync()
-    {
-        Filter = CurrentFilter;
-
-        QueryStateService.SetPropertyValue(
-            "pg",
-            "f",
-            Filter);
-
-        await RefreshAsync();
-    }
-
-    private async Task OnFilterChangedAsync(QueryChangeEventArgs args)
-    {
-        if (!string.Equals(args.Value, CurrentFilter))
-        {
-            Filter = args.Value;
-            CurrentFilter = args.Value;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task OnNextRequestedAsync()
-    {
-        if (Items?.HasNextPage == true)
-        {
-            CurrentPageNumber++;
-            PageNumber = (int)CurrentPageNumber;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task OnPageNumberChangedAsync()
-    {
-        PageNumber = (int)CurrentPageNumber;
-        await RefreshAsync();
-    }
-
-    private async Task OnPageSizeChangedAsync()
-    {
-        PageSize = CurrentPageSize;
-
-        QueryStateService.SetPropertyValue(
-            "pg",
-            "ps",
-            CurrentPageSize);
-
-        await RefreshAsync();
-    }
-
-    private async Task OnPageSizeChangedAsync(QueryChangeEventArgs args)
-    {
-        if (int.TryParse(args.Value, out var pageSize)
-            && pageSize != CurrentPageSize)
-        {
-            CurrentPageSize = Math.Clamp(pageSize, 5, 500);
-            PageSize = CurrentPageSize;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task OnSortChangedAsync(QueryChangeEventArgs args)
-    {
-        if (!string.Equals(args.Value, CurrentSort))
-        {
-            Sort = args.Value;
-            CurrentSort = args.Value;
-            await RefreshAsync();
-        }
-    }
-
-    private async Task OnSortChangedAsync()
-    {
-        Sort = string.Equals(CurrentSort, "timestamp")
-            ? CurrentSort
-            : null;
-
-        QueryStateService.SetPropertyValue(
-            "pg",
-            "s",
-            Sort);
-
-        await RefreshAsync();
     }
 }

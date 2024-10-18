@@ -1,24 +1,26 @@
 using Microsoft.AspNetCore.Components;
-using System.Text;
-using Tavenem.Wiki.Blazor.Client.Shared;
+using System.Diagnostics.CodeAnalysis;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
 /// <summary>
 /// The category page.
 /// </summary>
-public partial class CategoryView : OfflineSupportComponent
+public partial class CategoryView
 {
     private Category? Category { get; set; }
 
     private MarkupString? Content { get; set; }
 
-    /// <inheritdoc/>
-    protected override Task OnParametersSetAsync()
-        => RefreshAsync();
+    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
+
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
-    protected override async Task RefreshAsync()
+    protected override async Task OnParametersSetAsync()
     {
         if (string.IsNullOrEmpty(WikiState.WikiTitle)
             || !string.Equals(
@@ -31,15 +33,7 @@ public partial class CategoryView : OfflineSupportComponent
             return;
         }
 
-        Category = await FetchDataAsync(
-            new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
-                .Append("/category?title=")
-                .Append(WikiState.WikiTitle)
-                .ToString(),
-            WikiJsonSerializerContext.Default.Category,
-            async user => await WikiDataManager.GetCategoryAsync(
-                user,
-                new PageTitle(WikiState.WikiTitle, WikiOptions.CategoryNamespace, WikiState.WikiDomain)));
+        Category = await WikiDataService.GetCategoryAsync(WikiState.GetCurrentPageTitle());
         Content = string.IsNullOrEmpty(Category?.DisplayHtml)
             ? null
             : new MarkupString(Category.DisplayHtml);

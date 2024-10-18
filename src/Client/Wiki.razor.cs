@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Routing;
-using Microsoft.JSInterop;
+using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Web;
 using Tavenem.Blazor.Framework;
-using Tavenem.Wiki.Blazor.Client.Shared;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
@@ -19,7 +20,7 @@ namespace Tavenem.Wiki.Blazor.Client;
 /// cref="WikiOptions.WikiLinkPrefix"/> followed by "/{*route}".
 /// </para>
 /// </summary>
-public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
+public partial class Wiki : IDisposable
 {
     internal const string DescendingParameter = "pg-d";
     internal const string EndParameter = "h-e";
@@ -33,9 +34,9 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     internal const string StartParameter = "h-s";
     internal const string EditorParameter = "h-ed";
 
+    private const string RevisionParameter = "rev";
+
     private bool _disposedValue;
-    private DotNetObjectReference<Wiki>? _dotNetObjectReference;
-    private IJSObjectReference? _module;
 
     /// <summary>
     /// <para>
@@ -58,15 +59,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     public bool Descending { get; set; }
 
     /// <summary>
-    /// Whether the current view should be a page diff.
-    /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery]
-    public string? Diff { get; set; }
-
-    /// <summary>
     /// Any requested editor filter.
     /// </summary>
     /// <remarks>
@@ -82,7 +74,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     /// Expected to be provided by query string, not set explicitly.
     /// </remarks>
     [SupplyParameterFromQuery(Name = EndParameter)]
-    public long? End { get; set; }
+    public string? End { get; set; }
 
     /// <summary>
     /// Any requested text filter.
@@ -126,8 +118,8 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     /// <remarks>
     /// Expected to be provided by query string, not set explicitly.
     /// </remarks>
-    [SupplyParameterFromQuery(Name = "rev")]
-    public string? Revision { get; set; }
+    [SupplyParameterFromQuery(Name = RevisionParameter)]
+    public string[]? Revisions { get; set; }
 
     /// <summary>
     /// The domain filter of a search.
@@ -172,7 +164,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     /// Expected to be provided by query string, not set explicitly.
     /// </remarks>
     [SupplyParameterFromQuery(Name = StartParameter)]
-    public long? Start { get; set; }
+    public string? Start { get; set; }
 
     /// <summary>
     /// Whether the current user has not yet been authenticated.
@@ -184,6 +176,8 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     public bool Unauthenticated { get; set; }
 
     private string ArticleType => IsCategory ? "Category" : "Article";
+
+    private AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
     private bool _canCreate;
     private bool CanCreate
@@ -207,8 +201,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     }
 
     private MarkupString Content { get; set; }
-
-    private string? Fragment { get; set; }
 
     private string Id { get; } = Guid.NewGuid().ToHtmlId();
 
@@ -240,19 +232,11 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private bool IsUserPage { get; set; }
 
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-
-    private string? LastPreviewLink { get; set; }
-
-    private bool PendingPreview { get; set; }
+    [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
 
     private MarkupString Preview { get; set; }
 
     private bool PreviewDisplayed { get; set; }
-
-    private int PreviewX { get; set; }
-
-    private int PreviewY { get; set; }
 
     private bool RequestedDiff { get; set; }
 
@@ -262,7 +246,7 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private string? Route { get; set; }
 
-    private string? SearchText { get; set; }
+    [Inject, NotNull] private IServiceProvider? ServiceProvider { get; set; }
 
     private bool ShowHistory { get; set; }
 
@@ -276,13 +260,29 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private string? TargetTitle { get; set; }
 
+    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+
+    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+
     private Page? WikiPage { get; set; }
 
-    private IWikiUser? User { get; set; }
+    [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
+
+    [Inject, NotNull] private WikiState? WikiState { get; set; }
 
     /// <inheritdoc/>
     protected override Task OnParametersSetAsync()
         => RefreshAsync();
+
+    /// <inheritdoc/>
+    protected override void OnInitialized()
+    {
+        AuthenticationStateProvider = ServiceProvider.GetService<AuthenticationStateProvider>();
+        if (AuthenticationStateProvider is not null)
+        {
+            AuthenticationStateProvider.AuthenticationStateChanged += OnStateChanged;
+        }
+    }
 
     /// <inheritdoc/>
     protected override void OnAfterRender(bool firstRender)
@@ -296,23 +296,10 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     }
 
     /// <inheritdoc/>
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    public void Dispose()
     {
-        if (firstRender)
-        {
-            _dotNetObjectReference = DotNetObjectReference.Create(this);
-            _module = await JSRuntime.InvokeAsync<IJSObjectReference>(
-                "import",
-                "./_content/Tavenem.Wiki.Blazor.Client/Wiki.razor.js");
-            await _module.InvokeVoidAsync("initialize", Id, _dotNetObjectReference);
-        }
-    }
-
-    /// <inheritdoc/>
-    public async ValueTask DisposeAsync()
-    {
-        // Do not change this code. Put cleanup code in 'DisposeAsync(bool disposing)' method
-        await DisposeAsync(disposing: true);
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
 
@@ -320,160 +307,37 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
     /// Performs application-defined tasks associated with freeing, releasing, or resetting
     /// unmanaged resources.
     /// </summary>
-    protected virtual async ValueTask DisposeAsync(bool disposing)
+    protected virtual void Dispose(bool disposing)
     {
         if (!_disposedValue)
         {
-            Dispose(disposing);
-
-            if (disposing)
+            if (disposing && AuthenticationStateProvider is not null)
             {
-                _dotNetObjectReference?.Dispose();
-                if (_module is not null)
-                {
-                    await _module.DisposeAsync();
-                }
+                AuthenticationStateProvider.AuthenticationStateChanged -= OnStateChanged;
             }
 
             _disposedValue = true;
         }
     }
 
-    /// <summary>
-    /// Invoked by JavaScript interop.
-    /// </summary>
-    [JSInvokable]
-    public void HidePreview()
-    {
-        PendingPreview = false;
-        PreviewDisplayed = false;
-        StateHasChanged();
-    }
-
-    /// <summary>
-    /// Invoked by JavaScript interop.
-    /// </summary>
-    [JSInvokable]
-    public async Task ShowPreview(string link, int clientX, int clientY)
-    {
-        PendingPreview = true;
-        if (string.IsNullOrWhiteSpace(link))
-        {
-            return;
-        }
-
-        if (string.Equals(link, LastPreviewLink)
-            && !string.IsNullOrEmpty(Preview.Value))
-        {
-            PreviewX = clientX;
-            PreviewY = clientY;
-            PreviewDisplayed = true;
-            StateHasChanged();
-            return;
-        }
-
-        Preview = new(string.Empty);
-
-        var preview = await FetchStringAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/previewlink?link={link}",
-            user => WikiDataManager.GetPreviewAsync(user, link));
-        Preview = new(preview ?? string.Empty);
-
-        if (!PendingPreview
-            || string.IsNullOrEmpty(Preview.Value))
-        {
-            return;
-        }
-
-        LastPreviewLink = link;
-        PreviewX = clientX;
-        PreviewY = clientY;
-        PreviewDisplayed = true;
-        PendingPreview = false;
-        StateHasChanged();
-    }
-
-    /// <inheritdoc/>
-    protected override async Task RefreshAsync()
-    {
-        if (_module is not null)
-        {
-            await JSRuntime.InvokeVoidAsync("wikiblazor.hidePreview");
-        }
-        Reset();
-        SetIsCompact();
-        SetRoute();
-        await SetRouteProperties();
-        if (!IsSpecialList
-            && !IsSearch
-            && !IsAllSpecials
-            && !IsUpload
-            && !ShowWhatLinksHere)
-        {
-            await GetWikiItemAsync();
-        }
-        StateHasChanged();
-    }
-
-    private async Task<IEnumerable<KeyValuePair<string, object>>> GetSearchSuggestions(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-        {
-            return [];
-        }
-
-        var suggestions = await FetchDataAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/searchsuggest?input={input}",
-            WikiBlazorJsonSerializerContext.Default.ListString,
-            async user => await WikiDataManager.GetSearchSuggestionsAsync(user, input));
-        return suggestions?.Select(x => new KeyValuePair<string, object>(x, x))
-            ?? [];
-    }
-
     private async Task GetWikiItemAsync()
     {
-        var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/item?title=")
-            .Append(WikiState.WikiTitle);
-        if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
+        var title = WikiState.GetCurrentPageTitle();
+
+        if (PreviewDisplayed)
         {
-            url.Append("&namespace=")
-                .Append(WikiState.WikiNamespace);
-        }
-        if (!string.IsNullOrEmpty(WikiState.WikiDomain))
-        {
-            url.Append("&domain=")
-                .Append(WikiState.WikiDomain);
-        }
-        if (NoRedirect)
-        {
-            url.Append("&noRedirect=true");
-        }
-        if (RequestedDiff)
-        {
-            url.Append("&diff=true");
-        }
-        if (RequestedFirstTime.HasValue)
-        {
-            url.Append("&firstTime=")
-                .Append(RequestedFirstTime.Value.ToUniversalTime().Ticks);
-        }
-        if (RequestedSecondTime.HasValue)
-        {
-            url.Append("&secondTime=")
-                .Append(RequestedSecondTime.Value.ToUniversalTime().Ticks);
+            Preview = new(await WikiDataService.GetPreviewAsync(title) ?? string.Empty);
+            return;
         }
 
-        var item = await FetchDataAsync(
-            url.ToString(),
-            WikiJsonSerializerContext.Default.Page,
-            async user => await WikiDataManager.GetItemAsync(
-                user,
-                new PageTitle(WikiState.WikiTitle, WikiState.WikiNamespace, WikiState.WikiDomain),
+        var item = IsEditing
+            ? await WikiDataService.GetEditInfoAsync(title)
+            : await WikiDataService.GetItemAsync(
+                title,
                 NoRedirect,
                 RequestedFirstTime,
                 RequestedSecondTime,
-                RequestedDiff));
+                RequestedDiff);
         if (item is null)
         {
             CanCreate = false;
@@ -532,27 +396,29 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             IsDiff = item.IsDiff;
             WikiState.UpdateTitle(item.DisplayTitle);
             StateHasChanged();
-            if (_module is not null && !string.IsNullOrEmpty(Fragment))
-            {
-                await _module.InvokeVoidAsync("scrollIntoView", Fragment);
-            }
         }
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         => await RefreshAsync();
 
-    private void OnSetSearchText()
-    {
-        if (string.IsNullOrWhiteSpace(SearchText))
-        {
-            return;
-        }
+    private async void OnStateChanged(object? sender) => await RefreshAsync();
 
-        NavigationManager.NavigateTo(WikiState.Link(
-            "Search",
-            WikiOptions.SystemNamespace,
-            query: $"pg-f={SearchText}"));
+    private async Task RefreshAsync()
+    {
+        Reset();
+        SetIsCompact();
+        SetRoute();
+        await SetRouteProperties();
+        if (!IsSpecialList
+            && !IsSearch
+            && !IsAllSpecials
+            && !IsUpload
+            && !ShowWhatLinksHere)
+        {
+            await GetWikiItemAsync();
+        }
+        StateHasChanged();
     }
 
     private void Reset()
@@ -570,17 +436,15 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
         IsSpecialList = false;
         IsUserPage = false;
         NoRedirect = false;
-        PendingPreview = false;
         RequestedDiff = false;
         RequestedFirstTime = null;
         RequestedSecondTime = null;
-        SearchText = null;
         ShowHistory = false;
         SpecialListType = SpecialListType.None;
-        User = null;
         WikiPage = null;
         WikiState.IsSystem = false;
         WikiState.LoadError = false;
+        WikiState.User = null;
         WikiState.UpdateTitle(null);
     }
 
@@ -618,8 +482,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
 
     private void SetRoute()
     {
-        Fragment = null;
-
         var relativeUri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         if (!string.IsNullOrEmpty(WikiOptions.WikiLinkPrefix)
             && relativeUri.StartsWith(WikiOptions.WikiLinkPrefix, StringComparison.OrdinalIgnoreCase))
@@ -656,21 +518,33 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             }
         }
 
-        if (!string.IsNullOrEmpty(actionString))
+        WikiState.IsTalk = false;
+        IsEditing = false;
+        ShowHistory = false;
+        Preview = new(string.Empty);
+        PreviewDisplayed = false;
+        ShowWhatLinksHere = false;
+        switch (actionString)
         {
-            WikiState.IsTalk = string.Equals(actionString, "talk", StringComparison.OrdinalIgnoreCase);
-            if (!WikiState.IsTalk)
-            {
-                IsEditing = string.Equals(actionString, "edit", StringComparison.OrdinalIgnoreCase);
-                if (!IsEditing)
-                {
-                    ShowHistory = string.Equals(actionString, "history", StringComparison.OrdinalIgnoreCase);
-                    if (!ShowHistory)
-                    {
-                        ShowWhatLinksHere = string.Equals(actionString, "whatlinkshere", StringComparison.OrdinalIgnoreCase);
-                    }
-                }
-            }
+            case null:
+                break;
+            case { Length: 0 }:
+                break;
+            case { } when actionString.Equals("talk", StringComparison.OrdinalIgnoreCase):
+                WikiState.IsTalk = true;
+                break;
+            case { } when actionString.Equals("edit", StringComparison.OrdinalIgnoreCase):
+                IsEditing = true;
+                break;
+            case { } when actionString.Equals("history", StringComparison.OrdinalIgnoreCase):
+                ShowHistory = true;
+                break;
+            case { } when actionString.Equals("preview", StringComparison.OrdinalIgnoreCase):
+                PreviewDisplayed = true;
+                break;
+            case { } when actionString.Equals("whatlinkshere", StringComparison.OrdinalIgnoreCase):
+                ShowWhatLinksHere = true;
+                break;
         }
 
         if (Route is not null)
@@ -678,7 +552,6 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             index = Route.IndexOf('#');
             if (index != -1)
             {
-                Fragment = HttpUtility.UrlDecode(Route[(index + 1)..]);
                 Route = Route[..index];
             }
 
@@ -757,13 +630,10 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
             }
         }
 
-        User = await FetchDataAsync(
-            $"{WikiBlazorClientOptions.WikiServerApiRoute}/currentuser",
-            WikiJsonSerializerContext.Default.WikiUser,
-            WikiDataManager.GetWikiUserAsync);
-        if (WikiState.IsSystem && User is not null)
+        WikiState.User = await WikiDataService.GetWikiUserAsync();
+        if (WikiState.IsSystem && WikiState.User is not null)
         {
-            CanEdit = User.IsWikiAdmin;
+            CanEdit = WikiState.User.IsWikiAdmin;
         }
 
         IsFile = !WikiState.DefaultNamespace
@@ -791,39 +661,45 @@ public partial class Wiki : OfflineSupportComponent, IAsyncDisposable
                 WikiOptions.GroupNamespace,
                 StringComparison.OrdinalIgnoreCase);
 
-        if (!string.IsNullOrEmpty(Revision))
+        if (Revisions?.Length > 0)
         {
-            if (DateTimeOffset.TryParse(Revision, out var timestamp))
+            var prev = false;
+            List<DateTimeOffset>? requestedTimes = null;
+            foreach (var revision in Revisions)
             {
-                RequestedFirstTime = timestamp;
+                if (string.Equals(revision, "prev", StringComparison.OrdinalIgnoreCase))
+                {
+                    prev = true;
+                    RequestedDiff = true;
+                }
+                else if (string.Equals(revision, "cur", StringComparison.OrdinalIgnoreCase))
+                {
+                    RequestedDiff = true;
+                }
+                if (DateTimeOffset.TryParse(revision, out var timestamp))
+                {
+                    (requestedTimes ??= []).Add(timestamp);
+                }
+                else if (long.TryParse(revision, out var ticks))
+                {
+                    (requestedTimes ??= []).Add(new DateTimeOffset(ticks, TimeSpan.Zero));
+                }
             }
-            else if (long.TryParse(Revision, out var ticks))
-            {
-                RequestedFirstTime = new DateTimeOffset(ticks, TimeSpan.Zero);
-            }
-        }
 
-        if (!string.IsNullOrEmpty(Diff))
-        {
-            if (string.Equals(Diff, "prev", StringComparison.OrdinalIgnoreCase))
+            requestedTimes?.Sort();
+            RequestedFirstTime = requestedTimes?.FirstOrDefault();
+            if (RequestedFirstTime is not null)
             {
-                if (RequestedFirstTime is not null)
+                RequestedSecondTime = requestedTimes?.Skip(1).FirstOrDefault();
+                if (RequestedSecondTime is not null)
+                {
+                    RequestedDiff = true;
+                }
+                else if (prev)
                 {
                     RequestedSecondTime = RequestedFirstTime;
                     RequestedFirstTime = null;
                 }
-            }
-            else if (string.Equals(Diff, "cur", StringComparison.OrdinalIgnoreCase))
-            {
-                RequestedDiff = true;
-            }
-            else if (DateTimeOffset.TryParse(Diff, out var diffTimestamp))
-            {
-                RequestedSecondTime = diffTimestamp;
-            }
-            else if (long.TryParse(Diff, out var diffTicks))
-            {
-                RequestedSecondTime = new DateTimeOffset(diffTicks, TimeSpan.Zero);
             }
         }
     }

@@ -11,7 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Server\Tavenem.Wiki.Blazor.Server.csproj" />
     <ProjectReference Include="..\Tavenem.Wiki.Blazor.Example.Client\Tavenem.Wiki.Blazor.Example.Client.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.10" />
   </ItemGroup>
 
 </Project>

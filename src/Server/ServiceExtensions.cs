@@ -1,11 +1,10 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using SmartComponents.LocalEmbeddings;
 using System.Text.Json.Serialization.Metadata;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Server;
-using Tavenem.Wiki.Blazor.Services.FileManager;
+using Tavenem.Wiki.Blazor.Services;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -35,14 +34,6 @@ public static class ServiceExtensions
     /// If omitted, an instance of <see cref="LocalFileManager"/> will be used.
     /// </para>
     /// </param>
-    /// <param name="searchClient">
-    /// <para>
-    /// An <see cref="ISearchClient"/> instance.
-    /// </para>
-    /// <para>
-    /// If omitted the built-in search functionality will be used.
-    /// </para>
-    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
@@ -50,12 +41,9 @@ public static class ServiceExtensions
         IWikiGroupManager groupManager,
         WikiOptions? wikiOptions = null,
         WikiBlazorServerOptions? wikiBlazorOptions = null,
-        IFileManager? fileManager = null,
-        ISearchClient? searchClient = null)
+        IFileManager? fileManager = null)
     {
-        services
-            .AddSingleton<LocalEmbedder>()
-            .AddMemoryCache();
+        services.AddMemoryCache();
 
         if (wikiOptions is not null)
         {
@@ -93,11 +81,6 @@ public static class ServiceExtensions
             services.AddScoped(_ => fileManager);
         }
 
-        if (searchClient is not null)
-        {
-            services.AddScoped(_ => searchClient);
-        }
-
         return services.AddWikiJsonContext();
     }
 
@@ -119,14 +102,6 @@ public static class ServiceExtensions
     /// If omitted, <see cref="LocalFileManager"/> will be used.
     /// </para>
     /// </param>
-    /// <param name="searchClientType">
-    /// <para>
-    /// The type of <see cref="ISearchClient"/> to register.
-    /// </para>
-    /// <para>
-    /// If omitted the built-in search functionality will be used.
-    /// </para>
-    /// </param>
     /// <param name="wikiOptions">
     /// The options used to configure the wiki system.
     /// </param>
@@ -139,13 +114,10 @@ public static class ServiceExtensions
         Type userManagerType,
         Type groupManagerType,
         Type? fileManagerType,
-        Type? searchClientType,
         WikiOptions? wikiOptions = null,
         WikiBlazorServerOptions? wikiBlazorOptions = null)
     {
-        services
-            .AddSingleton<LocalEmbedder>()
-            .AddMemoryCache();
+        services.AddMemoryCache();
 
         if (wikiOptions is not null)
         {
@@ -180,11 +152,6 @@ public static class ServiceExtensions
             services.AddScoped(typeof(IFileManager), fileManagerType);
         }
 
-        if (searchClientType is not null)
-        {
-            services.AddScoped(typeof(ISearchClient), searchClientType);
-        }
-
         return services.AddWikiJsonContext();
     }
 
@@ -212,14 +179,6 @@ public static class ServiceExtensions
     /// If omitted, an instance of <see cref="LocalFileManager"/> will be used.
     /// </para>
     /// </param>
-    /// <param name="searchClientBuilder">
-    /// <para>
-    /// A function which provides an <see cref="ISearchClient"/> instance.
-    /// </para>
-    /// <para>
-    /// If omitted the built-in search functionality will be used.
-    /// </para>
-    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
@@ -227,12 +186,9 @@ public static class ServiceExtensions
         Func<IServiceProvider, IWikiGroupManager> groupManagerBuilder,
         WikiOptions? wikiOptions = null,
         WikiBlazorServerOptions? wikiBlazorOptions = null,
-        Func<IServiceProvider, IFileManager>? fileManagerBuilder = null,
-        Func<IServiceProvider, ISearchClient>? searchClientBuilder = null)
+        Func<IServiceProvider, IFileManager>? fileManagerBuilder = null)
     {
-        services
-            .AddSingleton<LocalEmbedder>()
-            .AddMemoryCache();
+        services.AddMemoryCache();
 
         if (wikiOptions is not null)
         {
@@ -267,11 +223,6 @@ public static class ServiceExtensions
             services.AddScoped(fileManagerBuilder);
         }
 
-        if (searchClientBuilder is not null)
-        {
-            services.AddScoped(searchClientBuilder);
-        }
-
         return services.AddWikiJsonContext();
     }
 
@@ -295,14 +246,6 @@ public static class ServiceExtensions
     /// If omitted, an instance of <see cref="LocalFileManager"/> will be used.
     /// </para>
     /// </param>
-    /// <param name="searchClient">
-    /// <para>
-    /// An <see cref="ISearchClient"/> instance.
-    /// </para>
-    /// <para>
-    /// If omitted the built-in search functionality will be used.
-    /// </para>
-    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
@@ -310,11 +253,9 @@ public static class ServiceExtensions
         IWikiGroupManager groupManager,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
         Func<IServiceProvider, WikiBlazorServerOptions> wikiBlazorOptionsBuilder,
-        IFileManager? fileManager = null,
-        ISearchClient? searchClient = null)
+        IFileManager? fileManager = null)
     {
         services
-            .AddSingleton<LocalEmbedder>()
             .AddMemoryCache()
             .AddScoped(wikiOptionsBuilder)
             .AddScoped(wikiBlazorOptionsBuilder)
@@ -332,11 +273,6 @@ public static class ServiceExtensions
         else
         {
             services.AddScoped(_ => fileManager);
-        }
-
-        if (searchClient is not null)
-        {
-            services.AddScoped(_ => searchClient);
         }
 
         return services.AddWikiJsonContext();
@@ -366,14 +302,6 @@ public static class ServiceExtensions
     /// If omitted, <see cref="LocalFileManager"/> will be used.
     /// </para>
     /// </param>
-    /// <param name="searchClientType">
-    /// <para>
-    /// The type of <see cref="ISearchClient"/> to register.
-    /// </para>
-    /// <para>
-    /// If omitted the built-in search functionality will be used.
-    /// </para>
-    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
@@ -381,11 +309,9 @@ public static class ServiceExtensions
         Type groupManagerType,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
         Func<IServiceProvider, WikiBlazorServerOptions> wikiBlazorOptionsBuilder,
-        Type? fileManagerType,
-        Type? searchClientType)
+        Type? fileManagerType)
     {
         services
-            .AddSingleton<LocalEmbedder>()
             .AddMemoryCache()
             .AddScoped(wikiOptionsBuilder)
             .AddScoped(wikiBlazorOptionsBuilder)
@@ -400,11 +326,6 @@ public static class ServiceExtensions
         else
         {
             services.AddScoped(typeof(IFileManager), fileManagerType);
-        }
-
-        if (searchClientType is not null)
-        {
-            services.AddScoped(typeof(ISearchClient), searchClientType);
         }
 
         return services.AddWikiJsonContext();
@@ -434,14 +355,6 @@ public static class ServiceExtensions
     /// If omitted, an instance of <see cref="LocalFileManager"/> will be used.
     /// </para>
     /// </param>
-    /// <param name="searchClientBuilder">
-    /// <para>
-    /// A function which provides an <see cref="ISearchClient"/> instance.
-    /// </para>
-    /// <para>
-    /// If omitted the built-in search functionality will be used.
-    /// </para>
-    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
@@ -449,11 +362,9 @@ public static class ServiceExtensions
         Func<IServiceProvider, IWikiGroupManager> groupManagerBuilder,
         Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
         Func<IServiceProvider, WikiBlazorServerOptions> wikiBlazorOptionsBuilder,
-        Func<IServiceProvider, IFileManager>? fileManagerBuilder = null,
-        Func<IServiceProvider, ISearchClient>? searchClientBuilder = null)
+        Func<IServiceProvider, IFileManager>? fileManagerBuilder = null)
     {
         services
-            .AddSingleton<LocalEmbedder>()
             .AddMemoryCache()
             .AddScoped(wikiOptionsBuilder)
             .AddScoped(wikiBlazorOptionsBuilder)
@@ -468,11 +379,6 @@ public static class ServiceExtensions
         else
         {
             services.AddScoped(fileManagerBuilder);
-        }
-
-        if (searchClientBuilder is not null)
-        {
-            services.AddScoped(searchClientBuilder);
         }
 
         return services.AddWikiJsonContext();

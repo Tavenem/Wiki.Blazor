@@ -6,7 +6,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
 using Tavenem.Wiki;
-using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Client;
 using Tavenem.Wiki.Blazor.Sample;
 using Tavenem.Wiki.Blazor.Sample.Services;
@@ -69,7 +68,5 @@ builder.Services.AddWikiClient(
         DataStore = dataStore,
         LoginPath = "/",
     });
-
-builder.Services.AddScoped<WikiDataManager>();
 
 await builder.Build().RunAsync();

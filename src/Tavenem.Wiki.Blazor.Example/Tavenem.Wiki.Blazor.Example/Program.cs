@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Tavenem.DataStorage;
 using Tavenem.Wiki;
-using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Example;
 using Tavenem.Wiki.Blazor.Example.Components;
 using Tavenem.Wiki.Blazor.Example.Services;
@@ -17,7 +16,6 @@ builder.Services.AddWikiServer(
     {
         LoginPath = "/account/login",
     },
-    null,
     null);
 
 builder.Services.AddAuthorization();
@@ -32,8 +30,6 @@ if (archive is not null)
 {
     await archive.RestoreAsync(dataStore, ExampleWikiOptions.Instance, "sample");
 }
-
-builder.Services.AddScoped<WikiDataManager>();
 
 // Add services to the container.
 builder.Services.AddControllers();
