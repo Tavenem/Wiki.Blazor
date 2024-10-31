@@ -50,7 +50,7 @@
     <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="8.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="Tavenem.Blazor.Framework" Version="3.0.4" />
-    <PackageReference Include="Tavenem.Wiki" Version="0.26.2-preview" />
+    <PackageReference Include="Tavenem.Wiki" Version="0.26.3-preview" />
   </ItemGroup>
 
   <PropertyGroup>

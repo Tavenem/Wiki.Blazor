@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1-preview
+### Updated
+- Update dependencies
+
 ## 0.9.0-preview
 ### Changed
 - Implement new Tavenem.Wiki version
