@@ -45,7 +45,6 @@ public class WikiState
     /// </summary>
     public bool LoadError { get; internal set; }
 
-    private bool _notAuthorized;
     /// <summary>
     /// <para>
     /// Whether the current user is not authorized to complete the current action (e.g. view or edit
@@ -58,8 +57,8 @@ public class WikiState
     /// </summary>
     public bool NotAuthorized
     {
-        get => _notAuthorized;
-        set => _notAuthorized |= value;
+        get;
+        set => field |= value;
     }
 
     /// <summary>

@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Client\Tavenem.Wiki.Blazor.Client.csproj" />
+    <ProjectReference Include="..\..\..\src\Client\Tavenem.Wiki.Blazor.Client.csproj" />
   </ItemGroup>
 
 </Project>

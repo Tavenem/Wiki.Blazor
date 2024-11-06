@@ -19,11 +19,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Server"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Client", "Client\Tavenem.Wiki.Blazor.Client.csproj", "{236B5D43-2022-408E-BBFD-20D516FA6EE3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Sample", "..\sample\Tavenem.Wiki.Blazor.Sample.csproj", "{6EE499B5-A0BD-4B46-83B6-762F98E84FAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Sample", "..\sample\WebAssembly Example\Tavenem.Wiki.Blazor.Sample.csproj", "{6EE499B5-A0BD-4B46-83B6-762F98E84FAF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Example", "Tavenem.Wiki.Blazor.Example\Tavenem.Wiki.Blazor.Example\Tavenem.Wiki.Blazor.Example.csproj", "{1E3B3151-F952-4631-9131-DCCE67EB9CDA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Example", "..\sample\Web App Example\Tavenem.Wiki.Blazor.Example\Tavenem.Wiki.Blazor.Example.csproj", "{1E3B3151-F952-4631-9131-DCCE67EB9CDA}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Example.Client", "Tavenem.Wiki.Blazor.Example\Tavenem.Wiki.Blazor.Example.Client\Tavenem.Wiki.Blazor.Example.Client.csproj", "{952E9D86-1472-4533-B825-8EB1FAA9EF82}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tavenem.Wiki.Blazor.Example.Client", "..\sample\Web App Example\Tavenem.Wiki.Blazor.Example.Client\Tavenem.Wiki.Blazor.Example.Client.csproj", "{952E9D86-1472-4533-B825-8EB1FAA9EF82}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

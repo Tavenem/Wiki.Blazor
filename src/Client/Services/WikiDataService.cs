@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
@@ -20,6 +21,7 @@ namespace Tavenem.Wiki.Blazor.Client.Services;
 /// </summary>
 public class WikiDataService(
     LocalWikiDataService localWikiDataService,
+    ILoggerFactory loggerFactory,
     NavigationManager navigationManager,
     IServiceProvider serviceProvider,
     SnackbarService snackbarService,
@@ -27,6 +29,8 @@ public class WikiDataService(
     WikiOptions wikiOptions,
     WikiState wikiState)
 {
+    private readonly ILogger _logger = loggerFactory.CreateLogger("Wiki");
+
     private AuthenticationStateProvider? _authenticationStateProvider;
     private HttpClient? _httpClient;
 
@@ -373,7 +377,11 @@ public class WikiDataService(
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            _logger.Log(
+                LogLevel.Error,
+                ex,
+                "Error getting talk messages for wiki item with title {Title}.",
+                title);
             snackbarService.Add("An error occurred", ThemeColor.Danger);
         }
         return messages;
@@ -578,6 +586,9 @@ public class WikiDataService(
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
+                    _logger.LogWarning(
+                        "Bad request when fetching data from url {URL}.",
+                        url);
                     snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
@@ -595,7 +606,11 @@ public class WikiDataService(
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error fetching data from url {URL}.",
+                    url);
                 snackbarService.Add("An error occurred", ThemeColor.Danger);
                 return default;
             }
@@ -614,6 +629,11 @@ public class WikiDataService(
             }
             catch (Exception ex)
             {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error fetching data locally for url {URL}.",
+                    url);
                 wikiState.LoadError = true;
                 snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
                 return default;
@@ -661,6 +681,9 @@ public class WikiDataService(
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
+                    _logger.LogWarning(
+                        "Bad request when fetching data from url {URL}.",
+                        url);
                     snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return 0;
                 }
@@ -681,7 +704,11 @@ public class WikiDataService(
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error fetching data from url {URL}.",
+                    url);
                 snackbarService.Add("An error occurred", ThemeColor.Danger);
                 return 0;
             }
@@ -698,13 +725,13 @@ public class WikiDataService(
                 HandleUnauthorized(state);
                 return 0;
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return 0;
-            }
-            catch (ArgumentException ex)
-            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error fetching data locally for url {URL}.",
+                    url);
                 snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
                 return 0;
             }
@@ -751,6 +778,9 @@ public class WikiDataService(
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
+                    _logger.LogWarning(
+                        "Bad request when fetching data from url {URL}.",
+                        url);
                     snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return null;
                 }
@@ -771,7 +801,11 @@ public class WikiDataService(
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error fetching data from url {URL}.",
+                    url);
                 snackbarService.Add("An error occurred", ThemeColor.Danger);
                 return null;
             }
@@ -788,13 +822,13 @@ public class WikiDataService(
                 HandleUnauthorized(state);
                 return null;
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return null;
-            }
-            catch (ArgumentException ex)
-            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error fetching data locally for url {URL}.",
+                    url);
                 snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
                 return null;
             }
@@ -854,6 +888,9 @@ public class WikiDataService(
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
+                    _logger.LogWarning(
+                        "Bad request when posting data to url {URL}.",
+                        url);
                     snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
@@ -871,7 +908,11 @@ public class WikiDataService(
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error posting data to url {URL}.",
+                    url);
                 snackbarService.Add("An error occurred", ThemeColor.Danger);
                 return default;
             }
@@ -890,13 +931,13 @@ public class WikiDataService(
                     HandleUnauthorized(state);
                     return default;
                 }
-                catch (InvalidOperationException ex)
+                catch (Exception ex)
                 {
-                    snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                catch (ArgumentException ex)
-                {
+                    _logger.Log(
+                        LogLevel.Error,
+                        ex,
+                        "Error posting data locally for url {URL}.",
+                        url);
                     snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
@@ -959,6 +1000,9 @@ public class WikiDataService(
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
+                    _logger.LogWarning(
+                        "Bad request when posting data to url {URL}.",
+                        url);
                     snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return false;
                 }
@@ -975,7 +1019,11 @@ public class WikiDataService(
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error posting data to url {URL}.",
+                    url);
                 snackbarService.Add("An error occurred", ThemeColor.Danger);
                 return false;
             }
@@ -997,13 +1045,13 @@ public class WikiDataService(
                 HandleUnauthorized(state);
                 return false;
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return false;
-            }
-            catch (ArgumentException ex)
-            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error posting data locally for url {URL}.",
+                    url);
                 snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
                 return false;
             }
@@ -1058,6 +1106,9 @@ public class WikiDataService(
                 }
                 else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                 {
+                    _logger.LogWarning(
+                        "Bad request when posting data to url {URL}.",
+                        url);
                     snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
                     return default;
                 }
@@ -1075,7 +1126,11 @@ public class WikiDataService(
             catch (HttpRequestException) { }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error posting data to url {URL}.",
+                    url);
                 snackbarService.Add("An error occurred", ThemeColor.Danger);
                 return default;
             }
@@ -1093,13 +1148,13 @@ public class WikiDataService(
                 HandleUnauthorized(state);
                 return default;
             }
-            catch (InvalidOperationException ex)
+            catch (Exception ex)
             {
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return default;
-            }
-            catch (ArgumentException ex)
-            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Error posting data locally for url {URL}.",
+                    url);
                 snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
                 return default;
             }

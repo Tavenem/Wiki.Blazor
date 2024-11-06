@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3-preview
+### Added
+- Additional logging
+
 ## 0.9.1-2-preview
 ### Updated
 - Update dependencies
