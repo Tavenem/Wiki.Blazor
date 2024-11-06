@@ -57,7 +57,7 @@ public class WikiState
     /// </summary>
     public bool NotAuthorized
     {
-        get;
+        get => field;
         set => field |= value;
     }
 
