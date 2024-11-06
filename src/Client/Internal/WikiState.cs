@@ -14,15 +14,15 @@ public class WikiState
     /// </summary>
     public bool DefaultNamespace { get; internal set; }
 
-    private string? _displayTitle;
     /// <summary>
     /// The display title of the current page.
     /// </summary>
     [AllowNull]
+    [field: AllowNull]
     public string DisplayTitle
     {
-        get => _displayTitle ?? WikiTitle ?? _wikiOptions.MainPageTitle;
-        internal set => _displayTitle = value;
+        get => field ?? WikiTitle ?? _wikiOptions.MainPageTitle;
+        internal set;
     }
 
     /// <summary>
@@ -57,7 +57,7 @@ public class WikiState
     /// </summary>
     public bool NotAuthorized
     {
-        get => field;
+        get;
         set => field |= value;
     }
 
