@@ -14,15 +14,15 @@ public class WikiState
     /// </summary>
     public bool DefaultNamespace { get; internal set; }
 
+    private string? _displayTitle;
     /// <summary>
     /// The display title of the current page.
     /// </summary>
     [AllowNull]
-    [field: AllowNull]
     public string DisplayTitle
     {
-        get => field ?? WikiTitle ?? _wikiOptions.MainPageTitle;
-        internal set;
+        get => _displayTitle ?? WikiTitle ?? _wikiOptions.MainPageTitle;
+        internal set => _displayTitle = value;
     }
 
     /// <summary>
@@ -45,6 +45,7 @@ public class WikiState
     /// </summary>
     public bool LoadError { get; internal set; }
 
+    private bool _notAuthorized;
     /// <summary>
     /// <para>
     /// Whether the current user is not authorized to complete the current action (e.g. view or edit
@@ -57,8 +58,8 @@ public class WikiState
     /// </summary>
     public bool NotAuthorized
     {
-        get;
-        set => field |= value;
+        get => _notAuthorized;
+        set => _notAuthorized |= value;
     }
 
     /// <summary>
