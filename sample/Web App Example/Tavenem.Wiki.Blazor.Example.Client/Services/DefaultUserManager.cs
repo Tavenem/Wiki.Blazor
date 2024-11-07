@@ -7,8 +7,11 @@ namespace Tavenem.Wiki.Blazor.Example.Services;
 /// </summary>
 public class DefaultUserManager : IWikiUserManager
 {
+    private const string DefaultId = "c6798a76-7831-4675-959b-2951566ef068";
+
     public static WikiUser User { get; } = new()
     {
+        Id = DefaultId,
         DisplayName = "User",
         IsWikiAdmin = true,
         UploadLimit = -1,
@@ -23,7 +26,7 @@ public class DefaultUserManager : IWikiUserManager
     /// matching the specified <paramref name="userId"/> if it exists.
     /// </returns>
     public ValueTask<IWikiUser?> FindByIdAsync(string? userId)
-        => new(string.IsNullOrEmpty(userId) ? null : User);
+        => new(string.Equals(userId, DefaultId) ? User : null);
 
     /// <summary>
     /// Finds and returns a user, if any, who has the specified user name.
@@ -34,7 +37,7 @@ public class DefaultUserManager : IWikiUserManager
     /// matching the specified <paramref name="userName"/> if it exists.
     /// </returns>
     public ValueTask<IWikiUser?> FindByNameAsync(string? userName)
-        => new(string.IsNullOrEmpty(userName) ? null : User);
+        => new(string.Equals(userName, User.DisplayName, StringComparison.OrdinalIgnoreCase) ? User : null);
 
     /// <summary>
     /// Returns the user corresponding to the IdentityOptions.ClaimsIdentity.UserIdClaimType
@@ -46,5 +49,8 @@ public class DefaultUserManager : IWikiUserManager
     /// the <paramref name="principal"/> or <see langword="null"/>
     /// </returns>
     public ValueTask<IWikiUser?> GetUserAsync(ClaimsPrincipal? principal)
-        => new(User);
+        => new(principal?.Identity?.IsAuthenticated == true
+        && principal.HasClaim(x => x.Type == ClaimTypes.NameIdentifier && x.Value == DefaultId)
+        ? User
+        : null);
 }
