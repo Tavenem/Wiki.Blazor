@@ -158,7 +158,25 @@
     ::deep .wiki-parser-output img,
     ::deep .wiki-parser-output figure {
         float: right;
-        margin: 1em;
+        margin-bottom: 1em;
+        margin-left: 1em;
+        margin-top: 1em;
+        max-width: 40%;
+    }
+
+    ::deep .wiki-parser-output img:nth-child(2n),
+    ::deep .wiki-parser-output figure:nth-child(2n) {
+        float: left;
+        margin-left: 0;
+        margin-right: 1em;
+    }
+
+    ::deep .wiki-parser-output img.hero,
+    ::deep .wiki-parser-output figure.hero {
+        float: none;
+        margin-left: 0;
+        margin-right: 0;
+        max-width: 100%;
     }
 
 ::deep .diff-deleted {
