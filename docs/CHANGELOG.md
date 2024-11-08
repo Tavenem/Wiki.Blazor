@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.7-preview
+### Updated
+- Update dependencies
+
 ## 0.9.6-preview
 ### Changed
 - Improve image style

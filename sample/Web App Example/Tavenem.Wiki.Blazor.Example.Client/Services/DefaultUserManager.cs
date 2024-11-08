@@ -49,8 +49,9 @@ public class DefaultUserManager : IWikiUserManager
     /// the <paramref name="principal"/> or <see langword="null"/>
     /// </returns>
     public ValueTask<IWikiUser?> GetUserAsync(ClaimsPrincipal? principal)
-        => new(principal?.Identity?.IsAuthenticated == true
-        && principal.HasClaim(x => x.Type == ClaimTypes.NameIdentifier && x.Value == DefaultId)
-        ? User
-        : null);
+        => new(User);
+    //=> new (principal?.Identity?.IsAuthenticated == true
+    //&& principal.HasClaim(x => x.Type == ClaimTypes.NameIdentifier && x.Value == DefaultId)
+    //? User
+    //: null);
 }
