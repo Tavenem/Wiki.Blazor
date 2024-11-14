@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.10-preview
+### Fixed
+- Edit page style
+### Updated
+- Update dependencies
+
 ## 0.9.9-preview
 ### Fixed
 - Edit code behind
