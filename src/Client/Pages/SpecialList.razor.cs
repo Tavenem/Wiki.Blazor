@@ -69,7 +69,7 @@ public partial class SpecialList
 
     private string? SecondaryDescription { get; set; }
 
-    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 

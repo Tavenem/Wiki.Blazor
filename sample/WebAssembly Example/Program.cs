@@ -33,12 +33,15 @@ builder.Services.AddScoped<WikiGroupManager>();
 builder.Services.AddScoped<IWikiGroupManager>(services =>
     services.GetRequiredService<WikiGroupManager>());
 
-var wikiOptions = new WikiOptions
+var wikiOptions = new WikiBlazorOptions()
 {
+    AppBar = typeof(TopAppBar),
+    CanEditOffline = (_, _, _) => ValueTask.FromResult(true),
     ContactPageTitle = null,
     ContentsPageTitle = null,
     CopyrightPageTitle = null,
-    LinkTemplate = WikiBlazorClientOptions.DefaultLinkTemplate,
+    DataStore = dataStore,
+    LoginPath = "/",
     MaxFileSize = 0,
     PolicyPageTitle = null,
 };
@@ -59,14 +62,6 @@ using (var response = await httpClient.GetAsync("archive.json"))
     }
 }
 
-builder.Services.AddWikiClient(
-    wikiOptions,
-    new WikiBlazorClientOptions()
-    {
-        AppBar = typeof(TopAppBar),
-        CanEditOffline = (_, _, _) => ValueTask.FromResult(true),
-        DataStore = dataStore,
-        LoginPath = "/",
-    });
+builder.Services.AddWikiClient(wikiOptions);
 
 await builder.Build().RunAsync();

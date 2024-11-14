@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.DataStorage;
 
@@ -31,27 +32,27 @@ public delegate IComponentRenderMode? GetArticleRenderMode(Page page);
 /// <see langword="true"/> if the content can be edited locally; otherwise <see langword="false"/>.
 /// </returns>
 /// <remarks>
-/// Locally means in the local <see cref="WikiBlazorClientOptions.DataStore"/> instance, rather than
-/// via the <see cref="WikiBlazorClientOptions.WikiServerApiRoute"/>.
+/// Locally means in the local <see cref="WikiBlazorOptions.DataStore"/> instance, rather than
+/// via the <see cref="WikiBlazorOptions.WikiServerApiRoute"/>.
 /// </remarks>
 public delegate ValueTask<bool> CanEditOfflineFunc(string title, string wikiNamespace, string? domain);
 
 /// <summary>
 /// A function which determines whether the given domain should always be retrieved from the local
-/// <see cref="WikiBlazorClientOptions.DataStore"/>, and never from the server.
+/// <see cref="WikiBlazorOptions.DataStore"/>, and never from the server.
 /// </summary>
 /// <param name="domain">A wiki domain name.</param>
 /// <returns>
 /// <see langword="true"/> if the content should always be retrieved from the local <see
-/// cref="WikiBlazorClientOptions.DataStore"/>; <see langword="false"/> if the content should be
+/// cref="WikiBlazorOptions.DataStore"/>; <see langword="false"/> if the content should be
 /// retrieved from the server when possible.
 /// </returns>
 public delegate ValueTask<bool> IsOfflineDomainFunc(string domain);
 
 /// <summary>
-/// Options used to configure the wiki system.
+/// Various customization and configuration options for the wiki system.
 /// </summary>
-public class WikiBlazorClientOptions
+public class WikiBlazorOptions : WikiOptions
 {
     /// <summary>
     /// The default URL of the wiki's server API.
@@ -177,7 +178,40 @@ public class WikiBlazorClientOptions
     /// synchronization of offline content to a server, that logic must be implemented separately.
     /// </para>
     /// </remarks>
-    public IDataStore? DataStore { get; set; }
+    public virtual IDataStore? DataStore { get; set; }
+
+    /// <summary>
+    /// <para>
+    /// The minimum permission the user must have in order to create an archive of a domain.
+    /// </para>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This property does not apply when creating an archive for content without a domain, or for
+    /// the entire wiki.
+    /// </para>
+    /// <para>
+    /// Since it would be prohibitive to check individual pages' permission, archiving only requires
+    /// that a user has this level of permission (defaults to <see cref="WikiPermission.Read"/>) for
+    /// the target domain. This could represent a potential security breach, if individual pages
+    /// within the domain are further restricted. It is strongly recommended that the ability to
+    /// create archives is restricted in your client code in a manner specific to your
+    /// implementation's use of domains, which guarantees that only those with the correct
+    /// permissions can create archives.
+    /// </para>
+    /// </remarks>
+    public WikiPermission DomainArchivePermission { get; set; } = WikiPermission.Read;
+
+    /// <summary>
+    /// <para>
+    /// The interactive render mode used by interactive components.
+    /// </para>
+    /// <para>
+    /// This is set to <see cref="RenderMode.InteractiveWebAssembly"/> by default, but may be
+    /// assigned null to indicate SSR only (however, note that this disables editing).
+    /// </para>
+    /// </summary>
+    public IComponentRenderMode? InteractiveRenderMode { get; set; } = RenderMode.InteractiveWebAssembly;
 
     /// <summary>
     /// A function which determines whether the given domain should always be retrieved from the
@@ -260,6 +294,11 @@ public class WikiBlazorClientOptions
     /// </para>
     /// </remarks>
     public string? WikiServerApiRoute { get; set; }
+
+    /// <summary>
+    /// Constructs a new instance of <see cref="WikiBlazorOptions"/>.
+    /// </summary>
+    public WikiBlazorOptions() => LinkTemplate = DefaultLinkTemplate;
 
     /// <summary>
     /// Gets the type of a component which should be displayed after the content of the given wiki

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.8-preview
+### Changed
+- Improve configuration
+
 ## 0.9.7-preview
 ### Updated
 - Update dependencies

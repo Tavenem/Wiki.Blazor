@@ -8,10 +8,7 @@
     <Collapse Title="Filter" IsInitiallyOpen="@(!string.IsNullOrEmpty(Start) || !string.IsNullOrEmpty(End) || !string.IsNullOrEmpty(Editor))">
         <DateTimeInput Label="Start date" Name="@Wiki.StartParameter" ShowTime="true" @bind-Value="@Start" />
         <DateTimeInput Label="End date" Name="@Wiki.EndParameter" ShowTime="true" @bind-Value="@End" />
-        <UserSelector Label="User"
-                      @bind-SelectedUsers="SelectedEditor"
-                      InitialUsers="@Editor"
-                      Name="@Wiki.EditorParameter" />
+        <UserSelector Label="User" InitialUsers="@Editor" Name="@Wiki.EditorParameter" />
         <button class="btn primary" formaction="@(WikiState.LinkHere(history: true))" type="submit">Apply filter</button>
     </Collapse>
     <p class="wiki-history-instructions">Click on the date/time to view a revision.</p>

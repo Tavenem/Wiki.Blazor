@@ -1,5 +1,7 @@
-﻿using Tavenem.Wiki;
+﻿using Microsoft.Extensions.DependencyInjection.Extensions;
+using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor.Client;
+using Tavenem.Wiki.Blazor.Client.Configuration;
 using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -14,42 +16,27 @@ public static class ServiceExtensions
     /// Add the required services for <c>Tavenem.Wiki.Blazor</c>.
     /// </summary>
     /// <param name="services">Your <see cref="IServiceCollection"/> instance.</param>
-    /// <param name="wikiOptions">
-    /// The options used to configure the wiki system.
-    /// </param>
-    /// <param name="wikiBlazorOptions">
-    /// The options used to configure the wiki Blazor system.
-    /// </param>
+    /// <param name="options">The options used to configure the wiki.</param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
-        WikiOptions? wikiOptions = null,
-        WikiBlazorClientOptions? wikiBlazorOptions = null)
+        WikiBlazorOptions? options = null)
     {
-        services
-            .AddTavenemFramework()
-            .AddScoped<WikiState>();
+        options ??= new();
 
-        if (wikiOptions is not null)
-        {
-            services.AddScoped(_ => wikiOptions);
-        }
-        else
-        {
-            services.AddScoped(_ => new WikiOptions { LinkTemplate = WikiBlazorClientOptions.DefaultLinkTemplate });
-        }
+        InteractiveRenderSettings.InteractiveRenderMode = options.InteractiveRenderMode;
 
-        if (wikiBlazorOptions is not null)
+        if (options.DataStore is not null)
         {
-            services.AddScoped(_ => wikiBlazorOptions);
+            services.TryAddScoped(_ => options.DataStore);
         }
-        else
-        {
-            services.AddScoped(_ => new WikiBlazorClientOptions());
-        }
+        services.TryAddScoped<WikiOptions>(_ => options);
+        services.AddScoped(_ => options);
 
         return services
-            .AddScoped<LocalWikiDataService>()
+            .AddTavenemFramework()
+            .AddScoped<WikiState>()
+            .AddScoped<ClientWikiDataService>()
             .AddScoped<WikiDataService>();
     }
 
@@ -57,26 +44,31 @@ public static class ServiceExtensions
     /// Add the required services for <c>Tavenem.Wiki.Blazor</c>.
     /// </summary>
     /// <param name="services">Your <see cref="IServiceCollection"/> instance.</param>
-    /// <param name="wikiOptionsBuilder">
-    /// A function which provides the options used to configure the wiki system.
-    /// </param>
-    /// <param name="wikiBlazorOptionsBuilder">
-    /// A function which provides the options used to configure the wiki Blazor system.
-    /// </param>
+    /// <param name="config">Configures the options used to configure the wiki.</param>
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
-        Func<IServiceProvider, WikiOptions> wikiOptionsBuilder,
-        Func<IServiceProvider, WikiBlazorClientOptions> wikiBlazorOptionsBuilder)
+        Action<WikiBlazorClientServiceOptions> config)
     {
-        services
-            .AddTavenemFramework()
-            .AddScoped<WikiState>()
-            .AddScoped(wikiOptionsBuilder)
-            .AddScoped(wikiBlazorOptionsBuilder);
+        var options = new WikiBlazorClientServiceOptions();
+        config.Invoke(options);
+        return options.Add(services);
+    }
 
-        return services
-            .AddScoped<LocalWikiDataService>()
-            .AddScoped<WikiDataService>();
+    /// <summary>
+    /// Add the required services for <c>Tavenem.Wiki.Blazor</c>.
+    /// </summary>
+    /// <param name="services">Your <see cref="IServiceCollection"/> instance.</param>
+    /// <param name="options">The options used to configure the wiki.</param>
+    /// <param name="config">Configures the options used to configure the wiki.</param>
+    /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
+    public static IServiceCollection AddWikiClient(
+        this IServiceCollection services,
+        WikiBlazorOptions options,
+        Action<WikiBlazorClientServiceOptions> config)
+    {
+        var configuredOptions = new WikiBlazorClientServiceOptions(options);
+        config.Invoke(configuredOptions);
+        return configuredOptions.Add(services);
     }
 }

@@ -1,13 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
+using Tavenem.Wiki.Blazor.Client;
 using Tavenem.Wiki.Blazor.Client.Services;
 using Tavenem.Wiki.Blazor.Exceptions;
 using Tavenem.Wiki.Blazor.Models;
+using Tavenem.Wiki.Blazor.Server.Authorization;
 using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;
 
@@ -17,25 +18,13 @@ namespace Tavenem.Wiki.Blazor.Server.Controllers;
 /// The built-in wiki controller.
 /// </summary>
 [Area("Wiki")]
-[Authorize(Policy = "WikiPolicy")]
 [AllowAnonymous]
 public class WikiController(
-    IDataStore dataStore,
-    IWikiGroupManager groupManager,
-    ILoggerFactory loggerFactory,
-    IServiceProvider serviceProvider,
-    IWikiUserManager userManager,
-    WikiBlazorServerOptions wikiBlazorServerOptions,
+    IAuthorizationService authorizationService,
+    WikiBlazorOptions wikiBlazorOptions,
+    WikiDataService wikiDataService,
     WikiOptions wikiOptions) : Controller
 {
-    private readonly LocalWikiDataService _dataManager = new(
-        dataStore,
-        groupManager,
-        loggerFactory,
-        serviceProvider,
-        userManager,
-        wikiOptions);
-
     /// <summary>
     /// Retrieve a wiki archive for the given <paramref name="domain"/>, or the entire wiki.
     /// </summary>
@@ -48,26 +37,42 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(Archive), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Archive([FromQuery] string? domain = null)
     {
-        try
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(null, null, domain),
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var response = await _dataManager.GetArchiveAsync(
-                User,
-                domain,
-                wikiBlazorServerOptions.DomainArchivePermission);
-            return new JsonResult(response, new JsonSerializerOptions
+            try
             {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
-                IgnoreReadOnlyFields = true,
-                IgnoreReadOnlyProperties = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                TypeInfoResolver = WikiArchiveJsonSerializerContext.Default,
-            });
+                var response = await wikiDataService.GetArchiveAsync(
+                    User,
+                    domain,
+                    wikiBlazorOptions.DomainArchivePermission);
+                return new JsonResult(response, new JsonSerializerOptions
+                {
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+                    IgnoreReadOnlyFields = true,
+                    IgnoreReadOnlyProperties = true,
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    TypeInfoResolver = WikiArchiveJsonSerializerContext.Default,
+                });
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
         }
     }
 
@@ -80,19 +85,36 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(Category), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Category(
         [FromQuery] string? title = null,
         [FromQuery] string? @namespace = null,
         [FromQuery] string? domain = null)
     {
-        try
+        var pageTitle = new PageTitle(title, @namespace, domain);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var response = await _dataManager.GetCategoryAsync(User, new PageTitle(title, @namespace, domain));
-            return Ok(response);
+            try
+            {
+                var response = await wikiDataService.GetCategoryAsync(User, pageTitle);
+                return Ok(response);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
         }
     }
 
@@ -111,7 +133,7 @@ public class WikiController(
         {
             return NoContent();
         }
-        var wikiUser = await _dataManager.GetWikiUserAsync(User);
+        var wikiUser = await wikiDataService.GetWikiUserAsync(User);
         if (wikiUser is null)
         {
             return NoContent();
@@ -129,28 +151,44 @@ public class WikiController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Edit([FromBody] EditRequest request)
     {
-        try
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiEditRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var success = await _dataManager.EditAsync(User, request);
-            if (success)
+            try
             {
-                return Ok();
+                var success = await wikiDataService.EditAsync(User, request);
+                if (success)
+                {
+                    return Ok();
+                }
+                return Ok("A redirect could not be created automatically, but your revision was a success.");
             }
-            return Ok("A redirect could not be created automatically, but your revision was a success.");
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (ArgumentException ex)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return BadRequest(ex.Message);
+            return Forbid();
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            return BadRequest(ex.Message);
-        }
-        catch (WikiUnauthorizedException)
-        {
-            return Unauthorized();
+            return Challenge();
         }
     }
 
@@ -163,19 +201,36 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> EditInfo(
         [FromQuery] string? title = null,
         [FromQuery] string? @namespace = null,
         [FromQuery] string? domain = null)
     {
-        try
+        var pageTitle = new PageTitle(title, @namespace, domain);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiEditRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var result = await _dataManager.GetEditInfoAsync(User, new PageTitle(title, @namespace, domain));
-            return Ok(result);
+            try
+            {
+                var result = await wikiDataService.GetEditInfoAsync(User, pageTitle);
+                return Ok(result);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
         }
     }
 
@@ -190,6 +245,7 @@ public class WikiController(
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Group(
         [FromQuery] string title,
@@ -197,39 +253,55 @@ public class WikiController(
         [FromQuery] long? secondTime = null,
         [FromQuery] bool diff = false)
     {
-        if (firstTime.HasValue
-            || secondTime.HasValue
-            || diff)
+        var pageTitle = new PageTitle(title, wikiOptions.GroupNamespace);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
+            if (firstTime.HasValue
+                || secondTime.HasValue
+                || diff)
+            {
+                try
+                {
+                    var result = await wikiDataService.GetItemAsync(
+                        User,
+                        pageTitle,
+                        true,
+                        firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
+                        secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
+                        diff);
+                    return Ok(result);
+                }
+                catch (WikiUnauthorizedException)
+                {
+                    return Unauthorized();
+                }
+            }
+
             try
             {
-                var result = await _dataManager.GetItemAsync(
-                    User,
-                    new PageTitle(title, wikiOptions.GroupNamespace),
-                    true,
-                    firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
-                    secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
-                    diff);
-                return Ok(result);
+                var groupPage = await wikiDataService.GetGroupPageAsync(User, title);
+                return Ok(groupPage);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (WikiUnauthorizedException)
             {
                 return Unauthorized();
             }
         }
-
-        try
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            var groupPage = await _dataManager.GetGroupPageAsync(User, title);
-            return Ok(groupPage);
+            return Forbid();
         }
-        catch (ArgumentException ex)
+        else
         {
-            return BadRequest(ex.Message);
-        }
-        catch (WikiUnauthorizedException)
-        {
-            return Unauthorized();
+            return Challenge();
         }
     }
 
@@ -241,22 +313,38 @@ public class WikiController(
     /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedRevisionInfo), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> History([FromBody] HistoryRequest request)
     {
-        try
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var result = await _dataManager.GetHistoryAsync(User, request);
-            if (result is null)
+            try
             {
-                return NoContent();
+                var result = await wikiDataService.GetHistoryAsync(User, request);
+                if (result is null)
+                {
+                    return NoContent();
+                }
+                return Ok(result);
             }
-            return Ok(result);
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
         }
     }
 
@@ -269,14 +357,31 @@ public class WikiController(
     [HttpPost]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Html([FromBody] PreviewRequest request)
     {
-        var result = await _dataManager.RenderHtmlAsync(User, request);
-        if (string.IsNullOrEmpty(result))
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            return NoContent();
+            var result = await wikiDataService.RenderHtmlAsync(request);
+            if (string.IsNullOrEmpty(result))
+            {
+                return NoContent();
+            }
+            return Ok(result);
         }
-        return Ok(result);
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
     }
 
     /// <summary>
@@ -288,6 +393,7 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Item(
         [FromQuery] string? title = null,
         [FromQuery] string? @namespace = null,
@@ -297,20 +403,36 @@ public class WikiController(
         [FromQuery] long? secondTime = null,
         [FromQuery] bool diff = false)
     {
-        try
+        var pageTitle = new PageTitle(title, @namespace, domain);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var result = await _dataManager.GetItemAsync(
-                User,
-                new PageTitle(title, @namespace, domain),
-                noRedirect,
-                firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
-                secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
-                diff);
-            return Ok(result);
+            try
+            {
+                var result = await wikiDataService.GetItemAsync(
+                    User,
+                    pageTitle,
+                    noRedirect,
+                    firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
+                    secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
+                    diff);
+                return Ok(result);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
         }
     }
 
@@ -323,8 +445,27 @@ public class WikiController(
     /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
-    public Task<PagedList<LinkInfo>> List([FromBody] SpecialListRequest request)
-        => _dataManager.GetListAsync(request);
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> List([FromBody] SpecialListRequest request)
+    {
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(),
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            return Ok(await wikiDataService.GetListAsync(request));
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
+    }
 
     /// <summary>
     /// Gets the preview HTML for a given wiki link.
@@ -335,17 +476,35 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Preview(
         [FromQuery] string? title = null,
         [FromQuery] string? @namespace = null,
         [FromQuery] string? domain = null)
     {
-        var result = await _dataManager.GetPreviewAsync(User, new PageTitle(title, @namespace, domain));
-        if (string.IsNullOrEmpty(result))
+        var pageTitle = new PageTitle(title, @namespace, domain);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            return NoContent();
+            var result = await wikiDataService.GetPreviewAsync(User, pageTitle);
+            if (string.IsNullOrEmpty(result))
+            {
+                return NoContent();
+            }
+            return Ok(result);
         }
-        return Ok(result);
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
     }
 
     /// <summary>
@@ -357,14 +516,31 @@ public class WikiController(
     [HttpPost]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Preview([FromBody] PreviewRequest request)
     {
-        var result = await _dataManager.RenderPreviewAsync(User, request);
-        if (string.IsNullOrEmpty(result))
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            return NoContent();
+            var result = await wikiDataService.RenderPreviewAsync(request);
+            if (string.IsNullOrEmpty(result))
+            {
+                return NoContent();
+            }
+            return Ok(result);
         }
-        return Ok(result);
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
     }
 
     /// <summary>
@@ -377,17 +553,33 @@ public class WikiController(
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RestoreArchive([FromBody] Archive archive)
     {
-        try
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(null, null, archive.Pages?.FirstOrDefault()?.Title.Domain),
+            WikiEditRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            await _dataManager.RestoreArchiveAsync(User, archive);
+            try
+            {
+                await wikiDataService.RestoreArchiveAsync(User, archive);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
+            return Ok();
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
         }
-        return Ok();
+        else
+        {
+            return Challenge();
+        }
     }
 
     /// <summary>
@@ -399,9 +591,27 @@ public class WikiController(
     /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(SearchResult), StatusCodes.Status200OK)]
-    public Task<SearchResult> Search(
-        [FromBody] SearchRequest request)
-        => _dataManager.SearchAsync(User, request);
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Search([FromBody] SearchRequest request)
+    {
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(),
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            return Ok(await wikiDataService.SearchAsync(User, request));
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
+    }
 
     /// <summary>
     /// Gets a wiki talk page.
@@ -413,20 +623,37 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(List<MessageResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Talk(
         [FromQuery] string? title = null,
         [FromQuery] string? @namespace = null,
         [FromQuery] string? domain = null,
         [FromQuery] bool noRedirect = false)
     {
-        try
+        var pageTitle = new PageTitle(title, @namespace, domain);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            var result = await _dataManager.GetTalkAsync(User, new PageTitle(title, @namespace, domain), noRedirect);
-            return Ok(result);
+            try
+            {
+                var result = await wikiDataService.GetTalkAsync(User, pageTitle, noRedirect);
+                return Ok(result);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiUnauthorizedException)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Unauthorized();
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
         }
     }
 
@@ -441,6 +668,7 @@ public class WikiController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Talk(
         [FromForm] string topic,
         [FromForm] string content,
@@ -454,18 +682,33 @@ public class WikiController(
         {
             return Ok();
         }
-        try
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(),
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            await _dataManager.PostTalkAsync(User, new ReplyRequest(topic, content, message));
-            return Ok();
+            try
+            {
+                await wikiDataService.PostTalkAsync(User, new ReplyRequest(topic, content, message));
+                return Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (ArgumentException ex)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return BadRequest(ex.Message);
+            return Forbid();
         }
-        catch (WikiUnauthorizedException)
+        else
         {
-            return Unauthorized();
+            return Challenge();
         }
     }
 
@@ -476,8 +719,27 @@ public class WikiController(
     /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
-    public Task<PagedList<LinkInfo>> Title([FromBody] TitleRequest request)
-        => _dataManager.GetTitleAsync(request);
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Title([FromBody] TitleRequest request)
+    {
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            return Ok(await wikiDataService.GetTitleAsync(request));
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
+    }
 
     /// <summary>
     /// Uploads a file to the wiki.
@@ -490,55 +752,67 @@ public class WikiController(
     /// </returns>
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Upload(
         [FromServices] IFileManager fileManager,
         [FromForm] IFormFile? file = null,
         [FromForm] string? options = null)
     {
-        if (User.Identity?.IsAuthenticated != true)
-        {
-            return Unauthorized();
-        }
-
         if (file is null)
         {
             return BadRequest("File is required.");
         }
 
-        var uploadOptions = string.IsNullOrEmpty(options)
-            ? new UploadRequest(new())
-            : JsonSerializer.Deserialize(options, WikiBlazorJsonSerializerContext.Default.UploadRequest)
-                ?? new(new());
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(),
+            WikiEditRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            var uploadOptions = string.IsNullOrEmpty(options)
+                ? new UploadRequest(new())
+                : JsonSerializer.Deserialize(options, WikiBlazorJsonSerializerContext.Default.UploadRequest)
+                    ?? new(new());
 
-        try
-        {
-            await using var stream = file.OpenReadStream();
-            _ = await _dataManager.UploadAsync(
-                User,
-                fileManager,
-                uploadOptions,
-                stream,
-                file.FileName,
-                file.ContentType);
-            return Ok();
+            try
+            {
+                await using var stream = file.OpenReadStream();
+                _ = await wikiDataService.UploadAsync(
+                    User,
+                    fileManager,
+                    uploadOptions,
+                    stream,
+                    file.FileName,
+                    file.ContentType);
+                return Ok();
+            }
+            catch (WikiConflictException ex)
+            {
+                return Conflict(ex.Message);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (WikiUnauthorizedException)
+            {
+                return Unauthorized();
+            }
         }
-        catch (WikiConflictException ex)
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            return Conflict(ex.Message);
+            return Forbid();
         }
-        catch (ArgumentException ex)
+        else
         {
-            return BadRequest(ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (WikiUnauthorizedException)
-        {
-            return Unauthorized();
+            return Challenge();
         }
     }
 
@@ -553,9 +827,19 @@ public class WikiController(
     /// A value of -1 indicates no limit.
     /// </para>
     /// </returns>
+    /// <remarks>
+    /// If the current user is not authenticated, this will return 0.
+    /// </remarks>
     [HttpGet]
     [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
-    public Task<int> UploadLimit() => _dataManager.GetUploadLimitAsync(User);
+    public async Task<int> UploadLimit()
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return 0;
+        }
+        return await wikiDataService.GetUploadLimitAsync(User);
+    }
 
     /// <summary>
     /// Gets a wiki user page.
@@ -568,6 +852,7 @@ public class WikiController(
     [ProducesResponseType(typeof(Page), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UserPage(
         [FromQuery] string title,
@@ -575,39 +860,55 @@ public class WikiController(
         [FromQuery] long? secondTime = null,
         [FromQuery] bool diff = false)
     {
-        if (firstTime.HasValue
-            || secondTime.HasValue
-            || diff)
+        var pageTitle = new PageTitle(title, wikiOptions.UserNamespace);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            pageTitle,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
+            if (firstTime.HasValue
+                || secondTime.HasValue
+                || diff)
+            {
+                try
+                {
+                    var result = await wikiDataService.GetItemAsync(
+                        User,
+                        pageTitle,
+                        true,
+                        firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
+                        secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
+                        diff);
+                    return Ok(result);
+                }
+                catch (WikiUnauthorizedException)
+                {
+                    return Unauthorized();
+                }
+            }
+
             try
             {
-                var result = await _dataManager.GetItemAsync(
-                    User,
-                    new PageTitle(title, wikiOptions.GroupNamespace),
-                    true,
-                    firstTime is null ? null : new DateTimeOffset(firstTime.Value, TimeSpan.Zero),
-                    secondTime is null ? null : new DateTimeOffset(secondTime.Value, TimeSpan.Zero),
-                    diff);
-                return Ok(result);
+                var userPage = await wikiDataService.GetUserPageAsync(User, title);
+                return Ok(userPage);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (WikiUnauthorizedException)
             {
                 return Unauthorized();
             }
         }
-
-        try
+        else if (User.Identity?.IsAuthenticated == true)
         {
-            var userPage = await _dataManager.GetUserPageAsync(User, title);
-            return Ok(userPage);
+            return Forbid();
         }
-        catch (ArgumentException ex)
+        else
         {
-            return BadRequest(ex.Message);
-        }
-        catch (WikiUnauthorizedException)
-        {
-            return Unauthorized();
+            return Challenge();
         }
     }
 
@@ -619,8 +920,27 @@ public class WikiController(
     /// </returns>
     [HttpPost]
     [ProducesResponseType(typeof(PagedList<LinkInfo>), StatusCodes.Status200OK)]
-    public Task<PagedList<LinkInfo>> WhatLinksHere([FromBody] TitleRequest request)
-        => _dataManager.GetWhatLinksHereAsync(request);
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> WhatLinksHere([FromBody] TitleRequest request)
+    {
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            return Ok(await wikiDataService.GetWhatLinksHereAsync(request));
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
+    }
 
     /// <summary>
     /// Gets the wiki links present in content containing wiki syntax.
@@ -631,14 +951,31 @@ public class WikiController(
     [HttpPost]
     [ProducesResponseType(typeof(List<WikiLink>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> WikiLinks([FromBody] PreviewRequest request)
     {
-        var result = await _dataManager.GetWikiLinksAsync(User, request);
-        if (result is null)
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            request.Title,
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
         {
-            return NoContent();
+            var result = await wikiDataService.GetWikiLinksAsync(request);
+            if (result is null)
+            {
+                return NoContent();
+            }
+            return Ok(result);
         }
-        return Ok(result);
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
     }
 
     /// <summary>
@@ -651,17 +988,34 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(IWikiOwner), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> WikiOwner([FromQuery] string query)
     {
         if (string.IsNullOrEmpty(query))
         {
             return NoContent();
         }
-        IWikiOwner? wikiOwner = await _dataManager.GetWikiUserAsync(User, query);
-        wikiOwner ??= await _dataManager.GetWikiGroupAsync(User, query);
-        return wikiOwner is null
-            ? NoContent()
-            : Ok(wikiOwner);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(),
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            IWikiOwner? wikiOwner = await wikiDataService.GetWikiUserAsync(User, query);
+            wikiOwner ??= await wikiDataService.GetWikiGroupAsync(query);
+            return wikiOwner is null
+                ? NoContent()
+                : Ok(wikiOwner);
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
     }
 
     /// <summary>
@@ -675,15 +1029,32 @@ public class WikiController(
     [HttpGet]
     [ProducesResponseType(typeof(WikiUser), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> WikiUser([FromQuery] string query)
     {
         if (string.IsNullOrEmpty(query))
         {
             return NoContent();
         }
-        var wikiUserInfo = await _dataManager.GetWikiUserAsync(User, query);
-        return wikiUserInfo is null
-            ? NoContent()
-            : Ok(wikiUserInfo);
+        var authorizeResult = await authorizationService.AuthorizeAsync(
+            User,
+            new PageTitle(),
+            WikiDefaultRequirement.Instance);
+        if (authorizeResult.Succeeded)
+        {
+            var wikiUserInfo = await wikiDataService.GetWikiUserAsync(User, query);
+            return wikiUserInfo is null
+                ? NoContent()
+                : Ok(wikiUserInfo);
+        }
+        else if (User.Identity?.IsAuthenticated == true)
+        {
+            return Forbid();
+        }
+        else
+        {
+            return Challenge();
+        }
     }
 }

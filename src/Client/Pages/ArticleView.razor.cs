@@ -41,7 +41,7 @@ public partial class ArticleView
 
     private Type? FrontMatterType { get; set; }
 
-    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 

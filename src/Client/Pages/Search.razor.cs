@@ -60,7 +60,7 @@ public partial class Search
 
     private SearchResult? Result { get; set; }
 
-    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 

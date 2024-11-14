@@ -1,4 +1,4 @@
-﻿@rendermode RenderMode.InteractiveWebAssembly
+﻿@rendermode InteractiveRenderMode
 
 <div class="@CssClass" style="@Style">
     @if (!IsInteractive)
@@ -13,6 +13,7 @@
     }
     else
     {
+        <input type="hidden" name="@Name" value="@SelectedUsersString" />
         @if (!string.IsNullOrEmpty(Label))
         {
             <span class="@(Disabled ? "text-disabled" : string.Empty)">@Label</span>

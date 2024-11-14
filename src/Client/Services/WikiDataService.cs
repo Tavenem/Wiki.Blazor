@@ -1,16 +1,10 @@
-﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
+﻿using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Net.Http.Json;
 using System.Security.Claims;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json.Serialization.Metadata;
-using Tavenem.Blazor.Framework;
 using Tavenem.DataStorage;
 using Tavenem.Wiki.Blazor.Exceptions;
+using Tavenem.Wiki.MarkdownExtensions.Transclusions;
 using Tavenem.Wiki.Models;
 using Tavenem.Wiki.Queries;
 
@@ -20,28 +14,34 @@ namespace Tavenem.Wiki.Blazor.Client.Services;
 /// Facilitates data operations for the wiki.
 /// </summary>
 public class WikiDataService(
-    LocalWikiDataService localWikiDataService,
     ILoggerFactory loggerFactory,
-    NavigationManager navigationManager,
     IServiceProvider serviceProvider,
-    SnackbarService snackbarService,
-    WikiBlazorClientOptions wikiBlazorClientOptions,
-    WikiOptions wikiOptions,
-    WikiState wikiState)
+    WikiOptions wikiOptions)
 {
+    /// <summary>
+    /// The format string used for a domain in a preview.
+    /// </summary>
+    public const string PreviewDomainTemplate = "<span class=\"wiki-main-heading-domain\">{0}</span><span class=\"wiki-main-heading-domain-separator\"></span>";
+    /// <summary>
+    /// The format string used for a namespace in a preview.
+    /// </summary>
+    public const string PreviewNamespaceTemplate = "<span class=\"wiki-main-heading-namespace\">{0}</span><span class=\"wiki-main-heading-namespace-separator\"></span>";
+    /// <summary>
+    /// The format string used for a preview.
+    /// </summary>
+    public const string PreviewTemplate = "<div class=\"wiki compact preview\"><div><main class=\"wiki-content\" role=\"main\"><div class=\"wiki-heading\" role=\"heading\"><h1 id=\"wiki-main-heading\">{0}{1}<span class=\"wiki-main-heading-title\">{2}</span></h1></div><div class=\"wiki-body\"><div class=\"wiki-parser-output\">{3}</div></div></main></div></div>";
+    private readonly IMemoryCache? _cache = serviceProvider.GetService<IMemoryCache>();
+    private readonly IDataStore? _dataStore = serviceProvider.GetService<IDataStore>();
+    private readonly IWikiGroupManager? _groupManager = serviceProvider.GetService<IWikiGroupManager>();
     private readonly ILogger _logger = loggerFactory.CreateLogger("Wiki");
-
-    private AuthenticationStateProvider? _authenticationStateProvider;
-    private HttpClient? _httpClient;
+    private readonly IWikiUserManager? _userManager = serviceProvider.GetService<IWikiUserManager>();
 
     /// <summary>
     /// Performs the requested edit operation.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="request">
     /// An <see cref="EditRequest"/> instance describing the edit.
-    /// </param>
-    /// <param name="failMessage">
-    /// A message to supply when the operation fails, and no message is returned.
     /// </param>
     /// <returns>
     /// <para>
@@ -53,19 +53,216 @@ public class WikiDataService(
     /// langword="false"/> result. Only an exception indicates failure.
     /// </para>
     /// </returns>
-    public Task<bool> EditAsync(EditRequest request, string? failMessage = null) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/edit",
-        request,
-        WikiBlazorJsonSerializerContext.Default.EditRequest,
-        user => localWikiDataService.EditAsync(user, request),
-        failMessage);
+    /// <exception cref="ArgumentException">
+    /// The edit was attempted in the file namespace. The <see cref="UploadAsync(ClaimsPrincipal?,
+    /// IFileManager, UploadRequest, Stream?, string?, string?)"/> endpoint should be used instead.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The content could not be updated (usually for permission reasons).
+    /// </exception>
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have permission to make the requested edit.
+    /// </exception>
+    public async Task<bool> EditAsync(ClaimsPrincipal? user, EditRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        if (string.Equals(
+            request.Title.Namespace,
+            wikiOptions.FileNamespace,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                "Cannot edit content in the File namespace. Use the Upload endpoint instead.",
+                nameof(request));
+        }
+
+        if (user is null || _userManager is null)
+        {
+            throw new WikiUnauthorizedException();
+        }
+        var wikiUser = await _userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        var result = await _dataStore.GetWikiPageAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            request.OriginalTitle ?? request.Title,
+            wikiUser,
+            true);
+        if (!result.Permission.HasFlag(WikiPermission.Write))
+        {
+            throw new WikiUnauthorizedException();
+        }
+        if (!result.Exists
+            && !result.Permission.HasFlag(WikiPermission.Create))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        var ownerId = request.OwnerSelf
+            ? wikiUser.Id
+            : request.Owner;
+
+        if (!result.Permission.HasFlag(WikiPermission.SetOwner)
+            && ownerId != result.Owner)
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        var intendedOwner = await _userManager.FindByIdAsync(ownerId);
+
+        List<string>? allAllowedEditors = null;
+        if (request.EditorSelf)
+        {
+            allAllowedEditors = [];
+        }
+        else if (request.AllowedEditors is not null)
+        {
+            foreach (var id in request.AllowedEditors)
+            {
+                var editor = await _userManager.FindByIdAsync(id);
+                if (editor?.IsDisabled == false
+                    && !editor.IsDisabled)
+                {
+                    (allAllowedEditors ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        List<string>? allAllowedEditorGroups = null;
+        if (!request.EditorSelf
+            && request.AllowedEditorGroups is not null
+            && _groupManager is not null)
+        {
+            foreach (var id in request.AllowedEditorGroups)
+            {
+                var editor = await _groupManager.FindByIdAsync(id);
+                if (editor is not null)
+                {
+                    (allAllowedEditorGroups ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        List<string>? allAllowedViewers = null;
+        if (request.EditorSelf)
+        {
+            allAllowedViewers = [];
+        }
+        else if (request.AllowedViewers is not null)
+        {
+            foreach (var id in request.AllowedViewers)
+            {
+                var editor = await _userManager.FindByIdAsync(id);
+                if (editor?.IsDisabled == false
+                    && !editor.IsDisabled)
+                {
+                    (allAllowedViewers ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        List<string>? allAllowedViewerGroups = null;
+        if (!request.EditorSelf
+            && request.AllowedViewerGroups is not null
+            && _groupManager is not null)
+        {
+            foreach (var id in request.AllowedViewerGroups)
+            {
+                var editor = await _groupManager.FindByIdAsync(id);
+                if (editor is not null)
+                {
+                    (allAllowedViewerGroups ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        var success = await _dataStore.AddOrReviseWikiPageAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            wikiUser,
+            request.Title,
+            request.Markdown,
+            request.RevisionComment,
+            request.IsDeleted,
+            intendedOwner?.Id,
+            allAllowedEditors,
+            allAllowedViewers,
+            allAllowedEditorGroups,
+            allAllowedViewerGroups,
+            null,
+            request.OriginalTitle,
+            _cache);
+        if (!success)
+        {
+            throw new InvalidOperationException("Article could not be updated. You may not have the appropriate permissions.");
+        }
+
+        if (request.LeaveRedirect
+            && !result.Title.Equals(request.Title))
+        {
+            var redirectSuccess = await _dataStore.AddOrReviseWikiPageAsync(
+                wikiOptions,
+                _userManager,
+                _groupManager,
+                wikiUser,
+                result.Title,
+                null,
+                request.RevisionComment,
+                false,
+                intendedOwner?.Id,
+                allAllowedEditors,
+                allAllowedViewers,
+                allAllowedEditorGroups,
+                allAllowedViewerGroups,
+                request.Title,
+                null,
+                _cache);
+            if (!redirectSuccess)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     /// <summary>
     /// Retrieve an archive of a domain, or the entire wiki.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="domain">
     /// The domain to be archived; or an empty string to archive content with no domain; or <see
     /// langword="null"/> to archive the entire wiki.
+    /// </param>
+    /// <param name="requiredPermission">
+    /// <para>
+    /// The minimum permission the user must have for the target <paramref name="domain"/> in order
+    /// to create the archive.
+    /// </para>
+    /// <para>
+    /// When creating an archive for content without a domain, or for the entire wiki, this
+    /// parameter is ignored.
+    /// </para>
+    /// <para>
+    /// Since it would be prohibitive to check individual pages' permission, this method only
+    /// requires that a user has this level of permission (defaulting to <see
+    /// cref="WikiPermission.Read"/>) for the target <paramref name="domain"/>. This could represent
+    /// a potential security breach, if individual pages within the domain are further restricted.
+    /// It is strongly recommended that the ability to create archives is restricted in your client
+    /// code in a manner specific to your implementation's use of domains, which guarantees that
+    /// only those with the correct permissions can create archives.
+    /// </para>
     /// </param>
     /// <returns>An <see cref="Archive"/> object.</returns>
     /// <remarks>
@@ -84,102 +281,216 @@ public class WikiDataService(
     /// admin.
     /// </para>
     /// </exception>
-    public Task<Archive?> GetArchiveAsync(string? domain = null)
+    public async Task<Archive> GetArchiveAsync(
+        ClaimsPrincipal? user,
+        string? domain = null,
+        WikiPermission requiredPermission = WikiPermission.Read)
     {
-        var url = new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/archive");
-        if (!string.IsNullOrEmpty(domain))
+        if (_dataStore is null)
         {
-            url.Append("?domain=")
-                .Append(domain);
+            throw new InvalidOperationException("No data store configured.");
         }
-        return FetchDataAsync(
-            url.ToString(),
-            WikiArchiveJsonSerializerContext.Default.Archive,
-            async user => await localWikiDataService.GetArchiveAsync(
-                user,
-                domain));
+
+        var wikiUser = (_userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user))
+            ?? throw new WikiUnauthorizedException();
+        var hasDomain = !string.IsNullOrEmpty(domain);
+        if (hasDomain)
+        {
+            var domainPermission = WikiPermission.None;
+            if (wikiOptions.GetDomainPermission is not null)
+            {
+                domainPermission = await wikiOptions
+                    .GetDomainPermission
+                    .Invoke(wikiUser.Id, domain!);
+            }
+            if (wikiUser.AllowedViewDomains?.Contains(domain!) == true)
+            {
+                domainPermission |= WikiPermission.Read;
+            }
+
+            if ((domainPermission & requiredPermission) != requiredPermission)
+            {
+                throw new WikiUnauthorizedException();
+            }
+        }
+        else if (!wikiUser.IsWikiAdmin)
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return await _dataStore.GetWikiArchiveAsync(wikiOptions, domain);
     }
 
     /// <summary>
     /// Gets information about the category with the given <paramref name="title"/>.
     /// </summary>
+    /// <param name="user">The user making the request (if any).</param>
     /// <param name="title">The requested category title.</param>
     /// <returns>
     /// A <see cref="Category"/> object.
     /// </returns>
-    public Task<Category?> GetCategoryAsync(PageTitle title) => FetchDataAsync(
-        new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/category?title=")
-            .Append(title.Title)
-            .ToString(),
-        WikiJsonSerializerContext.Default.Category,
-        async user => await localWikiDataService.GetCategoryAsync(
-            user,
-            new PageTitle(title.Title, wikiOptions.CategoryNamespace, title.Domain)));
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have <see cref="WikiPermission.Read"/> permission for the given category.
+    /// </exception>
+    public async Task<Category> GetCategoryAsync(
+        ClaimsPrincipal? user,
+        PageTitle title)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var response = await _dataStore.GetCategoryAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            title,
+            wikiUser);
+        if (!response.Permission.HasFlag(WikiPermission.Read))
+        {
+            throw new WikiUnauthorizedException();
+        }
+        return response;
+    }
 
     /// <summary>
     /// Fetches edit info for the given content.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">The title of the requested content.</param>
     /// <returns>A <see cref="Page"/> instance.</returns>
-    public Task<Page?> GetEditInfoAsync(PageTitle title)
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have permission to make the requested edit.
+    /// </exception>
+    public async Task<Page> GetEditInfoAsync(
+        ClaimsPrincipal? user,
+        PageTitle title)
     {
-        var url = new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/editinfo?title=")
-            .Append(title.Title);
-        if (!string.IsNullOrEmpty(title.Namespace))
+        if (_dataStore is null)
         {
-            url.Append("&namespace=")
-                .Append(title.Namespace);
-        }
-        if (!string.IsNullOrEmpty(title.Domain))
-        {
-            url.Append("&domain=")
-                .Append(title.Domain);
+            throw new InvalidOperationException("No data store configured.");
         }
 
-        return FetchDataAsync(
-            url.ToString(),
-            WikiJsonSerializerContext.Default.Page,
-            async user => await localWikiDataService.GetEditInfoAsync(user, title));
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var result = await _dataStore.GetWikiPageForEditingAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            title,
+            wikiUser);
+        if ((result.Permission & WikiPermission.ReadWrite) != WikiPermission.ReadWrite)
+        {
+            throw new WikiUnauthorizedException();
+        }
+        if (!result.Exists
+            && !result.Permission.HasFlag(WikiPermission.Create))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return result;
     }
 
     /// <summary>
     /// Fetches information about the group page with the given <paramref name="title"/>.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">
     /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
     /// </param>
     /// <returns>
     /// A <see cref="GroupPage"/> instance.
     /// </returns>
-    public Task<GroupPage?> GetGroupPageAsync(string title) => FetchDataAsync(
-        new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/group?title=")
-            .Append(title)
-            .ToString(),
-        WikiJsonSerializerContext.Default.GroupPage,
-        async user => await localWikiDataService.GetGroupPageAsync(user, title));
+    /// <exception cref="ArgumentException">
+    /// <paramref name="title"/> was empty.
+    /// </exception>
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have permission to view the requested page.
+    /// </exception>
+    public async Task<GroupPage> GetGroupPageAsync(ClaimsPrincipal? user, string title)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        if (string.IsNullOrEmpty(title))
+        {
+            throw new ArgumentException($"{nameof(title)} cannot be empty", nameof(title));
+        }
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var result = await _dataStore.GetGroupPageAsync(
+            wikiOptions,
+            _groupManager,
+            title,
+            wikiUser);
+        if (!result.Permission.HasFlag(WikiPermission.Read))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Gets revision information for the requested content.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="request">A <see cref="HistoryRequest"/> instance.</param>
     /// <returns>
     /// A <see cref="PagedRevisionInfo"/> instance; or <see langword="null"/> if no such
     /// page exists.
     /// </returns>
-    public Task<PagedRevisionInfo?> GetHistoryAsync(HistoryRequest request) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/history",
-        request,
-        WikiJsonSerializerContext.Default.HistoryRequest,
-        WikiJsonSerializerContext.Default.PagedRevisionInfo,
-        user => localWikiDataService.GetHistoryAsync(user, request));
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
+    /// </exception>
+    public async Task<PagedRevisionInfo?> GetHistoryAsync(ClaimsPrincipal? user, HistoryRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var result = await _dataStore.GetHistoryAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            request,
+            wikiUser);
+        if (result is null)
+        {
+            return null;
+        }
+        if (!result.Permission.HasFlag(WikiPermission.Read))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Fetches information about the given wiki page.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">The title of the requested page.</param>
     /// <param name="noRedirect">
     /// Whether to prevent redirects when fetching content.
@@ -226,56 +537,66 @@ public class WikiDataService(
     /// </param>
     /// <param name="diff">Whether a diff is requested.</param>
     /// <returns>A <see cref="Page"/> instance.</returns>
-    public Task<Page?> GetItemAsync(
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
+    /// </exception>
+    public async Task<Page> GetItemAsync(
+        ClaimsPrincipal? user,
         PageTitle title,
         bool noRedirect = false,
         DateTimeOffset? firstTime = null,
         DateTimeOffset? secondTime = null,
         bool diff = false)
     {
-        var url = new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/item?title=")
-            .Append(title.Title);
-        if (!string.IsNullOrEmpty(title.Namespace))
+        if (_dataStore is null)
         {
-            url.Append("&namespace=")
-                .Append(title.Namespace);
-        }
-        if (!string.IsNullOrEmpty(title.Domain))
-        {
-            url.Append("&domain=")
-                .Append(title.Domain);
+            throw new InvalidOperationException("No data store configured.");
         }
 
-        if (noRedirect)
-        {
-            url.Append("&noRedirect=true");
-        }
-        if (diff)
-        {
-            url.Append("&diff=true");
-        }
-        if (firstTime.HasValue)
-        {
-            url.Append("&firstTime=")
-                .Append(firstTime.Value.ToUniversalTime().Ticks);
-        }
-        if (secondTime.HasValue)
-        {
-            url.Append("&secondTime=")
-                .Append(secondTime.Value.ToUniversalTime().Ticks);
-        }
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
 
-        return FetchDataAsync(
-            url.ToString(),
-            WikiJsonSerializerContext.Default.Page,
-            async user => await localWikiDataService.GetItemAsync(
-                user,
+        Page result;
+        if (diff
+            || secondTime.HasValue)
+        {
+            result = await _dataStore.GetWikiPageDiffAsync(
+                wikiOptions,
+                _userManager,
+                _groupManager,
                 title,
-                noRedirect,
                 firstTime,
                 secondTime,
-                diff));
+                wikiUser);
+        }
+        else if (firstTime.HasValue)
+        {
+            result = await _dataStore.GetWikiPageAsync(
+                wikiOptions,
+                _userManager,
+                _groupManager,
+                title,
+                wikiUser,
+                noRedirect,
+                firstTime);
+        }
+        else
+        {
+            result = await _dataStore.GetWikiPageAsync(
+                wikiOptions,
+                _userManager,
+                _groupManager,
+                title,
+                wikiUser,
+                noRedirect);
+        }
+        if (!result.Permission.HasFlag(WikiPermission.Read))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -283,44 +604,54 @@ public class WikiDataService(
     /// </summary>
     /// <param name="request">A <see cref="SpecialListRequest"/> instance.</param>
     /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
-    public Task<PagedList<LinkInfo>?> GetListAsync(SpecialListRequest request) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/list",
-        request,
-        WikiJsonSerializerContext.Default.SpecialListRequest,
-        WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
-        async user => await localWikiDataService.GetListAsync(request));
+    public async Task<PagedList<LinkInfo>> GetListAsync(SpecialListRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        return await _dataStore.GetSpecialListAsync(request);
+    }
 
     /// <summary>
     /// Gets the preview content of an article.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">The title of the requested page.</param>
     /// <returns>
     /// The preview content; or <see langword="null"/> if there is no such article, or the given
     /// user does not have permission to view it.
     /// </returns>
-    public Task<string?> GetPreviewAsync(PageTitle title)
+    public async Task<string?> GetPreviewAsync(ClaimsPrincipal? user, PageTitle title)
     {
-        var url = new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/preview?title=")
-            .Append(title.Title);
-        if (!string.IsNullOrEmpty(title.Namespace))
+        if (_dataStore is null)
         {
-            url.Append("&namespace=")
-                .Append(title.Namespace);
+            throw new InvalidOperationException("No data store configured.");
         }
-        if (!string.IsNullOrEmpty(title.Domain))
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var result = await _dataStore.GetWikiPageAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            title,
+            wikiUser);
+        if (!result.Exists
+            || !result.Permission.HasFlag(WikiPermission.Read))
         {
-            url.Append("&domain=")
-                .Append(title.Domain);
+            return null;
         }
-        return FetchStringAsync(
-            url.ToString(),
-            async user => await localWikiDataService.GetPreviewAsync(user, title));
+        return result.Preview;
     }
 
     /// <summary>
     /// Get the talk messages for a given page.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">The title of the requested content.</param>
     /// <param name="noRedirect">
     /// Whether to prevent redirects when fetching content.
@@ -331,82 +662,88 @@ public class WikiDataService(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
     /// </exception>
-    public async Task<List<MessageResponse>?> GetTalkAsync(PageTitle title, bool noRedirect = false)
+    public async Task<List<MessageResponse>> GetTalkAsync(
+        ClaimsPrincipal? user,
+        PageTitle title,
+        bool noRedirect = false)
     {
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (_httpClient is null)
+        if (_dataStore is null)
         {
-            return null;
+            throw new InvalidOperationException("No data store configured.");
         }
-        List<MessageResponse>? messages = null;
-        try
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var result = await _dataStore.GetWikiPageAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            title,
+            wikiUser,
+            noRedirect);
+        if (!result.Permission.HasFlag(WikiPermission.Read))
         {
-            var url = new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-                .Append("/talk?title=")
-                .Append(title.Title);
-            if (!string.IsNullOrEmpty(title.Namespace))
-            {
-                url.Append("&namespace=")
-                    .Append(title.Namespace);
-            }
-            if (!string.IsNullOrEmpty(title.Domain))
-            {
-                url.Append("&domain=")
-                    .Append(title.Domain);
-            }
-            if (noRedirect)
-            {
-                url.Append("&noRedirect=true");
-            }
-            var response = await _httpClient.GetAsync(url.ToString());
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                wikiState.NotAuthorized = true;
-            }
-            else if (response.StatusCode is System.Net.HttpStatusCode.BadRequest
-                or System.Net.HttpStatusCode.NoContent)
-            {
-                navigationManager.NavigateTo(
-                    wikiState.Link(title.Title, title.Namespace, title.Domain),
-                    replace: true);
-            }
-            else
-            {
-                messages = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.ListMessageResponse);
-            }
+            throw new WikiUnauthorizedException();
         }
-        catch (Exception ex)
+        if (!result.Exists)
         {
-            _logger.Log(
-                LogLevel.Error,
-                ex,
-                "Error getting talk messages for wiki item with title {Title}.",
-                title);
-            snackbarService.Add("An error occurred", ThemeColor.Danger);
+            return [];
         }
-        return messages;
+
+        var topic = await Topic.GetTopicAsync(_dataStore, result.Title);
+        return await GetTopicMessagesAsync(topic);
     }
 
     /// <summary>
-    /// Gets the current user's upload limit.
+    /// Fetches a list of wiki pages which satisfy the given request.
+    /// </summary>
+    /// <param name="request">A <see cref="TitleRequest"/> instance.</param>
+    /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
+    public async Task<PagedList<LinkInfo>> GetTitleAsync(TitleRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        return await _dataStore.GetTitleAsync(request);
+    }
+
+    /// <summary>
+    /// Gets the given <paramref name="user"/>'s upload limit.
     /// </summary>
     /// <returns>
     /// <para>
-    /// The current user's upload limit, in bytes.
+    /// The given <paramref name="user"/>'s upload limit, in bytes.
     /// </para>
     /// <para>
     /// A value of -1 indicates no limit.
     /// </para>
     /// </returns>
-    public Task<int> GetUploadLimitAsync() => FetchIntAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/uploadlimit",
-        localWikiDataService.GetUploadLimitAsync);
+    public async Task<int> GetUploadLimitAsync(ClaimsPrincipal? user)
+    {
+        if (_userManager is null
+            || user?.Identity?.IsAuthenticated != true)
+        {
+            return 0;
+        }
+        var wikiUser = await _userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            return 0;
+        }
+        return await wikiUser.GetUserMaxUploadLimitAsync(_groupManager);
+    }
 
     /// <summary>
-    /// Fetches information about the group page with the given <paramref name="title"/>.
+    /// Fetches information about the user page with the given <paramref name="title"/>.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="title">
-    /// The title of a group page (i.e. the group's <see cref="IIdItem.Id"/>).
+    /// The title of a user page (i.e. the user's <see cref="IIdItem.Id"/>).
     /// </param>
     /// <returns>
     /// A <see cref="UserPage"/> instance.
@@ -417,25 +754,76 @@ public class WikiDataService(
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have permission to view the requested page.
     /// </exception>
-    public Task<UserPage?> GetUserPageAsync(string title) => FetchDataAsync(
-        new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
-            .Append("/userpage?title=")
-            .Append(title)
-            .ToString(),
-        WikiJsonSerializerContext.Default.UserPage,
-        async user => await localWikiDataService.GetUserPageAsync(user, title));
+    public async Task<UserPage> GetUserPageAsync(ClaimsPrincipal? user, string title)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        if (string.IsNullOrEmpty(title))
+        {
+            throw new ArgumentException($"{nameof(title)} cannot be empty", nameof(title));
+        }
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var result = await _dataStore.GetUserPageAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            title,
+            wikiUser);
+        if (!result.Permission.HasFlag(WikiPermission.Read))
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        return result;
+    }
 
     /// <summary>
     /// Fetches a list of the pages which link to a given resource.
     /// </summary>
     /// <param name="request">a <see cref="TitleRequest"/> instance.</param>
     /// <returns>A <see cref="PagedList{T}"/> of <see cref="LinkInfo"/> instances.</returns>
-    public Task<PagedList<LinkInfo>?> GetWhatLinksHereAsync(TitleRequest request) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/whatlinkshere",
-        request,
-        WikiJsonSerializerContext.Default.TitleRequest,
-        WikiBlazorJsonSerializerContext.Default.PagedListLinkInfo,
-        async user => await localWikiDataService.GetWhatLinksHereAsync(request));
+    public async Task<PagedList<LinkInfo>> GetWhatLinksHereAsync(TitleRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        var result = await _dataStore.GetWhatLinksHereAsync(
+            wikiOptions,
+            request);
+        return result
+            ?? new(null, 1, request.PageSize, 0);
+    }
+
+    /// <summary>
+    /// Fetches information about a given wiki group.
+    /// </summary>
+    /// <param name="query">
+    /// A wiki user ID or username.
+    /// </param>
+    /// <returns>
+    /// An <see cref="IWikiGroup"/> instance; or <see langword="null"/> if there is no such group.
+    /// </returns>
+    public async Task<IWikiGroup?> GetWikiGroupAsync(string query)
+    {
+        if (_groupManager is null
+            || string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var wikiGroup = await _groupManager.FindByIdAsync(query);
+        wikiGroup ??= await _groupManager.FindByNameAsync(query);
+        return wikiGroup;
+    }
 
     /// <summary>
     /// Gets a list of the given content's embedded wiki links.
@@ -445,43 +833,190 @@ public class WikiDataService(
     /// A <see cref="List{T}"/> of <see cref="WikiLink"/>s (possibly empty); or <see
     /// langword="null"/> if the user's account is not found, deleted, or disabled.
     /// </returns>
-    public Task<List<WikiLink>?> GetWikiLinksAsync(PreviewRequest request) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/preview",
-        request,
-        WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-        WikiBlazorJsonSerializerContext.Default.ListWikiLink,
-        user => localWikiDataService.GetWikiLinksAsync(user, request));
-
-    /// <summary>
-    /// Fetches information about a given wiki owner.
-    /// </summary>
-    /// <param name="query">
-    /// A wiki user ID or username.
-    /// </param>
-    /// <returns>
-    /// An <see cref="IWikiOwner"/> instance; or <see langword="null"/> if there is no such owner.
-    /// </returns>
-    public Task<IWikiOwner?> GetWikiOwnerAsync(string query) => FetchDataAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/wikiowner?query={query}",
-        WikiJsonSerializerContext.Default.IWikiOwner,
-        async user =>
+    public async Task<List<WikiLink>?> GetWikiLinksAsync(PreviewRequest request)
+    {
+        if (_dataStore is null)
         {
-            IWikiOwner? wikiOwner = await localWikiDataService.GetWikiUserAsync(user, query);
-            wikiOwner ??= await localWikiDataService.GetWikiGroupAsync(user, query);
-            return wikiOwner;
-        });
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        return MarkdownItem.GetWikiLinks(
+            wikiOptions,
+            _dataStore,
+            await TransclusionParser.TranscludeAsync(
+                wikiOptions,
+                _dataStore,
+                request.Content,
+                request.Title),
+            request.Title);
+    }
 
     /// <summary>
-    /// Gets the current wiki user.
+    /// Gets the wiki user associated with the given <paramref name="user"/>.
     /// </summary>
+    /// <param name="user">A <see cref="ClaimsPrincipal"/>.</param>
     /// <returns>
     /// An <see cref="IWikiUser"/> instance; or <see langword="null"/> if there is no such user, or
     /// if the given user is deleted or disabled.
     /// </returns>
-    public Task<WikiUser?> GetWikiUserAsync() => FetchDataAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/currentuser",
-        WikiJsonSerializerContext.Default.WikiUser,
-        localWikiDataService.GetWikiUserAsync);
+    public async Task<WikiUser?> GetWikiUserAsync(ClaimsPrincipal? user)
+    {
+        if (_userManager is null
+            || user?.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+        var wikiUser = await _userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            return null;
+        }
+        return new WikiUser
+        {
+            AllowedEditPages = wikiUser.AllowedEditPages,
+            AllowedViewPages = wikiUser.AllowedViewPages,
+            AllowedViewDomains = wikiUser.AllowedViewDomains,
+            DisplayName = wikiUser.DisplayName,
+            Groups = wikiUser.Groups,
+            Id = wikiUser.Id,
+            IsWikiAdmin = wikiUser.IsWikiAdmin,
+            UploadLimit = wikiUser.UploadLimit,
+        };
+    }
+
+    /// <summary>
+    /// Fetches information about a given wiki user.
+    /// </summary>
+    /// <param name="user">The user making the request.</param>
+    /// <param name="query">
+    /// A wiki user ID or username.
+    /// </param>
+    /// <returns>
+    /// An <see cref="IWikiUser"/> instance (possibly with a limited set of information, if the
+    /// requesting <paramref name="user"/> is not an administrator); or <see langword="null"/> if
+    /// there is no such user.
+    /// </returns>
+    /// <remarks>
+    /// When an administrator requests information about a deleted or disabled user, the <see
+    /// cref="IWikiUser"/> instance is returned with the relevant properties set. When a
+    /// non-administrator requests information about a deleted or disabled user, <see
+    /// langword="null"/> is returned.
+    /// </remarks>
+    public async Task<WikiUser?> GetWikiUserAsync(ClaimsPrincipal? user, string query)
+    {
+        if (_userManager is null
+            || string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var wikiUser = await _userManager.FindByIdAsync(query);
+        wikiUser ??= await _userManager.FindByNameAsync(query);
+        if (wikiUser is null)
+        {
+            return null;
+        }
+
+        var requestingUser = await _userManager.GetUserAsync(user);
+        if (requestingUser?.IsWikiAdmin == true)
+        {
+            return new WikiUser
+            {
+                AllowedEditPages = wikiUser.AllowedEditPages,
+                AllowedViewPages = wikiUser.AllowedViewPages,
+                AllowedViewDomains = wikiUser.AllowedViewDomains,
+                DisplayName = wikiUser.DisplayName,
+                Groups = wikiUser.Groups,
+                Id = wikiUser.Id,
+                IsDeleted = wikiUser.IsDeleted,
+                IsDisabled = wikiUser.IsDisabled,
+                IsWikiAdmin = wikiUser.IsWikiAdmin,
+                UploadLimit = wikiUser.UploadLimit,
+            };
+        }
+
+        if (wikiUser.IsDeleted
+            || wikiUser.IsDisabled)
+        {
+            return null;
+        }
+
+        return new WikiUser
+        {
+            DisplayName = wikiUser.DisplayName,
+            Id = wikiUser.Id,
+            IsWikiAdmin = wikiUser.IsWikiAdmin,
+        };
+    }
+
+    /// <summary>
+    /// Posts a talk message to a given topic.
+    /// </summary>
+    /// <param name="user">The user making the request.</param>
+    /// <param name="reply">A <see cref="ReplyRequest"/> instance.</param>
+    /// <returns>
+    /// A <see cref="MessageResponse"/> instance containing all the messages for the related page.
+    /// </returns>
+    /// <exception cref="ArgumentException">
+    /// The <see cref="ReplyRequest.TopicId"/> was missing.
+    /// </exception>
+    /// <exception cref="WikiUnauthorizedException">
+    /// The user does not have <see cref="WikiPermission.Read"/> permission for the given topic.
+    /// </exception>
+    public async Task PostTalkAsync(
+        ClaimsPrincipal? user,
+        ReplyRequest reply)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        if (string.IsNullOrEmpty(reply.TopicId))
+        {
+            throw new ArgumentException($"The {nameof(ReplyRequest.TopicId)} cannot be empty.",
+                nameof(reply));
+        }
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        var title = new Topic(reply.TopicId, null).GetTitle();
+        if (!title.Equals(new PageTitle()))
+        {
+            var result = await _dataStore.GetWikiPageAsync(
+                wikiOptions,
+                _userManager,
+                _groupManager,
+                title,
+                wikiUser);
+            if (!result.Permission.HasFlag(WikiPermission.Read))
+            {
+                throw new WikiUnauthorizedException();
+            }
+            if (!result.Exists)
+            {
+                return;
+            }
+        }
+
+        _ = await Message.ReplyAsync(
+            wikiOptions,
+            _dataStore,
+            reply.TopicId,
+            wikiUser.Id,
+            wikiUser.IsWikiAdmin,
+            wikiUser.DisplayName ?? wikiUser.Id,
+            reply.Markdown,
+            reply.MessageId);
+    }
 
     /// <summary>
     /// Gets the given content's rendered HTML.
@@ -491,11 +1026,22 @@ public class WikiDataService(
     /// A <see cref="string"/> containing the HTML; or <see langword="null"/> if there is no such
     /// content, or the user's account is not found, deleted, or disabled.
     /// </returns>
-    public Task<string?> RenderHtmlAsync(PreviewRequest request) => PostForStringAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/html",
-        request,
-        WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-        user => localWikiDataService.RenderHtmlAsync(user, request));
+    public async Task<string?> RenderHtmlAsync(PreviewRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        return MarkdownItem.RenderHtml(
+            wikiOptions,
+            _dataStore,
+            await TransclusionParser.TranscludeAsync(
+                wikiOptions,
+                _dataStore,
+                request.Content,
+                request.Title));
+    }
 
     /// <summary>
     /// Gets a preview of the given content's rendered HTML.
@@ -505,686 +1051,781 @@ public class WikiDataService(
     /// A <see cref="string"/> containing the preview; or <see langword="null"/> if there is no such
     /// content, or the user's account is not found, deleted, or disabled.
     /// </returns>
-    public Task<string?> RenderPreviewAsync(PreviewRequest request) => PostForStringAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/preview",
-        request,
-        WikiBlazorJsonSerializerContext.Default.PreviewRequest,
-        user => localWikiDataService.RenderPreviewAsync(user, request));
+    public async Task<string?> RenderPreviewAsync(PreviewRequest request)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        return MarkdownItem.RenderPreview(
+            wikiOptions,
+            await TransclusionParser.TranscludeAsync(
+                wikiOptions,
+                _dataStore,
+                request.Content,
+                request.Title));
+    }
 
     /// <summary>
     /// Restores an <see cref="Archive"/> to the wiki.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="archive">An <see cref="Archive"/> instance.</param>
     /// <exception cref="WikiUnauthorizedException">
     /// The user does not have appropriate permission to restore all the pages in the archive.
     /// </exception>
-    public Task RestoreArchiveAsync(Archive archive) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/restorearchive",
-        archive,
-        WikiArchiveJsonSerializerContext.Default.Archive,
-        async user =>
+    public async Task RestoreArchiveAsync(ClaimsPrincipal? user, Archive archive)
+    {
+        if (_dataStore is null)
         {
-            await localWikiDataService.RestoreArchiveAsync(user, archive);
-            return true;
-        });
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        if (archive.Pages is null
+            || archive.Pages.Count == 0)
+        {
+            return;
+        }
+
+        if (user is null)
+        {
+            throw new WikiUnauthorizedException();
+        }
+        var wikiUser = _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        var skipPermission = false;
+        if (wikiUser.IsWikiAdmin)
+        {
+            skipPermission = true;
+        }
+        else if (wikiOptions.UserDomains)
+        {
+            var domains = archive.Pages.ConvertAll(x => x.Title.Domain);
+            if (domains.Count == 1
+                && string.CompareOrdinal(domains[0], wikiUser.Id) == 0)
+            {
+                skipPermission = true;
+            }
+        }
+
+        if (!skipPermission)
+        {
+            const WikiPermission RequiredPermissions = WikiPermission.Write
+                | WikiPermission.Create
+                | WikiPermission.SetPermissions
+                | WikiPermission.SetOwner;
+
+            foreach (var page in archive.Pages)
+            {
+                var permission = await _dataStore.GetPermissionAsync(
+                    wikiOptions,
+                    _groupManager,
+                    page,
+                    wikiUser);
+                if ((permission & RequiredPermissions) != RequiredPermissions)
+                {
+                    throw new WikiUnauthorizedException();
+                }
+            }
+        }
+
+        await archive.RestoreAsync(_dataStore, wikiOptions, wikiUser.Id, null, _cache);
+    }
 
     /// <summary>
     /// Performs a search.
     /// </summary>
+    /// <param name="user">The user making the request.</param>
     /// <param name="request">The search request.</param>
     /// <returns>
     /// A <see cref="SearchResult"/> object.
     /// </returns>
-    public Task<SearchResult?> SearchAsync(SearchRequest request) => PostAsync(
-        $"{wikiBlazorClientOptions.WikiServerApiRoute}/search",
-        request,
-        WikiJsonSerializerContext.Default.SearchRequest,
-        WikiBlazorJsonSerializerContext.Default.SearchResult,
-        async user => await localWikiDataService.SearchAsync(user, request));
-
-    /// <summary>
-    /// Fetches data from the wiki server, or the offline store.
-    /// </summary>
-    /// <typeparam name="T">The type of data to retrieve.</typeparam>
-    /// <param name="url">The URL to call when online.</param>
-    /// <param name="type">THe JSON type info</param>
-    /// <param name="fetchLocal">The function to execute when offline.</param>
-    /// <returns>The result.</returns>
-    private async Task<T?> FetchDataAsync<T>(
-        string url,
-        JsonTypeInfo<T> type,
-        Func<ClaimsPrincipal?, Task<T?>> fetchLocal)
+    public async Task<SearchResult> SearchAsync(
+        ClaimsPrincipal? user,
+        SearchRequest request)
     {
-        T? result = default;
-
-        var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
-        if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+        if (_dataStore is null)
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
-        }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        _authenticationStateProvider ??= serviceProvider.GetService<AuthenticationStateProvider>();
-        if (_authenticationStateProvider is not null)
-        {
-            state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
-        var fetchedFromServer = false;
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (!isLocal && _httpClient is not null)
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync(url);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized(state);
-                    return default;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogWarning(
-                        "Bad request when fetching data from url {URL}.",
-                        url);
-                    snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    result = await response.Content.ReadFromJsonAsync(type);
-                    fetchedFromServer = true;
-                }
-            }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error fetching data from url {URL}.",
-                    url);
-                snackbarService.Add("An error occurred", ThemeColor.Danger);
-                return default;
-            }
+            throw new InvalidOperationException("No data store configured.");
         }
 
-        if (!fetchedFromServer)
+        if (string.IsNullOrEmpty(request.Query))
         {
-            try
-            {
-                result = await fetchLocal.Invoke(user);
-            }
-            catch (WikiUnauthorizedException)
-            {
-                HandleUnauthorized(state);
-                return default;
-            }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error fetching data locally for url {URL}.",
-                    url);
-                wikiState.LoadError = true;
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return default;
-            }
+            return new SearchResult(
+                request,
+                new PagedList<SearchHit>(null, 1, request.PageSize, 0));
         }
 
-        return result;
+        string? ownerQuery = null;
+        if (!string.IsNullOrEmpty(request.Owner))
+        {
+            var owners = request
+                .Owner
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var ownerIds = new List<string>();
+            foreach (var name in owners)
+            {
+                var excluded = name.Length > 0 && name[0] == '!';
+                var ownerId = excluded ? name[1..] : name;
+
+                IWikiOwner? foundOwner = _userManager is null
+                    ? null
+                    : await _userManager.FindByIdAsync(ownerId);
+                if (_groupManager is not null)
+                {
+                    foundOwner ??= await _groupManager.FindByIdAsync(ownerId);
+                }
+                if (foundOwner is not null)
+                {
+                    ownerIds.Add(excluded ? $"!{foundOwner.Id}" : foundOwner.Id);
+                }
+            }
+            if (ownerIds.Count == 0)
+            {
+                return new SearchResult(
+                    request,
+                    new PagedList<SearchHit>(null, 1, request.PageSize, 0));
+            }
+            ownerQuery = string.Join(';', ownerIds);
+        }
+
+        var query = request.Query.Trim();
+
+        request = request with
+        {
+            Owner = ownerQuery,
+            Query = query,
+        };
+
+        var wikiUser = user is null || _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+
+        var title = PageTitle.Parse(query.Trim('"'));
+        if (string.IsNullOrEmpty(title.Domain)
+            && !string.IsNullOrEmpty(request.Domain))
+        {
+            title = title.WithDomain(request.Domain);
+        }
+        if (string.IsNullOrEmpty(title.Namespace)
+            && !string.IsNullOrEmpty(request.Namespace))
+        {
+            title = title.WithNamespace(request.Namespace);
+        }
+
+        var exactMatch = await _dataStore.GetWikiPageAsync(wikiOptions, title);
+        if (exactMatch?.Exists != true)
+        {
+            exactMatch = null;
+        }
+
+        return new SearchResult(
+            request,
+            await _dataStore.SearchWikiAsync(
+                wikiOptions,
+                _groupManager,
+                request,
+                wikiUser,
+                _cache),
+            exactMatch);
     }
 
     /// <summary>
-    /// Fetches an integer from the wiki server, or the offline store.
+    /// Upload a file.
     /// </summary>
-    /// <param name="url">The URL to call when online.</param>
-    /// <param name="fetchLocal">The function to execute when offline.</param>
-    /// <returns>The result.</returns>
-    private async Task<int> FetchIntAsync(
-        string url,
-        Func<ClaimsPrincipal?, Task<int>> fetchLocal)
-    {
-        var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
-        if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
-        {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
-        }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        _authenticationStateProvider ??= serviceProvider.GetService<AuthenticationStateProvider>();
-        if (_authenticationStateProvider is not null)
-        {
-            state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (!isLocal && _httpClient is not null)
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync(url);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized(state);
-                    return 0;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogWarning(
-                        "Bad request when fetching data from url {URL}.",
-                        url);
-                    snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return 0;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    var result = await response.Content.ReadAsStringAsync();
-                    if (int.TryParse(result, out var value))
-                    {
-                        return value;
-                    }
-                }
-            }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error fetching data from url {URL}.",
-                    url);
-                snackbarService.Add("An error occurred", ThemeColor.Danger);
-                return 0;
-            }
-        }
-
-        if (wikiBlazorClientOptions.DataStore is not null)
-        {
-            try
-            {
-                return await fetchLocal.Invoke(user);
-            }
-            catch (WikiUnauthorizedException)
-            {
-                HandleUnauthorized(state);
-                return 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error fetching data locally for url {URL}.",
-                    url);
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return 0;
-            }
-        }
-
-        return 0;
-    }
-
-    /// <summary>
-    /// Fetches a string from the wiki server, or the offline store.
-    /// </summary>
-    /// <param name="url">The URL to call when online.</param>
-    /// <param name="fetchLocal">The function to execute when offline.</param>
-    /// <returns>The result.</returns>
-    private async Task<string?> FetchStringAsync(
-        string url,
-        Func<ClaimsPrincipal?, Task<string?>> fetchLocal)
-    {
-        var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
-        if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
-        {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
-        }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        _authenticationStateProvider ??= serviceProvider.GetService<AuthenticationStateProvider>();
-        if (_authenticationStateProvider is not null)
-        {
-            state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (!isLocal && _httpClient is not null)
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync(url);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized(state);
-                    return null;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogWarning(
-                        "Bad request when fetching data from url {URL}.",
-                        url);
-                    snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return null;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
-                {
-                    return null;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    return await response.Content.ReadAsStringAsync();
-                }
-            }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error fetching data from url {URL}.",
-                    url);
-                snackbarService.Add("An error occurred", ThemeColor.Danger);
-                return null;
-            }
-        }
-
-        if (wikiBlazorClientOptions.DataStore is not null)
-        {
-            try
-            {
-                return await fetchLocal.Invoke(user);
-            }
-            catch (WikiUnauthorizedException)
-            {
-                HandleUnauthorized(state);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error fetching data locally for url {URL}.",
-                    url);
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return null;
-            }
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// POSTs data to the wiki server, or the offline store.
-    /// </summary>
-    /// <typeparam name="TSend">The type of data to send.</typeparam>
-    /// <typeparam name="TReturn">The type of data which will be returned.</typeparam>
-    /// <param name="url">The URL to call when online.</param>
-    /// <param name="value">The data to send.</param>
-    /// <param name="postedType">JSON type info for the data sent.</param>
-    /// <param name="returnType">JSON type info for the data to be returned.</param>
-    /// <param name="fetchLocal">The function to execute when offline.</param>
-    /// <returns>The result.</returns>
-    private async Task<TReturn?> PostAsync<TSend, TReturn>(
-        string url,
-        TSend value,
-        JsonTypeInfo<TSend> postedType,
-        JsonTypeInfo<TReturn> returnType,
-        Func<ClaimsPrincipal?, Task<TReturn?>> fetchLocal)
-    {
-        TReturn? result = default;
-
-        var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
-        if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
-        {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
-        }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        _authenticationStateProvider ??= serviceProvider.GetService<AuthenticationStateProvider>();
-        if (_authenticationStateProvider is not null)
-        {
-            state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
-        var triedServer = false;
-        var fetchedFromServer = false;
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (!isLocal && _httpClient is not null)
-        {
-            triedServer = true;
-            try
-            {
-                var response = await _httpClient.PostAsJsonAsync(url, value, postedType);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized(state);
-                    return default;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogWarning(
-                        "Bad request when posting data to url {URL}.",
-                        url);
-                    snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    result = await response.Content.ReadFromJsonAsync(returnType);
-                    fetchedFromServer = true;
-                }
-            }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error posting data to url {URL}.",
-                    url);
-                snackbarService.Add("An error occurred", ThemeColor.Danger);
-                return default;
-            }
-        }
-
-        if (!fetchedFromServer)
-        {
-            if (wikiBlazorClientOptions.DataStore is not null)
-            {
-                try
-                {
-                    result = await fetchLocal.Invoke(user);
-                }
-                catch (WikiUnauthorizedException)
-                {
-                    HandleUnauthorized(state);
-                    return default;
-                }
-                catch (Exception ex)
-                {
-                    _logger.Log(
-                        LogLevel.Error,
-                        ex,
-                        "Error posting data locally for url {URL}.",
-                        url);
-                    snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-            }
-            else if (triedServer)
-            {
-                wikiState.LoadError = true;
-            }
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// POSTs data to the wiki server, or the offline store.
-    /// </summary>
-    /// <typeparam name="T">The type of data to send.</typeparam>
-    /// <param name="url">The URL to call when online.</param>
-    /// <param name="value">The data to send.</param>
-    /// <param name="type">JSON type info for the data sent.</param>
-    /// <param name="fetchLocal">The function to execute when offline.</param>
-    /// <param name="failMessage">
-    /// A message to supply when the operation fails, and no message is returned.
+    /// <param name="user"></param>
+    /// <param name="fileManager">An <see cref="IFileManager"/> instance.</param>
+    /// <param name="options">
+    /// An <see cref="UploadRequest"/> instance.
+    /// </param>
+    /// <param name="file">
+    /// <para>
+    /// A <see cref="Stream"/> containing the file to be uploaded.
+    /// </para>
+    /// <para>
+    /// Or <see langword="null"/> if the file is being deleted.
+    /// </para>
+    /// </param>
+    /// <param name="fileName">
+    /// <para>
+    /// The name of the file to be uploaded.
+    /// </para>
+    /// <para>
+    /// Or <see langword="null"/> if a file is being deleted.
+    /// </para>
+    /// </param>
+    /// <param name="contentType">
+    /// <para>
+    /// The MIME type of the file to be uploaded.
+    /// </para>
+    /// <para>
+    /// Or <see langword="null"/> if a file is being deleted.
+    /// </para>
     /// </param>
     /// <returns>
-    /// <see langword="true"/> if the call succeeded; otherwise <see langword="false"/>.
+    /// <para>
+    /// <see langword="false"/> if a previous version of the file failed to be automatically deleted
+    /// as a result of an update; otherwise <see langword="true"/>.
+    /// </para>
+    /// <para>
+    /// Note that the upload is successful for both a <see langword="true"/> and <see
+    /// langword="false"/> result. Only an exception indicates failure.
+    /// </para>
     /// </returns>
-    private async Task<bool> PostAsync<T>(
-        string url,
-        T value,
-        JsonTypeInfo<T> type,
-        Func<ClaimsPrincipal?, Task<bool>> fetchLocal,
-        string? failMessage = null)
+    /// <exception cref="ArgumentException">
+    /// <para>
+    /// <paramref name="options"/> specifies a <see cref="UploadRequest.Title"/> with a namespace
+    /// other than <see cref="WikiOptions.FileNamespace"/>.
+    /// </para>
+    /// <para>
+    /// Or, the size of <paramref name="file"/> exceeds <see cref="WikiOptions.MaxFileSize"/>, or
+    /// the user's own upload limit.
+    /// </para>
+    /// <para>
+    /// Or, the specified <see cref="UploadRequest.Owner"/> does not exist.
+    /// </para>
+    /// <para>
+    /// Or, the specified title is an existing page which is not a file.
+    /// </para>
+    /// </exception>
+    /// <exception cref="WikiUnauthorizedException">
+    /// <para>
+    /// The user does not have permission to upload files.
+    /// </para>
+    /// <para>
+    /// Or, the user does not have permission to create/edit this particular file.
+    /// </para>
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// The file upload operation failed.
+    /// </exception>
+    /// <exception cref="WikiConflictException">
+    /// The specified file already exists, and <see cref="UploadRequest.OverwriteConfirmed"/> was
+    /// not set to <see langword="true"/>.
+    /// </exception>
+    public async Task<bool> UploadAsync(
+        ClaimsPrincipal? user,
+        IFileManager fileManager,
+        UploadRequest options,
+        Stream? file,
+        string? fileName,
+        string? contentType)
     {
-        var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
-        if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+        if (_dataStore is null)
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            throw new InvalidOperationException("No data store configured.");
         }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        _authenticationStateProvider ??= serviceProvider.GetService<AuthenticationStateProvider>();
-        if (_authenticationStateProvider is not null)
+
+        if (!string.IsNullOrEmpty(options.Title.Namespace)
+            && string.CompareOrdinal(options.Title.Namespace, wikiOptions.FileNamespace) != 0)
         {
-            state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
+            throw new ArgumentException("Files can only be uploaded to the File namespace (the namespace may be omitted to use the File namespace by default).", nameof(options));
         }
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (!isLocal && _httpClient is not null)
+        if (file is not null && string.IsNullOrEmpty(contentType))
+        {
+            throw new ArgumentException($"{nameof(contentType)} cannot be missing when a {nameof(file)} is provided.", nameof(contentType));
+        }
+        if (file?.Length > wikiOptions.MaxFileSize)
+        {
+            throw new ArgumentException($"File size exceeds {wikiOptions.MaxFileSizeString}.", nameof(file));
+        }
+        if (user is null)
+        {
+            throw new WikiUnauthorizedException();
+        }
+        var wikiUser = _userManager is null
+            ? null
+            : await _userManager.GetUserAsync(user);
+        if (wikiUser?.IsDeleted != false
+            || wikiUser.IsDisabled)
+        {
+            throw new WikiUnauthorizedException();
+        }
+        var limit = await wikiUser.GetUserMaxUploadLimitAsync(_groupManager);
+        if (limit == 0)
+        {
+            throw new WikiUnauthorizedException();
+        }
+        if (file?.Length > limit)
+        {
+            throw new ArgumentException("The size of this file exceeds your allotted upload limit.", nameof(file));
+        }
+        var freeSpace = await fileManager.GetFreeSpaceAsync(wikiUser);
+        if (freeSpace >= 0 && file?.Length > freeSpace)
+        {
+            throw new ArgumentException("The size of this file exceeds your remaining upload space.", nameof(file));
+        }
+
+        var ownerId = options.OwnerSelf
+            || string.IsNullOrEmpty(options.Owner)
+            ? wikiUser.Id
+            : options.Owner;
+
+        var intendedOwner = (_userManager is null
+            ? null
+            : await _userManager.FindByIdAsync(ownerId))
+            ?? throw new ArgumentException("No such owner found.", nameof(options));
+
+        var title = options.Title.WithNamespace(wikiOptions.FileNamespace);
+
+        var result = await _dataStore.GetWikiPageAsync(
+            wikiOptions,
+            _userManager,
+            _groupManager,
+            title,
+            wikiUser,
+            true);
+
+        if (!result.Exists && file is null)
+        {
+            throw new WikiConflictException("Cannot upload an empty file to a new page.");
+        }
+
+        if (result.Exists && result is not WikiFile)
+        {
+            throw new ArgumentException("The specified title is an existing page which is not a file.", nameof(options));
+        }
+
+        if (result.Exists && !options.OverwriteConfirmed)
+        {
+            throw new WikiConflictException("A file with this title already exists.");
+        }
+
+        List<string>? allAllowedEditors = null;
+        if (options.EditorSelf)
+        {
+            allAllowedEditors = [];
+        }
+        else if (options.AllowedEditors is not null)
+        {
+            foreach (var id in options.AllowedEditors)
+            {
+                var editor = _userManager is null
+                    ? null
+                    : await _userManager.FindByIdAsync(id);
+                if (editor?.IsDisabled == false
+                    && !editor.IsDisabled)
+                {
+                    (allAllowedEditors ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        List<string>? allAllowedEditorGroups = null;
+        if (!options.EditorSelf
+            && options.AllowedEditorGroups is not null
+            && _groupManager is not null)
+        {
+            foreach (var id in options.AllowedEditorGroups)
+            {
+                var editor = await _groupManager.FindByIdAsync(id);
+                if (editor is not null)
+                {
+                    (allAllowedEditorGroups ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        List<string>? allAllowedViewers = null;
+        if (options.EditorSelf)
+        {
+            allAllowedViewers = [];
+        }
+        else if (options.AllowedViewers is not null)
+        {
+            foreach (var id in options.AllowedViewers)
+            {
+                var editor = _userManager is null
+                    ? null
+                    : await _userManager.FindByIdAsync(id);
+                if (editor?.IsDisabled == false
+                    && !editor.IsDisabled)
+                {
+                    (allAllowedViewers ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        List<string>? allAllowedViewerGroups = null;
+        if (!options.EditorSelf
+            && options.AllowedViewerGroups is not null
+            && _groupManager is not null)
+        {
+            foreach (var id in options.AllowedViewerGroups)
+            {
+                var editor = await _groupManager.FindByIdAsync(id);
+                if (editor is not null)
+                {
+                    (allAllowedViewerGroups ??= []).Add(editor.Id);
+                }
+            }
+        }
+
+        var hasPermission = CheckEditPermissions(
+            wikiOptions,
+            result,
+            false,
+            allAllowedEditors,
+            allAllowedViewers,
+            allAllowedEditorGroups,
+            allAllowedViewerGroups);
+        if (!hasPermission)
+        {
+            throw new WikiUnauthorizedException();
+        }
+
+        Page? originalPage = null;
+        if (options.OriginalTitle.HasValue
+            && !options.OriginalTitle.Equals(title))
+        {
+            originalPage = await _dataStore.GetWikiPageAsync(
+                wikiOptions,
+                _userManager,
+                _groupManager,
+                options.OriginalTitle.Value,
+                wikiUser,
+                true);
+
+            if (!CheckEditPermissions(
+                wikiOptions,
+                originalPage,
+                true,
+                allAllowedEditors,
+                allAllowedViewers,
+                allAllowedEditorGroups,
+                allAllowedViewerGroups))
+            {
+                return false;
+            }
+        }
+
+        string? storagePath = null;
+        if (file is not null)
         {
             try
             {
-                var response = await _httpClient.PostAsJsonAsync(url, value, type);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                {
-                    HandleUnauthorized(state);
-                    return false;
-                }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogWarning(
-                        "Bad request when posting data to url {URL}.",
-                        url);
-                    snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return false;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    return true;
-                }
+                storagePath = await fileManager.SaveFileAsync(file, fileName, intendedOwner.Id);
             }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
             catch (Exception ex)
             {
                 _logger.Log(
                     LogLevel.Error,
                     ex,
-                    "Error posting data to url {URL}.",
-                    url);
-                snackbarService.Add("An error occurred", ThemeColor.Danger);
-                return false;
+                    "Exception during file upload for file with name {FileName}.",
+                    fileName);
+                throw;
+            }
+            if (string.IsNullOrWhiteSpace(storagePath))
+            {
+                throw new InvalidOperationException("File save operation failed.");
             }
         }
 
-        if (wikiBlazorClientOptions.DataStore is not null)
+        var success = true;
+        if (originalPage is WikiFile originalWikiFile)
         {
             try
             {
-                var success = await fetchLocal.Invoke(user);
-                if (!success && !string.IsNullOrEmpty(failMessage))
-                {
-                    snackbarService.Add(failMessage, ThemeColor.Warning);
-                }
-                return true;
-            }
-            catch (WikiUnauthorizedException)
-            {
-                HandleUnauthorized(state);
-                return false;
+                await fileManager.DeleteFileAsync(originalWikiFile.FilePath);
             }
             catch (Exception ex)
             {
                 _logger.Log(
                     LogLevel.Error,
                     ex,
-                    "Error posting data locally for url {URL}.",
-                    url);
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return false;
+                    "Exception during file delete for file with path {Path} during rename.",
+                    originalWikiFile.FilePath);
+                success = false;
+            }
+
+            try
+            {
+                await originalWikiFile.UpdateAsync(
+                    wikiOptions,
+                    _dataStore,
+                    wikiUser.Id,
+                    originalWikiFile.FilePath,
+                    0,
+                    originalWikiFile.FileType,
+                    null,
+                    options.RevisionComment,
+                    intendedOwner.Id,
+                    allAllowedEditors,
+                    allAllowedViewers,
+                    allAllowedEditorGroups,
+                    allAllowedViewerGroups,
+                    options.LeaveRedirect ? title : null,
+                    _cache);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "User with ID {UserId} failed to delete a file for wiki item with ID {Id}, title {Title}, and new size {Length}.",
+                    wikiUser.Id,
+                    originalWikiFile.Id,
+                    title,
+                    file?.Length ?? 0);
+                throw;
             }
         }
 
-        return false;
+        if (result is WikiFile wikiFile)
+        {
+            try
+            {
+                await fileManager.DeleteFileAsync(wikiFile.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "Exception during file delete for file with path {Path} during overwrite.",
+                    wikiFile.FilePath);
+                success = false;
+            }
+        }
+        else
+        {
+            wikiFile = WikiFile.Empty(title);
+        }
+
+        if (file is null || string.IsNullOrEmpty(storagePath))
+        {
+            try
+            {
+                await wikiFile.UpdateAsync(
+                    wikiOptions,
+                    _dataStore,
+                    wikiUser.Id,
+                    wikiFile.FilePath,
+                    0,
+                    wikiFile.FileType,
+                    null,
+                    options.RevisionComment,
+                    intendedOwner.Id,
+                    allAllowedEditors,
+                    allAllowedViewers,
+                    allAllowedEditorGroups,
+                    allAllowedViewerGroups,
+                    null,
+                    _cache);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "User with ID {UserId} failed to delete wiki file with ID {Id} and title {Title}.",
+                    wikiUser.Id,
+                    wikiFile.Id,
+                    title);
+                throw;
+            }
+        }
+        else
+        {
+            try
+            {
+                await wikiFile.UpdateAsync(
+                    wikiOptions,
+                    _dataStore,
+                    wikiUser.Id,
+                    storagePath,
+                    (int)file.Length,
+                    contentType ?? string.Empty,
+                    options.Markdown,
+                    options.RevisionComment,
+                    intendedOwner.Id,
+                    allAllowedEditors,
+                    allAllowedViewers,
+                    allAllowedEditorGroups,
+                    allAllowedViewerGroups,
+                    null,
+                    _cache);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(
+                    LogLevel.Error,
+                    ex,
+                    "User with ID {UserId} failed to upload a new file for wiki item with ID {Id}, title {Title}, and new size {Length}.",
+                    wikiUser.Id,
+                    wikiFile.Id,
+                    title,
+                    file.Length);
+                throw;
+            }
+        }
+
+        return success;
     }
 
-    /// <summary>
-    /// POSTs data to the wiki server, or the offline store.
-    /// </summary>
-    /// <typeparam name="T">The type of data to send.</typeparam>
-    /// <param name="url">The URL to call when online.</param>
-    /// <param name="value">The data to send.</param>
-    /// <param name="type">JSON type info for the data sent.</param>
-    /// <param name="fetchLocal">The function to execute when offline.</param>
-    /// <returns>A string.</returns>
-    private async Task<string?> PostForStringAsync<T>(
-        string url,
-        T value,
-        JsonTypeInfo<T> type,
-        Func<ClaimsPrincipal?, Task<string?>> fetchLocal)
+    private static bool CheckEditPermissions(
+        WikiOptions options,
+        Page page,
+        bool isDeletedOrRenamed = false,
+        IEnumerable<string>? allowedEditors = null,
+        IEnumerable<string>? allowedViewers = null,
+        IEnumerable<string>? allowedEditorGroups = null,
+        IEnumerable<string>? allowedViewerGroups = null)
     {
-        string? result = null;
-
-        var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
-        if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+        if (!page.Permission.HasFlag(WikiPermission.Write))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            return false;
         }
-        ClaimsPrincipal? user = null;
-        AuthenticationState? state = null;
-        _authenticationStateProvider ??= serviceProvider.GetService<AuthenticationStateProvider>();
-        if (_authenticationStateProvider is not null)
+        if (!page.Exists)
         {
-            state = await _authenticationStateProvider.GetAuthenticationStateAsync();
-            user = state.User;
-        }
-        var fetchedFromServer = false;
-        _httpClient ??= serviceProvider.GetService<HttpClient>();
-        if (!isLocal && _httpClient is not null)
-        {
-            try
+            if (!page.Permission.HasFlag(WikiPermission.Create))
             {
-                var response = await _httpClient.PostAsJsonAsync(url, value, type);
-                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                return false;
+            }
+            if (options.ReservedNamespaces.Any(x => string.CompareOrdinal(page.Title.Namespace, x) == 0))
+            {
+                return false;
+            }
+        }
+        if (!string.IsNullOrEmpty(page.Owner)
+            && !page.Permission.HasFlag(WikiPermission.SetOwner))
+        {
+            return false;
+        }
+
+        if (isDeletedOrRenamed
+            && !page.Permission.HasFlag(WikiPermission.Delete))
+        {
+            return false;
+        }
+
+        if (!page.Permission.HasFlag(WikiPermission.SetPermissions))
+        {
+            if (!page.Exists)
+            {
+                if (allowedEditors is not null
+                    || allowedEditorGroups is not null
+                    || allowedViewers is not null
+                    || allowedViewerGroups is not null)
                 {
-                    HandleUnauthorized(state);
-                    return default;
+                    return false;
                 }
-                else if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
-                {
-                    _logger.LogWarning(
-                        "Bad request when posting data to url {URL}.",
-                        url);
-                    snackbarService.Add(response.ReasonPhrase ?? "Invalid operation", ThemeColor.Warning);
-                    return default;
-                }
-                else if (response.IsSuccessStatusCode
-                    && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    result = await response.Content.ReadAsStringAsync();
-                    fetchedFromServer = true;
-                }
-            }
-            catch (AccessTokenNotAvailableException ex)
-            {
-                ex.Redirect();
-            }
-            catch (HttpRequestException) { }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error posting data to url {URL}.",
-                    url);
-                snackbarService.Add("An error occurred", ThemeColor.Danger);
-                return default;
-            }
-        }
-
-        if (!fetchedFromServer
-            && wikiBlazorClientOptions.DataStore is not null)
-        {
-            try
-            {
-                result = await fetchLocal.Invoke(user);
-            }
-            catch (WikiUnauthorizedException)
-            {
-                HandleUnauthorized(state);
-                return default;
-            }
-            catch (Exception ex)
-            {
-                _logger.Log(
-                    LogLevel.Error,
-                    ex,
-                    "Error posting data locally for url {URL}.",
-                    url);
-                snackbarService.Add(ex.Message ?? "Invalid operation", ThemeColor.Warning);
-                return default;
-            }
-        }
-
-        return result;
-    }
-
-    private void HandleUnauthorized(AuthenticationState? state)
-    {
-        if (state?.User.Identity?.IsAuthenticated != true)
-        {
-            if (state is null
-                || string.IsNullOrEmpty(wikiBlazorClientOptions.LoginPath))
-            {
-                navigationManager.NavigateTo(
-                    navigationManager.GetUriWithQueryParameter(
-                        nameof(Wiki.Unauthenticated),
-                        true));
             }
             else
             {
-                var path = new StringBuilder(wikiBlazorClientOptions.LoginPath)
-                    .Append(wikiBlazorClientOptions.LoginPath.Contains('?')
-                        ? '&' : '?')
-                    .Append("returnUrl=")
-                    .Append(UrlEncoder.Default.Encode(navigationManager.Uri));
-                navigationManager.NavigateTo(path.ToString());
+                if (page.AllowedEditors is null)
+                {
+                    if (allowedEditors is not null)
+                    {
+                        return false;
+                    }
+                }
+                else if (allowedEditors is null
+                    || !page.AllowedEditors.Order().SequenceEqual(allowedEditors.Order()))
+                {
+                    return false;
+                }
+
+                if (page.AllowedEditorGroups is null)
+                {
+                    if (allowedEditorGroups is not null)
+                    {
+                        return false;
+                    }
+                }
+                else if (allowedEditorGroups is null
+                    || !page.AllowedEditorGroups.Order().SequenceEqual(allowedEditorGroups.Order()))
+                {
+                    return false;
+                }
+
+                if (page.AllowedViewers is null)
+                {
+                    if (allowedViewers is not null)
+                    {
+                        return false;
+                    }
+                }
+                else if (allowedViewers is null
+                    || !page.AllowedViewers.Order().SequenceEqual(allowedViewers.Order()))
+                {
+                    return false;
+                }
+
+                if (page.AllowedViewerGroups is null)
+                {
+                    if (allowedViewerGroups is not null)
+                    {
+                        return false;
+                    }
+                }
+                else if (allowedViewerGroups is null
+                    || !page.AllowedViewerGroups.Order().SequenceEqual(allowedViewerGroups.Order()))
+                {
+                    return false;
+                }
             }
         }
-        wikiState.NotAuthorized = true;
+
+        return true;
+    }
+
+    private async Task<List<MessageResponse>> GetTopicMessagesAsync(Topic? topic)
+    {
+        if (_dataStore is null)
+        {
+            throw new InvalidOperationException("No data store configured.");
+        }
+
+        var responses = new List<MessageResponse>();
+        if (topic?.Messages is not null)
+        {
+            foreach (var message in topic.Messages)
+            {
+                var html = message.Html;
+                if (message.MarkdownContent?.StartsWith('[') == true
+                    && message.MarkdownContent.EndsWith(']'))
+                {
+                    var links = MarkdownItem.GetWikiLinks(wikiOptions, _dataStore, message.MarkdownContent);
+                    if (links?.Count == 1
+                        && !links[0].IsCategory
+                        && !links[0].IsMissing
+                        && string.IsNullOrEmpty(links[0].Action))
+                    {
+                        var article = await _dataStore.GetWikiPageAsync(wikiOptions, links[0].Title);
+                        if (article?.Exists == true)
+                        {
+                            html = string.Format(
+                                PreviewTemplate,
+                                string.IsNullOrEmpty(article.Title.Domain)
+                                    ? string.Empty
+                                    : string.Format(PreviewDomainTemplate, article.Title.Domain),
+                                string.IsNullOrEmpty(article.Title.Namespace)
+                                    ? string.Empty
+                                    : string.Format(PreviewNamespaceTemplate, article.Title.Namespace),
+                                article.Title,
+                                article.Preview);
+                        }
+                    }
+                }
+                if (string.IsNullOrWhiteSpace(html))
+                {
+                    continue;
+                }
+                responses.Add(new(
+                    message,
+                    html));
+            }
+        }
+
+        return responses;
     }
 }

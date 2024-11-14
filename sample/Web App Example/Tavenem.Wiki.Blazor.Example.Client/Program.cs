@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Tavenem.Wiki.Blazor.Example;
 using Tavenem.Wiki.Blazor.Example.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -7,6 +9,11 @@ var httpClient = new HttpClient() { BaseAddress = new Uri(builder.HostEnvironmen
 builder.Services.AddScoped(_ => httpClient);
 
 builder.Services.AddAuthorizationCore();
-builder.Services.AddWikiClient(false);
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<CustomAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
+    provider.GetRequiredService<CustomAuthenticationStateProvider>());
+
+builder.Services.AddWikiClient(ExampleWikiOptions.Instance);
 
 await builder.Build().RunAsync();

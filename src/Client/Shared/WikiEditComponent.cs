@@ -46,9 +46,9 @@ public class WikiEditComponent : ComponentBase
     protected virtual string? Title { get; set; }
 
     /// <summary>
-    /// An injected <see cref="Services.WikiDataService"/> instance.
+    /// An injected <see cref="Services.ClientWikiDataService"/> instance.
     /// </summary>
-    [Inject, NotNull] protected WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] protected ClientWikiDataService? WikiDataService { get; set; }
 
     /// <summary>
     /// Gets the wiki links in the content by calling the wiki server, or the offline data manager.

@@ -37,7 +37,7 @@ public partial class Talk
 
     private List<TalkMessageModel> TalkMessages { get; set; } = [];
 
-    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
 
     [Inject, NotNull] private WikiState? WikiState { get; set; }
 

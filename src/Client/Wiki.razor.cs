@@ -220,8 +220,6 @@ public partial class Wiki : IDisposable
 
     private bool IsGroupPage { get; set; }
 
-    private bool IsInteractive { get; set; }
-
     private bool IsSearch { get; set; }
 
     private bool IsSpecial { get; set; }
@@ -260,9 +258,9 @@ public partial class Wiki : IDisposable
 
     private string? TargetTitle { get; set; }
 
-    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
 
-    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     private Page? WikiPage { get; set; }
 
@@ -289,7 +287,6 @@ public partial class Wiki : IDisposable
     {
         if (firstRender)
         {
-            IsInteractive = true;
             NavigationManager.LocationChanged += OnLocationChanged;
             StateHasChanged();
         }

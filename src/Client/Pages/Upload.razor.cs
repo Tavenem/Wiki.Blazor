@@ -17,6 +17,11 @@ public partial class Upload
 {
     private const string _baseDragAreaClass = "container rounded p-4 my-4";
 
+    /// <summary>
+    /// The ID of the current user (may be null if the current user is browsing anonymously).
+    /// </summary>
+    [Parameter] public string? UserId { get; set; }
+
     private string? Comment { get; set; }
 
     private string? Content { get; set; }
@@ -37,7 +42,7 @@ public partial class Upload
 
     private bool InsufficientSpace { get; set; }
 
-    [CascadingParameter] private bool IsInteractive { get; set; }
+    private bool IsInteractive { get; set; }
 
     [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
 
@@ -66,9 +71,9 @@ public partial class Upload
 
     private bool ViewerSelf { get; set; }
 
-    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
 
-    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
@@ -79,6 +84,16 @@ public partial class Upload
 
     /// <inheritdoc/>
     protected override async Task OnInitializedAsync() => NotAuthorized = await WikiDataService.GetUploadLimitAsync() == 0;
+
+    /// <inheritdoc />
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsInteractive = true;
+            StateHasChanged();
+        }
+    }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
     private static async IAsyncEnumerable<string> TitleValidation(string? value, object? _)
@@ -219,7 +234,7 @@ public partial class Upload
                     content);
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    if (WikiState.User is null)
+                    if (string.IsNullOrEmpty(UserId))
                     {
                         if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
                         {

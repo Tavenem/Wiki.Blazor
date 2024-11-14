@@ -22,9 +22,9 @@ public partial class EditView : WikiEditComponent
     [Parameter] public Page? Page { get; set; }
 
     /// <summary>
-    /// The current user.
+    /// The ID of the current user (may be null if the current user is browsing anonymously).
     /// </summary>
-    [Parameter] public IWikiUser? User { get; set; }
+    [Parameter] public string? UserId { get; set; }
 
     /// <summary>
     /// The title of the wiki article.
@@ -43,7 +43,7 @@ public partial class EditView : WikiEditComponent
 
     private bool HasDraft { get; set; } = true;
 
-    [CascadingParameter] private bool IsInteractive { get; set; }
+    private bool IsInteractive { get; set; }
 
     [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
 
@@ -60,8 +60,8 @@ public partial class EditView : WikiEditComponent
     [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
 
     [MemberNotNullWhen(false, nameof(Title))]
-    [MemberNotNullWhen(false, nameof(User))]
-    private bool SubmitDisabled => User is null
+    [MemberNotNullWhen(false, nameof(UserId))]
+    private bool SubmitDisabled => string.IsNullOrEmpty(UserId)
         || string.IsNullOrWhiteSpace(Title);
 
     private List<IWikiOwner> Viewers { get; set; } = [];
@@ -95,6 +95,16 @@ public partial class EditView : WikiEditComponent
         return base.SetParametersAsync(parameters);
     }
 
+    /// <inheritdoc />
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            IsInteractive = true;
+            StateHasChanged();
+        }
+    }
+
     private async Task DeleteAsync()
     {
         var result = await DialogService.ShowMessageBox(
@@ -113,7 +123,7 @@ public partial class EditView : WikiEditComponent
             return;
         }
 
-        var draftPageTitle = PageTitle.Parse(Title).WithDomain(User.Id);
+        var draftPageTitle = PageTitle.Parse(Title).WithDomain(UserId);
 
         var item = await WikiDataService.GetItemAsync(draftPageTitle, true);
         if (item?.Exists != true)
@@ -175,13 +185,13 @@ public partial class EditView : WikiEditComponent
 
     private async Task LoadDraftAsync()
     {
-        if (!AllowDrafts || User is null)
+        if (!AllowDrafts || string.IsNullOrEmpty(UserId))
         {
             return;
         }
 
         var item = await WikiDataService.GetItemAsync(
-            PageTitle.Parse(Title).WithDomain(User.Id),
+            PageTitle.Parse(Title).WithDomain(UserId),
             true);
         if (item?.Exists != true)
         {
@@ -329,7 +339,7 @@ public partial class EditView : WikiEditComponent
                 .ToList();
         }
 
-        var draftPagetitle = PageTitle.Parse(Title).WithDomain(User.Id);
+        var draftPagetitle = PageTitle.Parse(Title).WithDomain(UserId);
         var result = await WikiDataService.EditAsync(new EditRequest(
             draftPagetitle,
             Content,

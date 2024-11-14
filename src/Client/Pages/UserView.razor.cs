@@ -13,7 +13,7 @@ public partial class UserView
 
     private MarkupString Content { get; set; }
 
-    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 

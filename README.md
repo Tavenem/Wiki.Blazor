@@ -31,10 +31,7 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 
    `AddWikiClient` has two optional parameters.
 
-   The first parameter is either an instance of `WikiOptions` or a function which provides one. This interface allows you to configure the wiki's core features. See the README for [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for more information.
-   
-   The second parameter is either an instance of `WikiBlazorClientOptions` or a function which provides one.
-   This interface allows you to configure the wiki's Blazor implementation features, and includes the following properties:
+   The first parameter is either an instance of `WikiBlazorOptions` or a function which configures one. This object inherits from `WikiOptions` and allows you to configure the wiki's core features as well as the Blazor client. See the README for [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for more information. It includes the following additional properties:
    - `AppBar`: The type of an optional component (typically containing an [AppBar](https://tavenem.com/Blazor.Framework/components/appbar) from the [Tavenem Blazor Framework](https://tavenem.com/Blazor.Framework/)) which will appear at the top of wiki pages.
    - `AppBarRenderMode`: The [render mode](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/render-modes) to use for the `AppBar` component, or `null` to use static rendering.
    
@@ -65,6 +62,13 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
      If both the server and the local data store are unavailable, the wiki will remain operational, but will show no content and will not allow any content to be added.
 
      No automatic synchronization occurs from the local data store to the server (for instance when an offline client reestablishes network connectivity). If your app model requires synchronization of offline content to a server, that logic must be implemented separately.
+
+     The `DataStore` property may be configured using an overload of the `ConfigureDataStore` method on the action parameter, rather than set directly to an instance, if dependency injection should be used to obtain it.
+   - `DomainArchivePermission`: The minimum permission the user must have in order to create an archive of a domain.
+   
+     This property does not apply when creating an archive for content without a domain, or for the entire wiki.
+     
+     Since it would be prohibitive to check individual pages' permission, archiving only requires that a user has this level of permission (defaults to Read) for the target domain. This could represent a potential security breach, if individual pages within the domain are further restricted. It is strongly recommended that the ability to create archives is restricted in your client code in a manner specific to your implementation's use of domains, which guarantees that only those with the correct permissions can create archives.
    - `IsOfflineDomain`: A function which determines whether the given domain should always be retrieved from the local `DataStore`, and never from the `WikiServerApiRoute`.
    - `LoginPath`: The relative path to the site's login page.
      
@@ -99,57 +103,22 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 
 ### The Server App
 
-1. (Optional) Call `AddWikiJsonContext` on an `IServiceCollection` instance in your `Program.cs` file. This configures the `JsonOptions` for MVC with the `WikiBlazorJsonSerializerContext` and `WikiJsonSerializerContext` source gererated serializer contexts.
-
-   This is an optional step. If you wish to provide your own JSON serializer context, or use reflection-based JSON serialization, or use an alternative JSON serializer, you should skip this step.
-
-   If you will provide your own context, it is recommended that you combine it with `WikiBlazorJsonSerializerContext` and `WikiJsonSerializerContext` via `JsonTypeInfoResolver.Combine` to ensure that all necessary wiki types are included.
-
-   For example:
-   ```csharp
-    var resolver = JsonTypeInfoResolver.Combine(
-        YourCustomContext.Default,
-        WikiBlazorJsonSerializerContext.Default,
-        WikiJsonSerializerContext.Default,
-        new DefaultJsonTypeInfoResolver());
-    services.Configure<JsonOptions>(options =>
-        options.JsonSerializerOptions.TypeInfoResolver = resolver);
-   ```
-1. Call one of the overloads of `AddWikiServer` on an `IServiceCollection` instance in your `Program.cs` file. `AddWikiServer` has two required parameters and three optional parameters.
+1. Call one of the overloads of `AddWikiServer` on an `IServiceCollection` instance in your `Program.cs` file. `AddWikiServer` has two optional parameters which are similar to those used for `AddWikiClient`. The configuration parameter adds the following additional properties:
    
-   The first parameter is either an instance of `IWikiUserManager`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. This interface allows the wiki to get information about users. Typically this will be a wrapper around your actual user persistence mechanism (e.g. [ASP.NET Core Identity](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity)).
-
-   The second parameter is either an instance of `IWikiGroupManager`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. This interface allows the wiki to get information about user groups. Typically this will be a wrapper around your actual user group persistence mechanism.
-
-   The next parameter is either an instance of `WikiOptions` or a function which provides one. This interface allows you to configure the wiki's core features. See the README for [Tavenem.Wiki](https://github.com/Tavenem/Wiki) for more information.
-   
-   The next parameter is either an instance of `IWikiBlazorServerOptions` or a function which provides one. This interface allows you to configure the wiki's Blazor implementation features, and includes the following properties:
-   - `DomainArchivePermission`: The minimum permission the user must have in order to create an archive of a domain.
-   
-     This property does not apply when creating an archive for content without a domain, or for the entire wiki.
-     
-     Since it would be prohibitive to check individual pages' permission, archiving only requires that a user has this level of permission (defaults to Read) for the target domain. This could represent a potential security breach, if individual pages within the domain are further restricted. It is strongly recommended that the ability to create archives is restricted in your client code in a manner specific to your implementation's use of domains, which guarantees that only those with the correct permissions can create archives.
-   - `LoginPath`: The relative path to the site's login page.
-     
-     For security reasons, only a local path is permitted. If your authentication mechanisms are handled externally, this should point to a local page which redirects to that source (either automatically or via interaction).
-   
-     A query parameter with the name "returnUrl" whose value is set to the page which initiated the logic request will be appended to this URL (if provided). Your login page may ignore this parameter, but to improve user experience it should redirect the user back to this URL after performing a successful login. Be sure to validate that the value of the parameter is from a legitimate source to avoid exploits.
-   
-     If this option is omitted, a generic "not signed in" message will be displayed whenever a user who is not logged in attempts any action which requires an account.
-   - `WikiServerApiRoute`: The relative URL of the wiki's server API.
-   
-     If omitted, the path "/wikiapi" will be used.
-   
-   The next parameter is either an instance of `IFileManager`, or the type of an implementation of that interface which is available via dependency injection, or a function which provides one. If omitted, an instance of `LocalFileManager` will be used, which stores files in a subfolder of wwwroot. Note that you can disable file uploads entirely in `WikiOptions`.
+   - `FileManager`: an instance of `IFileManager`. The overloads of `ConfigureFileManager` also allow configuring this from dependency injection. If omitted, an instance of `LocalFileManager` will be used, which stores files in a subfolder of wwwroot. Note that you can disable file uploads entirely in `WikiOptions`.
+   - `GroupManager`: an instance of `IWikiGroupManager`. The overloads of `ConfigureGroupManager` also allow configuring this from dependency injection. This interface allows the wiki to get information about user groups. Typically this will be a wrapper around your actual user group persistence mechanism. If omitted, an instance of `WikiGroupManager` will be used, which keeps its data in the `IDataStore`.
+   - `UserManager`: an instance of `IWikiUserManager`. The overloads of `ConfigureUserManager` also allow configuring this from dependency injection. This interface allows the wiki to get information about users. Typically this will be a wrapper around your actual user persistence mechanism (e.g. [ASP.NET Core Identity](https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity)). If omitted, an instance of `WikiUserManager` will be used, which keeps its data in the `IDataStore`.
+   - `UseDefaultAuthorization`: Defaults to true, which allows anonymous reads and requires an authenticated user for edits. If set to false, custom `AuthorizationHandler{TRequirement,TResource}` implementations should be registered for `WikiDefaultRequirement` (for read operations) and `WikiEditRequirement` (for edit operations). Both receive a `PageTitle` for the resource parameter, although it may be set to a default value (i.e. the main wiki page) for operations which do not reference a specific wiki page, such as search.
+2. Call `MapWiki` to adds endpoint for the wiki to the ASP.NET Host server app for a Blazor WebAssembly client. If `WikiServerApiRoute` was set to a custom value in the options, it should be provided as a parameter to this method.
 
    For example:
    ```csharp
    var builder = WebAssemblyHostBuilder.CreateDefault(args);
+   builder.Services.AddWikiServer();
    var app = builder.Build();
    app.MapWiki();
    ```
    This call should normally precede any other mapped endpoints.
-1. It is possible to implement an authorization policy with the name "WikiPolicy" which will be applied to the built-in wiki controller. Note, however, that the `AllowAnonymous` attribute is applied to this controller. This means that while authentication will be performed according to the rules defined in the policy, access to the actions of the controller will not be denied on the basis of authorization.
 
 ## Roadmap
 

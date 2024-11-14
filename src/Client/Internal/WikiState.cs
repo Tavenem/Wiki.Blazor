@@ -68,6 +68,11 @@ public class WikiState
     public string PageTitle { get; private set; }
 
     /// <summary>
+    /// The current user (if non-anonymous).
+    /// </summary>
+    public WikiUser? User { get; internal set; }
+
+    /// <summary>
     /// The domain of the current wiki page.
     /// </summary>
     public string? WikiDomain { get; internal set; }
@@ -81,11 +86,6 @@ public class WikiState
     /// The title of the current wiki page.
     /// </summary>
     public string? WikiTitle { get; internal set; }
-
-    /// <summary>
-    /// The current user (if non-anonymous).
-    /// </summary>
-    public WikiUser? User { get; internal set; }
 
     /// <summary>
     /// Raised when the compact view is turned on or off.

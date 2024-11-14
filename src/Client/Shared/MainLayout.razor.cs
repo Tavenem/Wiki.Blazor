@@ -13,7 +13,7 @@ namespace Tavenem.Wiki.Blazor.Client.Shared;
 /// </summary>
 public partial class MainLayout
 {
-    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 

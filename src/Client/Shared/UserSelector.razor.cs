@@ -68,7 +68,7 @@ public partial class UserSelector
     [Parameter] public string? Label { get; set; }
 
     /// <summary>
-    /// THe name for the non-interactive text input.
+    /// The name for the non-interactive text input.
     /// </summary>
     [Parameter] public string? Name { get; set; }
 
@@ -104,9 +104,11 @@ public partial class UserSelector
 
     private string? SearchValue { get; set; }
 
+    private string? SelectedUsersString => string.Join(';', SelectedUsers.Select(x => x.Id));
+
     [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
 
-    [Inject, NotNull] private WikiDataService? WikiDataService { get; set; }
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     /// <inheritdoc />
     protected override async Task OnInitializedAsync()

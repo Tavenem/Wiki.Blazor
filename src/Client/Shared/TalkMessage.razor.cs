@@ -25,7 +25,7 @@ public partial class TalkMessage
     private bool PostDisabled => string.IsNullOrEmpty(TopicId)
         || string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
 
-    [Inject, NotNull] private WikiBlazorClientOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 

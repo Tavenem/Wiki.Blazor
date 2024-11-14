@@ -1,5 +1,6 @@
-﻿@inherits WikiEditComponent
-@rendermode RenderMode.InteractiveWebAssembly
+﻿@rendermode InteractiveRenderMode
+
+@inherits WikiEditComponent
 
 <div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
@@ -48,21 +49,21 @@
         </Tooltip>
     </Checkbox>
 }
-<Tabs TTabItem="object" ActivePanelIndexChanged="OnTabChangedAsync" Class="align-self-stretch">
-    <TabPanel Title="Editor">
-        <Editor Height="20rem"
-                Syntax="IsScript ? EditorSyntax.JavaScript : EditorSyntax.Markdown"
-                Spellcheck="true"
-                @bind-Value="Content" />
-    </TabPanel>
-    <TabPanel Title="Preview">
-        <tf-syntax-highlight style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
-            @HtmlContent
-        </tf-syntax-highlight>
-    </TabPanel>
-</Tabs>
 @if (IsInteractive)
 {
+    <Tabs TTabItem="object" ActivePanelIndexChanged="OnTabChangedAsync" Class="align-self-stretch">
+        <TabPanel Title="Editor">
+            <Editor Height="20rem"
+                    Syntax="IsScript ? EditorSyntax.JavaScript : EditorSyntax.Markdown"
+                    Spellcheck="true"
+                    @bind-Value="Content" />
+        </TabPanel>
+        <TabPanel Title="Preview">
+            <tf-syntax-highlight style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
+                @HtmlContent
+            </tf-syntax-highlight>
+        </TabPanel>
+    </Tabs>
     <TextInput Label="Revision comment"
                @bind-Value="Comment"
                Spellcheck="true"
@@ -101,6 +102,12 @@
                       HelpText="May be users or groups. The owner is automatically included."
                       Class="flex-grow-1" />
     </div>
+}
+else
+{
+    <tf-syntax-highlight style="height:50rem;overflow:auto;padding-top:1rem;width:100%">
+        @HtmlContent
+    </tf-syntax-highlight>
 }
 <div class="wiki-edit-terms-notice">
     @if (!string.IsNullOrEmpty(WikiOptions.PolicyPageTitle))
