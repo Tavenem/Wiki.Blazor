@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.Blazor.Framework;
-using Tavenem.Wiki.Blazor.Client.Services;
 using Tavenem.Wiki.Blazor.Client.Shared;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
@@ -75,7 +74,7 @@ public partial class EditView : WikiEditComponent
     /// <inheritdoc/>
     public override Task SetParametersAsync(ParameterView parameters)
     {
-        if (parameters.TryGetValue<Article>(nameof(Page), out var newArticle)
+        if (parameters.TryGetValue<Page>(nameof(Page), out var newArticle)
             && !string.Equals(newArticle?.Id, Page?.Id))
         {
             if (newArticle is null)
