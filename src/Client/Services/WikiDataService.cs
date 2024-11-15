@@ -1797,7 +1797,6 @@ public class WikiDataService(
                     var links = MarkdownItem.GetWikiLinks(wikiOptions, _dataStore, message.MarkdownContent);
                     if (links?.Count == 1
                         && !links[0].IsCategory
-                        && !links[0].IsMissing
                         && string.IsNullOrEmpty(links[0].Action))
                     {
                         var article = await _dataStore.GetWikiPageAsync(wikiOptions, links[0].Title);
