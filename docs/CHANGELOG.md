@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.12-preview
+### Updated
+- Update dependencies
+
 ## 0.9.11-preview
 ### Changed
 - Improve configuration
