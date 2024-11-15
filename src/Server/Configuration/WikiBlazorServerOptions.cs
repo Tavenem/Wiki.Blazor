@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Tavenem.Wiki.Blazor.Client;
-using Tavenem.Wiki.Blazor.Client.Configuration;
 using Tavenem.Wiki.Blazor.Server.Authorization;
 using Tavenem.Wiki.Blazor.Services;
 
@@ -10,7 +9,7 @@ namespace Tavenem.Wiki.Blazor.Server.Configuration;
 /// <summary>
 /// Options for configuring <c>Tavenem.Wiki.Blazor.Server</c>.
 /// </summary>
-public class WikiBlazorServerServiceOptions : WikiBlazorClientServiceOptions
+public class WikiBlazorServerOptions() : WikiBlazorOptions
 {
     private IFileManager? _fileManager;
     private Func<IServiceProvider, IFileManager>? _fileManagerConfig;
@@ -104,17 +103,65 @@ public class WikiBlazorServerServiceOptions : WikiBlazorClientServiceOptions
     public bool UseDefaultAuthorization { get; set; } = true;
 
     /// <summary>
-    /// Constructs a new instance of <see cref="WikiBlazorClientServiceOptions"/>.
-    /// </summary>
-    public WikiBlazorServerServiceOptions() { }
-
-    /// <summary>
-    /// Constructs a new instance of <see cref="WikiBlazorClientServiceOptions"/>.
+    /// Constructs a new instance of <see cref="WikiBlazorServerOptions"/>.
     /// </summary>
     /// <param name="other">
     /// An instance of <see cref="WikiBlazorOptions"/> from which to copy settings.
     /// </param>
-    public WikiBlazorServerServiceOptions(WikiBlazorOptions other) : base(other) { }
+    public WikiBlazorServerOptions(WikiBlazorOptions other) : this()
+    {
+        AboutPageTitle = other.AboutPageTitle;
+        AppBar = other.AppBar;
+        AppBarRenderMode = other.AppBarRenderMode;
+        ArticleEndMatter = other.ArticleEndMatter;
+        ArticleEndMatterRenderMode = other.ArticleEndMatterRenderMode;
+        ArticleFrontMatter = other.ArticleFrontMatter;
+        ArticleFrontMatterRenderMode = other.ArticleFrontMatterRenderMode;
+        CanEditOffline = other.CanEditOffline;
+        CategoriesTitle = other.CategoriesTitle;
+        CategoryNamespace = other.CategoryNamespace;
+        CompactLayout = other.CompactLayout;
+        CompactRouteHostPart = other.CompactRouteHostPart;
+        CompactRouteHostPosition = other.CompactRouteHostPosition;
+        CompactRoutePort = other.CompactRoutePort;
+        ContactPageTitle = other.ContactPageTitle;
+        ContentsPageTitle = other.ContentsPageTitle;
+        CopyrightPageTitle = other.CopyrightPageTitle;
+        CustomAdminNamespaces = other.CustomAdminNamespaces;
+        CustomReservedNamespaces = other.CustomReservedNamespaces;
+        DefaultAnonymousPermission = other.DefaultAnonymousPermission;
+        DefaultRegisteredPermission = other.DefaultRegisteredPermission;
+        DefaultTableOfContentsDepth = other.DefaultTableOfContentsDepth;
+        DefaultTableOfContentsTitle = other.DefaultTableOfContentsTitle;
+        DomainArchivePermission = other.DomainArchivePermission;
+        FileNamespace = other.FileNamespace;
+        GetDomainPermission = other.GetDomainPermission;
+        GroupNamespace = other.GroupNamespace;
+        HelpPageTitle = other.HelpPageTitle;
+        InteractiveRenderMode = other.InteractiveRenderMode;
+        IsOfflineDomain = other.IsOfflineDomain;
+        LinkTemplate = other.LinkTemplate;
+        LoginPath = other.LoginPath;
+        MainLayout = other.MainLayout;
+        MainPageTitle = other.MainPageTitle;
+        MaxFileSize = other.MaxFileSize;
+        MinimumTableOfContentsHeadings = other.MinimumTableOfContentsHeadings;
+        OnCreated = other.OnCreated;
+        OnDeleted = other.OnDeleted;
+        OnEdited = other.OnEdited;
+        OnRenamed = other.OnRenamed;
+        PolicyPageTitle = other.PolicyPageTitle;
+        Postprocessors = other.Postprocessors;
+        ScriptNamespace = other.ScriptNamespace;
+        SiteName = other.SiteName;
+        SystemNamespace = other.SystemNamespace;
+        TenorAPIKey = other.TenorAPIKey;
+        TransclusionNamespace = other.TransclusionNamespace;
+        UserDomains = other.UserDomains;
+        UserNamespace = other.UserNamespace;
+        WikiLinkPrefix = other.WikiLinkPrefix;
+        WikiServerApiRoute = other.WikiServerApiRoute;
+    }
 
     /// <summary>
     /// <para>

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.11-preview
+### Changed
+- Improve configuration
+- Special list page style
+### Fixed
+- Special page links
+
 ## 0.9.10-preview
 ### Fixed
 - Edit page style

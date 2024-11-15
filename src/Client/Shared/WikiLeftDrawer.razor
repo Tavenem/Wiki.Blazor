@@ -39,7 +39,7 @@
     <div class="list dense" role="navigation">
         <div class="subheader">Tools</div>
         <hr style="background-color:transparent;background-image:linear-gradient(to right, transparent, var(--tavenem-color-divider) 50%, transparent)">
-        <NavLink href="@WikiState.Link("All_Pages", WikiOptions.SystemNamespace, query: "sort=timestamp&descending=true")"
+        <NavLink href="@WikiState.Link(nameof(SpecialListType.All_Articles), WikiOptions.SystemNamespace, query: "sort=timestamp&descending=true")"
                  class="wiki-link wiki-link-exists"
                  title="A list of recent revisions">Recent changes</NavLink>
         @if (ShowPageTools && !WikiState.IsSystem)

@@ -34,11 +34,15 @@
                 {
                     <li>
                         <a href="@WikiState.Link(item.Title)" class="wiki-link wiki-link-exists">
+                            @if (!string.IsNullOrEmpty(item.Title.Domain))
+                            {
+                                <span class="wiki-link-domain">@item.Title.Domain</span>
+                            }
                             @if (!string.IsNullOrEmpty(item.Title.Namespace))
                             {
                                 <span class="wiki-link-namespace">@item.Title.Namespace</span>
                             }
-                            <span class="wiki-link-title">@item.Title</span>
+                            <span class="wiki-link-title">@item.Title.Title</span>
                             @if (item.ChildCount > 0)
                             {
                                 <span class="wiki-link-details">(@item.ChildCount.ToString("N0") members)</span>
@@ -72,5 +76,9 @@
                 </Select>
             </div>
         }
+    }
+    else
+    {
+        <p>No items found</p>
     }
 </form>

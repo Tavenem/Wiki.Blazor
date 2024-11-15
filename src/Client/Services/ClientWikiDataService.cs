@@ -29,6 +29,7 @@ public class ClientWikiDataService(
     WikiOptions wikiOptions,
     WikiState wikiState)
 {
+    private readonly IDataStore? _dataStore = serviceProvider.GetService<IDataStore>();
     private readonly ILogger _logger = loggerFactory.CreateLogger("Wiki");
 
     private AuthenticationStateProvider? _authenticationStateProvider;
@@ -714,7 +715,7 @@ public class ClientWikiDataService(
             }
         }
 
-        if (wikiBlazorClientOptions.DataStore is not null)
+        if (_dataStore is not null)
         {
             try
             {
@@ -811,7 +812,7 @@ public class ClientWikiDataService(
             }
         }
 
-        if (wikiBlazorClientOptions.DataStore is not null)
+        if (_dataStore is not null)
         {
             try
             {
@@ -920,7 +921,7 @@ public class ClientWikiDataService(
 
         if (!fetchedFromServer)
         {
-            if (wikiBlazorClientOptions.DataStore is not null)
+            if (_dataStore is not null)
             {
                 try
                 {
@@ -1029,7 +1030,7 @@ public class ClientWikiDataService(
             }
         }
 
-        if (wikiBlazorClientOptions.DataStore is not null)
+        if (_dataStore is not null)
         {
             try
             {
@@ -1137,7 +1138,7 @@ public class ClientWikiDataService(
         }
 
         if (!fetchedFromServer
-            && wikiBlazorClientOptions.DataStore is not null)
+            && _dataStore is not null)
         {
             try
             {

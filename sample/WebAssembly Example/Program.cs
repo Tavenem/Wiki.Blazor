@@ -40,7 +40,6 @@ var wikiOptions = new WikiBlazorOptions()
     ContactPageTitle = null,
     ContentsPageTitle = null,
     CopyrightPageTitle = null,
-    DataStore = dataStore,
     LoginPath = "/",
     MaxFileSize = 0,
     PolicyPageTitle = null,

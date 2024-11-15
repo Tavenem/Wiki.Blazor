@@ -55,15 +55,6 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
    - `CompactRoutePort`: The port which will be recognized as indicating a request for the compact version of the wiki.
 
      If left null the compact view cannot be reached at a particular port.
-   - `DataStore`: An optional data store which the client can access directly (i.e. without reaching the server).
-
-     If the `WikiServerApiRoute` has also been defined, the client will try to reach the server first for all wiki operations. If the server cannot be reached or the requested content is unavailable at the server, the client will fall back to the local data store.
-
-     If both the server and the local data store are unavailable, the wiki will remain operational, but will show no content and will not allow any content to be added.
-
-     No automatic synchronization occurs from the local data store to the server (for instance when an offline client reestablishes network connectivity). If your app model requires synchronization of offline content to a server, that logic must be implemented separately.
-
-     The `DataStore` property may be configured using an overload of the `ConfigureDataStore` method on the action parameter, rather than set directly to an instance, if dependency injection should be used to obtain it.
    - `DomainArchivePermission`: The minimum permission the user must have in order to create an archive of a domain.
    
      This property does not apply when creating an archive for content without a domain, or for the entire wiki.
@@ -85,6 +76,12 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
 
      
      This is initialized to <see langword="null"/> by default, `WikiBlazorClientOptions.DefaultWikiServerApiRoute` may be assigned to use the default value for a hosting server app with default values.
+
+     If the `WikiServerApiRoute` is defined, the client will try to reach the server first for all wiki operations. If the server cannot be reached or the requested content is unavailable at the server, the client will fall back to the local data store (if one is configured).
+
+     If both the server and the local data store are unavailable, the wiki will remain operational, but will show no content and will not allow any content to be added.
+
+     No automatic synchronization occurs from the local data store to the server (for instance when an offline client reestablishes network connectivity). If your app model requires synchronization of offline content to a server, that logic must be implemented separately.
 1. Add a page with the following content to your client:
    ```csharp
    @page "/wiki/{*route}"

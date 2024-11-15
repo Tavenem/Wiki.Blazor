@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.DataStorage;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client;
 
@@ -32,20 +35,20 @@ public delegate IComponentRenderMode? GetArticleRenderMode(Page page);
 /// <see langword="true"/> if the content can be edited locally; otherwise <see langword="false"/>.
 /// </returns>
 /// <remarks>
-/// Locally means in the local <see cref="WikiBlazorOptions.DataStore"/> instance, rather than
-/// via the <see cref="WikiBlazorOptions.WikiServerApiRoute"/>.
+/// Locally means in the local <see cref="IDataStore"/> instance, rather than via the <see
+/// cref="WikiBlazorOptions.WikiServerApiRoute"/>.
 /// </remarks>
 public delegate ValueTask<bool> CanEditOfflineFunc(string title, string wikiNamespace, string? domain);
 
 /// <summary>
 /// A function which determines whether the given domain should always be retrieved from the local
-/// <see cref="WikiBlazorOptions.DataStore"/>, and never from the server.
+/// <see cref="IDataStore"/>, and never from the server.
 /// </summary>
 /// <param name="domain">A wiki domain name.</param>
 /// <returns>
 /// <see langword="true"/> if the content should always be retrieved from the local <see
-/// cref="WikiBlazorOptions.DataStore"/>; <see langword="false"/> if the content should be
-/// retrieved from the server when possible.
+/// cref="IDataStore"/>; <see langword="false"/> if the content should be retrieved from the server
+/// when possible.
 /// </returns>
 public delegate ValueTask<bool> IsOfflineDomainFunc(string domain);
 
@@ -215,12 +218,8 @@ public class WikiBlazorOptions : WikiOptions
 
     /// <summary>
     /// A function which determines whether the given domain should always be retrieved from the
-    /// local <see cref="DataStore"/>, and never from the <see cref="WikiServerApiRoute"/>.
+    /// local <see cref="IDataStore"/>, and never from the <see cref="WikiServerApiRoute"/>.
     /// </summary>
-    /// <remarks>
-    /// This function is ignored if <see cref="DataStore"/> or <see cref="WikiServerApiRoute"/> is
-    /// unset.
-    /// </remarks>
     public IsOfflineDomainFunc? IsOfflineDomain { get; set; }
 
     /// <summary>
@@ -273,7 +272,7 @@ public class WikiBlazorOptions : WikiOptions
     /// </summary>
     /// <remarks>
     /// <para>
-    /// If the local <see cref="DataStore"/> has also been defined, the client will try to reach the
+    /// If a local <see cref="IDataStore"/> has also been defined, the client will try to reach the
     /// server first for all wiki operations. If this property is left empty, or the server cannot
     /// be reached, or the requested content is unavailable at the server, the client will fall back
     /// to the local data store.
@@ -299,6 +298,23 @@ public class WikiBlazorOptions : WikiOptions
     /// Constructs a new instance of <see cref="WikiBlazorOptions"/>.
     /// </summary>
     public WikiBlazorOptions() => LinkTemplate = DefaultLinkTemplate;
+
+    /// <summary>
+    /// Add these options to the service collection.
+    /// </summary>
+    public virtual IServiceCollection Add(IServiceCollection services)
+    {
+        InteractiveRenderSettings.InteractiveRenderMode = InteractiveRenderMode;
+
+        services.TryAddScoped<WikiOptions>(_ => this);
+        services.AddScoped(_ => this);
+
+        return services
+            .AddTavenemFramework()
+            .AddScoped<WikiState>()
+            .AddScoped<ClientWikiDataService>()
+            .AddScoped<WikiDataService>();
+    }
 
     /// <summary>
     /// Gets the type of a component which should be displayed after the content of the given wiki

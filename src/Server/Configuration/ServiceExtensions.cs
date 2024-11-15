@@ -37,10 +37,6 @@ public static class ServiceExtensions
 
         InteractiveRenderSettings.InteractiveRenderMode = options.InteractiveRenderMode;
 
-        if (options.DataStore is not null)
-        {
-            services.TryAddScoped(_ => options.DataStore);
-        }
         services.TryAddScoped<WikiOptions>(_ => options);
 
         return services
@@ -66,9 +62,9 @@ public static class ServiceExtensions
     /// <param name="config">Configures the options used to configure the wiki.</param>
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
-        Action<WikiBlazorServerServiceOptions> config)
+        Action<WikiBlazorServerOptions> config)
     {
-        var options = new WikiBlazorServerServiceOptions();
+        var options = new WikiBlazorServerOptions();
         config.Invoke(options);
         return options.Add(services);
     }
@@ -82,9 +78,9 @@ public static class ServiceExtensions
     public static IServiceCollection AddWikiServer(
         this IServiceCollection services,
         WikiBlazorOptions options,
-        Action<WikiBlazorServerServiceOptions> config)
+        Action<WikiBlazorServerOptions> config)
     {
-        var configuredOptions = new WikiBlazorServerServiceOptions(options);
+        var configuredOptions = new WikiBlazorServerOptions(options);
         config?.Invoke(configuredOptions);
         return configuredOptions.Add(services);
     }

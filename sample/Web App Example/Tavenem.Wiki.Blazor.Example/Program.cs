@@ -26,11 +26,7 @@ builder.Services.AddScoped<IDataStore>(_ => dataStore);
 
 builder.Services.AddWikiServer(
     ExampleWikiOptions.Instance,
-    options =>
-    {
-        options.ConfigureUserManager(typeof(DefaultUserManager));
-        options.ConfigureDataStore(provider => provider.GetRequiredService<IDataStore>());
-    });
+    options => options.ConfigureUserManager(typeof(DefaultUserManager)));
 
 var archiveText = File.ReadAllText(Path.Combine(builder.Environment.WebRootPath, "archive.json"));
 var archive = JsonSerializer.Deserialize<Archive>(archiveText, WikiArchiveJsonSerializerOptions.Instance);
