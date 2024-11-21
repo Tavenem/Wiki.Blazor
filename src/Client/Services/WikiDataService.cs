@@ -1060,11 +1060,13 @@ public class WikiDataService(
 
         return MarkdownItem.RenderPreview(
             wikiOptions,
+            _dataStore,
             await TransclusionParser.TranscludeAsync(
                 wikiOptions,
                 _dataStore,
                 request.Content,
-                request.Title));
+                request.Title),
+            request.Title);
     }
 
     /// <summary>
