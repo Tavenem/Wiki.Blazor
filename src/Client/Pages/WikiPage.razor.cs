@@ -4,178 +4,94 @@ using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using System.Web;
 using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Services;
 
-namespace Tavenem.Wiki.Blazor.Client;
+namespace Tavenem.Wiki.Blazor.Client.Pages;
 
 /// <summary>
-/// <para>
-/// A component which renders a Tavenem wiki.
-/// </para>
-/// <para>
-/// Should normally be placed in the <c>NotFound</c> template of your <c>Router</c>, and also as the
-/// only content of a routable page whose route is the same as <see
-/// cref="WikiOptions.WikiLinkPrefix"/> followed by "/{*route}".
-/// </para>
+/// A wiki page.
 /// </summary>
-public partial class Wiki : IDisposable
+public partial class WikiPage : IDisposable
 {
-    internal const string DescendingParameter = "pg-d";
-    internal const string EndParameter = "h-e";
-    internal const string FilterParameter = "pg-f";
-    internal const string PageNumberParameter = "pg-p";
-    internal const string PageSizeParameter = "pg-ps";
-    internal const string SortParameter = "pg-s";
-    internal const string SearchDomainParameter = "s-d";
-    internal const string SearchNamespaceParameter = "s-n";
-    internal const string SearchOwnerParameter = "s-o";
-    internal const string StartParameter = "h-s";
-    internal const string EditorParameter = "h-ed";
-
-    private const string RevisionParameter = "rev";
-
     private bool _disposedValue;
 
-    /// <summary>
-    /// <para>
-    /// Whether to show the compact view of the wiki.
-    /// </para>
-    /// <para>
-    /// This is normally supplied by a query parameter or route value, but you can also set this to
-    /// <see langword="true"/> explicitly.
-    /// </para>
-    /// </summary>
-    [Parameter, SupplyParameterFromQuery] public bool Compact { get; set; }
+    private string ArticleType => IsCategory ? "Category" : "Article";
 
     /// <summary>
     /// Whether any current search is sorted in descending order.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = DescendingParameter)]
-    public bool Descending { get; set; }
+    [Parameter] public bool Descending { get; set; }
 
     /// <summary>
     /// Any requested editor filter.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = EditorParameter)]
-    public string? Editor { get; set; }
+    [Parameter] public string? Editor { get; set; }
 
     /// <summary>
     /// The last requested result in a paged set.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = EndParameter)]
-    public string? End { get; set; }
+    [Parameter] public string? End { get; set; }
 
     /// <summary>
     /// Any requested text filter.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = FilterParameter)]
-    public string? Filter { get; set; }
+    [Parameter] public string? Filter { get; set; }
 
     /// <summary>
     /// Whether the requested page should be loaded without following any redirects.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery]
-    public bool NoRedirect { get; set; }
+    [Parameter] public bool NoRedirect { get; set; }
 
     /// <summary>
     /// The requested page number in a paged set.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = PageNumberParameter)]
-    public int? PageNumber { get; set; }
+    [Parameter] public int? PageNumber { get; set; }
 
     /// <summary>
     /// The requested page size for a paged set.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = PageSizeParameter)]
-    public int? PageSize { get; set; }
+    [Parameter] public int? PageSize { get; set; }
 
     /// <summary>
     /// The timestamp of a requested revision.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = RevisionParameter)]
-    public string[]? Revisions { get; set; }
+    [Parameter] public string[]? Revisions { get; set; }
+
+    /// <summary>
+    /// The requested route.
+    /// </summary>
+    [Parameter] public string? Route { get; set; }
 
     /// <summary>
     /// The domain filter of a search.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = SearchDomainParameter)]
-    public string? SearchDomain { get; set; }
+    [Parameter] public string? SearchDomain { get; set; }
 
     /// <summary>
     /// The namespace filter of a search.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = SearchNamespaceParameter)]
-    public string? SearchNamespace { get; set; }
+    [Parameter] public string? SearchNamespace { get; set; }
 
     /// <summary>
     /// The page owner filter of a search.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = SearchOwnerParameter)]
-    public string? SearchOwner { get; set; }
+    [Parameter] public string? SearchOwner { get; set; }
 
     /// <summary>
     /// The sort property of a search.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = SortParameter)]
-    public string? Sort { get; set; }
+    [Parameter] public string? Sort { get; set; }
 
     /// <summary>
     /// The first requested result in a paged set.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery(Name = StartParameter)]
-    public string? Start { get; set; }
+    [Parameter] public string? Start { get; set; }
 
     /// <summary>
     /// Whether the current user has not yet been authenticated.
     /// </summary>
-    /// <remarks>
-    /// Expected to be provided by query string, not set explicitly.
-    /// </remarks>
-    [SupplyParameterFromQuery]
-    public bool Unauthenticated { get; set; }
-
-    private string ArticleType => IsCategory ? "Category" : "Article";
+    [Parameter] public bool Unauthenticated { get; set; }
 
     private AuthenticationStateProvider? AuthenticationStateProvider { get; set; }
 
@@ -214,8 +130,6 @@ public partial class Wiki : IDisposable
         || RequestedFirstTime.HasValue
         || RequestedSecondTime.HasValue;
 
-    private bool IsEditing { get; set; }
-
     private bool IsFile { get; set; }
 
     private bool IsGroupPage { get; set; }
@@ -232,23 +146,13 @@ public partial class Wiki : IDisposable
 
     [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
 
-    private MarkupString Preview { get; set; }
-
-    private bool PreviewDisplayed { get; set; }
-
     private bool RequestedDiff { get; set; }
 
     private DateTimeOffset? RequestedFirstTime { get; set; }
 
     private DateTimeOffset? RequestedSecondTime { get; set; }
 
-    private string? Route { get; set; }
-
     [Inject, NotNull] private IServiceProvider? ServiceProvider { get; set; }
-
-    private bool ShowHistory { get; set; }
-
-    private bool ShowWhatLinksHere { get; set; }
 
     private SpecialListType SpecialListType { get; set; }
 
@@ -262,7 +166,7 @@ public partial class Wiki : IDisposable
 
     [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
-    private Page? WikiPage { get; set; }
+    private Page? Page { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
@@ -321,13 +225,7 @@ public partial class Wiki : IDisposable
     {
         var title = WikiState.GetCurrentPageTitle();
 
-        if (PreviewDisplayed)
-        {
-            Preview = new(await WikiDataService.GetPreviewAsync(title) ?? string.Empty);
-            return;
-        }
-
-        var item = IsEditing
+        var item = WikiState.IsEditing
             ? await WikiDataService.GetEditInfoAsync(title)
             : await WikiDataService.GetItemAsync(
                 title,
@@ -340,60 +238,59 @@ public partial class Wiki : IDisposable
             CanCreate = false;
             CanEdit = false;
             Content = default;
-            WikiPage = null;
+            Page = null;
             IsDiff = false;
             WikiState.UpdateTitle(null);
+            return;
         }
-        else
-        {
-            WikiPage = item;
-            CanCreate = item.Permission.HasFlag(WikiPermission.Create);
-            CanEdit = WikiPage?.Exists != true
-                ? item.Permission.HasFlag(WikiPermission.Create)
-                : item.Permission.HasFlag(WikiPermission.Write);
-            CanRename = CanEdit && item.CanRename;
-            if (!CanEdit && IsEditing)
-            {
-                WikiState.NotAuthorized = true;
 
-                var state = AuthenticationStateProvider is null
-                    ? null
-                    : await AuthenticationStateProvider.GetAuthenticationStateAsync();
-                if (state?.User.Identity?.IsAuthenticated != true)
+        Page = item;
+        CanCreate = item.Permission.HasFlag(WikiPermission.Create);
+        CanEdit = Page?.Exists != true
+            ? item.Permission.HasFlag(WikiPermission.Create)
+            : item.Permission.HasFlag(WikiPermission.Write);
+        CanRename = CanEdit && item.CanRename;
+        if (!CanEdit && WikiState.IsEditing)
+        {
+            WikiState.NotAuthorized = true;
+
+            var state = AuthenticationStateProvider is null
+                ? null
+                : await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            if (state?.User.Identity?.IsAuthenticated != true)
+            {
+                if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
                 {
-                    if (string.IsNullOrEmpty(WikiBlazorClientOptions.LoginPath))
+                    NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Unauthenticated), true));
+                }
+                else
+                {
+                    var path = new StringBuilder(WikiBlazorClientOptions.LoginPath)
+                        .Append(WikiBlazorClientOptions.LoginPath.Contains('?') ? '&' : '?')
+                        .Append("returnUrl=")
+                        .Append(Uri.EscapeDataString(NavigationManager.Uri));
+                    Uri? uri = null;
+                    try
                     {
-                        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameter(nameof(Unauthenticated), true));
+                        uri = new Uri(path.ToString());
+                    }
+                    catch { }
+                    if (uri?.IsAbsoluteUri != false)
+                    {
+                        NavigationManager.NavigateTo(NavigationManager
+                            .GetUriWithQueryParameter(nameof(Unauthenticated), true));
                     }
                     else
                     {
-                        var path = new StringBuilder(WikiBlazorClientOptions.LoginPath)
-                            .Append(WikiBlazorClientOptions.LoginPath.Contains('?') ? '&' : '?')
-                            .Append("returnUrl=")
-                            .Append(Uri.EscapeDataString(NavigationManager.Uri));
-                        Uri? uri = null;
-                        try
-                        {
-                            uri = new Uri(path.ToString());
-                        }
-                        catch { }
-                        if (uri?.IsAbsoluteUri != false)
-                        {
-                            NavigationManager.NavigateTo(NavigationManager
-                                .GetUriWithQueryParameter(nameof(Unauthenticated), true));
-                        }
-                        else
-                        {
-                            NavigationManager.NavigateTo(uri.ToString());
-                        }
+                        NavigationManager.NavigateTo(uri.ToString());
                     }
                 }
             }
-            Content = new MarkupString(item.DisplayHtml ?? string.Empty);
-            IsDiff = item.IsDiff;
-            WikiState.UpdateTitle(item.DisplayTitle);
-            StateHasChanged();
         }
+        Content = new MarkupString(item.DisplayHtml ?? string.Empty);
+        IsDiff = item.IsDiff;
+        WikiState.UpdateTitle(item.DisplayTitle);
+        StateHasChanged();
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -404,14 +301,12 @@ public partial class Wiki : IDisposable
     private async Task RefreshAsync()
     {
         Reset();
-        SetIsCompact();
-        SetRoute();
         await SetRouteProperties();
         if (!IsSpecialList
             && !IsSearch
             && !IsAllSpecials
             && !IsUpload
-            && !ShowWhatLinksHere)
+            && !WikiState.ShowWhatLinksHere)
         {
             await GetWikiItemAsync();
         }
@@ -425,7 +320,6 @@ public partial class Wiki : IDisposable
         Content = default;
         IsAllSpecials = false;
         IsCategory = false;
-        IsEditing = false;
         IsFile = false;
         IsGroupPage = false;
         IsSearch = false;
@@ -436,124 +330,8 @@ public partial class Wiki : IDisposable
         RequestedDiff = false;
         RequestedFirstTime = null;
         RequestedSecondTime = null;
-        ShowHistory = false;
         SpecialListType = SpecialListType.None;
-        WikiPage = null;
-        WikiState.IsSystem = false;
-        WikiState.LoadError = false;
-        WikiState.User = null;
-        WikiState.UpdateTitle(null);
-    }
-
-    private void SetIsCompact()
-    {
-        WikiState.SetIsCompact(Compact);
-        if (!WikiState.IsCompact)
-        {
-            var uri = new Uri(NavigationManager.Uri);
-            if (WikiBlazorClientOptions.CompactRoutePort.HasValue
-                && uri.Port == WikiBlazorClientOptions.CompactRoutePort.Value)
-            {
-                WikiState.SetIsCompact(true);
-            }
-            if (!WikiState.IsCompact
-                && !string.IsNullOrEmpty(WikiBlazorClientOptions.CompactRouteHostPart))
-            {
-                var parts = uri.Host.Split('.');
-                var position = WikiBlazorClientOptions.CompactRouteHostPosition ?? 0;
-                if (parts.Length > position
-                    && string.Equals(
-                        parts[position],
-                        WikiBlazorClientOptions.CompactRouteHostPart,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    WikiState.SetIsCompact(true);
-                }
-            }
-        }
-        if (WikiState.IsCompact)
-        {
-            StateHasChanged();
-        }
-    }
-
-    private void SetRoute()
-    {
-        var relativeUri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        if (!string.IsNullOrEmpty(WikiOptions.WikiLinkPrefix)
-            && relativeUri.StartsWith(WikiOptions.WikiLinkPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            relativeUri = relativeUri[WikiOptions.WikiLinkPrefix.Length..];
-        }
-        if (relativeUri.StartsWith('/')
-            || relativeUri.StartsWith(':'))
-        {
-            relativeUri = relativeUri[1..];
-        }
-        var index = relativeUri.IndexOf('?');
-        if (index == 0)
-        {
-            Route = null;
-        }
-        else if (index > 0)
-        {
-            Route = relativeUri[..index];
-        }
-        else
-        {
-            Route = relativeUri;
-        }
-
-        string? actionString = null;
-        if (Route is not null)
-        {
-            index = Route.IndexOf('/');
-            if (index != -1)
-            {
-                actionString = Route[(index + 1)..];
-                Route = Route[..index];
-            }
-        }
-
-        WikiState.IsTalk = false;
-        IsEditing = false;
-        ShowHistory = false;
-        Preview = new(string.Empty);
-        PreviewDisplayed = false;
-        ShowWhatLinksHere = false;
-        switch (actionString)
-        {
-            case null:
-                break;
-            case { Length: 0 }:
-                break;
-            case { } when actionString.Equals("talk", StringComparison.OrdinalIgnoreCase):
-                WikiState.IsTalk = true;
-                break;
-            case { } when actionString.Equals("edit", StringComparison.OrdinalIgnoreCase):
-                IsEditing = true;
-                break;
-            case { } when actionString.Equals("history", StringComparison.OrdinalIgnoreCase):
-                ShowHistory = true;
-                break;
-            case { } when actionString.Equals("preview", StringComparison.OrdinalIgnoreCase):
-                PreviewDisplayed = true;
-                break;
-            case { } when actionString.Equals("whatlinkshere", StringComparison.OrdinalIgnoreCase):
-                ShowWhatLinksHere = true;
-                break;
-        }
-
-        if (Route is not null)
-        {
-            index = Route.IndexOf('#');
-            if (index != -1)
-            {
-                Route = Route[..index];
-            }
-
-            Route = HttpUtility.UrlDecode(Route);
-        }
+        Page = null;
     }
 
     private async Task SetRouteProperties()
@@ -583,7 +361,7 @@ public partial class Wiki : IDisposable
             return;
         }
 
-        if (ShowWhatLinksHere)
+        if (WikiState.ShowWhatLinksHere)
         {
             IsSpecialList = true;
             SpecialListType = SpecialListType.What_Links_Here;

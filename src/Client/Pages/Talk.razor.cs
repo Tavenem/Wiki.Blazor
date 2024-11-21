@@ -2,10 +2,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
-using System.Net.Http.Json;
-using System.Text;
-using Tavenem.Blazor.Framework;
 using Tavenem.Wiki.Blazor.Client.Internal.Models;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -27,17 +25,13 @@ public partial class Talk
     [MemberNotNullWhen(true, nameof(TopicId))]
     private bool CanTalk { get; set; }
 
-    [Inject, NotNull] private HttpClient? HttpClient { get; set; }
-
-    [Inject, NotNull] private NavigationManager? Navigation { get; set; }
-
     [Inject, NotNull] private IServiceProvider? ServiceProvider { get; set; }
-
-    [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
 
     private List<TalkMessageModel> TalkMessages { get; set; } = [];
 
     [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
+
+    [Inject, NotNull] private ClientWikiDataService? WikiDataService { get; set; }
 
     [Inject, NotNull] private WikiState? WikiState { get; set; }
 
@@ -59,40 +53,7 @@ public partial class Talk
             : await AuthenticationStateProvider.GetAuthenticationStateAsync();
         CanPost = state?.User.Identity?.IsAuthenticated == true;
 
-        List<MessageResponse>? messages = null;
-        try
-        {
-            var url = new StringBuilder(WikiBlazorClientOptions.WikiServerApiRoute)
-                .Append("/talk?title=")
-                .Append(WikiState.WikiTitle);
-            if (!string.IsNullOrEmpty(WikiState.WikiNamespace))
-            {
-                url.Append("&namespace=")
-                    .Append(WikiState.WikiNamespace);
-            }
-            var response = await HttpClient.GetAsync(url.ToString());
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                WikiState.NotAuthorized = true;
-            }
-            else if (response.StatusCode is System.Net.HttpStatusCode.BadRequest
-                or System.Net.HttpStatusCode.NoContent)
-            {
-                Navigation.NavigateTo(
-                    WikiState.Link(WikiState.WikiTitle, WikiState.WikiNamespace),
-                    replace: true);
-            }
-            else
-            {
-                messages = await response.Content.ReadFromJsonAsync(WikiBlazorJsonSerializerContext.Default.ListMessageResponse);
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex);
-            SnackbarService.Add("An error occurred", ThemeColor.Danger);
-        }
-
+        var messages = await WikiDataService.GetTalkAsync(WikiState.GetCurrentPageTitle());
         if (messages is null)
         {
             return;

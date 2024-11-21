@@ -2,5 +2,4 @@
 <linker>
   <assembly fullname="Tavenem.DataStore" />
   <assembly fullname="Tavenem.Wiki" />
-  <assembly fullname="Tavenem.Wiki.Blazor.Shared" />
 </linker>

@@ -65,6 +65,8 @@ app.UseAuthorization();
 
 app.UseAntiforgery();
 
+app.MapStaticAssets();
+
 app.MapWiki();
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

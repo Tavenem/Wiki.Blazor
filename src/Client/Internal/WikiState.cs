@@ -31,6 +31,16 @@ public class WikiState
     public bool IsCompact { get; internal set; }
 
     /// <summary>
+    /// Whether the current wiki page is being edited.
+    /// </summary>
+    public bool IsEditing { get; set; }
+
+    /// <summary>
+    /// Whether the current wiki page is being previewed.
+    /// </summary>
+    public bool IsPreview { get; set; }
+
+    /// <summary>
     /// Whether the current page is a special system page.
     /// </summary>
     public bool IsSystem { get; internal set; }
@@ -66,6 +76,16 @@ public class WikiState
     /// The full title of the current wiki page, as a string.
     /// </summary>
     public string PageTitle { get; private set; }
+
+    /// <summary>
+    /// Whether the history of the current wiki page is being shown, rather than the content.
+    /// </summary>
+    public bool ShowHistory { get; set; }
+
+    /// <summary>
+    /// Whether the links to the current wiki page are being shown, rather than the content.
+    /// </summary>
+    public bool ShowWhatLinksHere { get; set; }
 
     /// <summary>
     /// The current user (if non-anonymous).

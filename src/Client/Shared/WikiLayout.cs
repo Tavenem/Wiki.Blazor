@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Tavenem.Wiki.Blazor.Client.Shared;
@@ -6,7 +7,7 @@ namespace Tavenem.Wiki.Blazor.Client.Shared;
 /// <summary>
 /// The default wiki layout.
 /// </summary>
-public partial class WikiLayout : IDisposable
+public partial class WikiLayout : LayoutComponentBase, IDisposable
 {
     private bool _disposedValue;
 
@@ -22,6 +23,24 @@ public partial class WikiLayout : IDisposable
 
     /// <inheritdoc/>
     protected override void OnInitialized() => WikiState.CompactChanged += CompactChanged;
+
+    /// <inheritdoc/>
+    [UnconditionalSuppressMessage(
+        "ReflectionAnalysis",
+        "IL2111:RequiresUnreferencedCode",
+        Justification = "OpenComponent already has the right set of attributes")]
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        builder.OpenComponent<LayoutView>(0);
+        builder.AddComponentParameter(
+            1,
+            nameof(LayoutView.Layout),
+            WikiState.IsCompact
+                ? ResolvedCompactLayout
+                : ResolvedMainLayout);
+        builder.AddComponentParameter(2, nameof(LayoutView.ChildContent), Body);
+        builder.CloseComponent();
+    }
 
     private void CompactChanged(object? sender, bool e) => StateHasChanged();
 

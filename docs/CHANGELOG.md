@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0-preview
+### Updated
+- Update to .NET 9
+- Update dependencies
+### Fixed
+- Talk page
+
 ## 0.9.12-13-preview
 ### Updated
 - Update dependencies

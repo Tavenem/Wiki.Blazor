@@ -76,15 +76,6 @@ public class ClientWikiDataService(
     /// may request an archive of content without a domain, or the entire wiki.
     /// </para>
     /// </remarks>
-    /// <exception cref="WikiUnauthorizedException">
-    /// <para>
-    /// The user does not have <see cref="WikiPermission.Read"/> permission for the given domain.
-    /// </para>
-    /// <para>
-    /// Or, an archive of non-domain content or the entire wiki was requested by the user is not an
-    /// admin.
-    /// </para>
-    /// </exception>
     public Task<Archive?> GetArchiveAsync(string? domain = null)
     {
         var url = new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
@@ -329,9 +320,6 @@ public class ClientWikiDataService(
     /// <returns>
     /// A <see cref="MessageResponse"/> instance.
     /// </returns>
-    /// <exception cref="WikiUnauthorizedException">
-    /// The user does not have <see cref="WikiPermission.Read"/> permission for the given content.
-    /// </exception>
     public async Task<List<MessageResponse>?> GetTalkAsync(PageTitle title, bool noRedirect = false)
     {
         _httpClient ??= serviceProvider.GetService<HttpClient>();
@@ -412,12 +400,6 @@ public class ClientWikiDataService(
     /// <returns>
     /// A <see cref="UserPage"/> instance.
     /// </returns>
-    /// <exception cref="ArgumentException">
-    /// <paramref name="title"/> was empty.
-    /// </exception>
-    /// <exception cref="WikiUnauthorizedException">
-    /// The user does not have permission to view the requested page.
-    /// </exception>
     public Task<UserPage?> GetUserPageAsync(string title) => FetchDataAsync(
         new StringBuilder(wikiBlazorClientOptions.WikiServerApiRoute)
             .Append("/userpage?title=")
@@ -516,9 +498,6 @@ public class ClientWikiDataService(
     /// Restores an <see cref="Archive"/> to the wiki.
     /// </summary>
     /// <param name="archive">An <see cref="Archive"/> instance.</param>
-    /// <exception cref="WikiUnauthorizedException">
-    /// The user does not have appropriate permission to restore all the pages in the archive.
-    /// </exception>
     public Task RestoreArchiveAsync(Archive archive) => PostAsync(
         $"{wikiBlazorClientOptions.WikiServerApiRoute}/restorearchive",
         archive,
