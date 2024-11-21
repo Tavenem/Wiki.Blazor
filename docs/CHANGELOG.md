@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.1-preview
+### Fixed
+- Preview popups
+- Special page text
+
 ## 0.10.0-preview
 ### Updated
 - Update to .NET 9

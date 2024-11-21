@@ -336,13 +336,6 @@ public partial class WikiPage : IDisposable
 
     private async Task SetRouteProperties()
     {
-        (
-            WikiState.WikiTitle,
-            WikiState.WikiNamespace,
-            WikiState.WikiDomain
-        ) = PageTitle.Parse(Route);
-        WikiState.DefaultNamespace = string.IsNullOrEmpty(WikiState.WikiNamespace);
-
         IsCategory = !WikiState.DefaultNamespace
             && string.Equals(
                 WikiState.WikiNamespace,

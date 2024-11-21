@@ -151,7 +151,7 @@ public partial class SpecialList
             var sb = new StringBuilder("Note that top-level categories might show up in this list deliberately, and may not require categorization.");
             if (!string.IsNullOrEmpty(WikiOptions.ContentsPageTitle))
             {
-                sb.Append("Top-level categories are typically linked on the <a href=\"")
+                sb.Append(" Top-level categories are typically linked on the <a href=\"")
                     .Append(WikiState.Link(WikiOptions.ContentsPageTitle, WikiOptions.SystemNamespace))
                     .Append("\" class=\"wiki-link wiki-link-exists\">")
                     .Append(WikiOptions.ContentsPageTitle)
@@ -159,7 +159,7 @@ public partial class SpecialList
                     .Append(WikiState.Link())
                     .Append("\">")
                     .Append(WikiOptions.MainPageTitle)
-                    .Append("</a>).");
+                    .Append("</a> page).");
             }
             return sb.ToString();
         }

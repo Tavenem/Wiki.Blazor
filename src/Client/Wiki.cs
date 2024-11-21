@@ -423,5 +423,12 @@ public class Wiki : ComponentBase, IDisposable
 
             Route = HttpUtility.UrlDecode(Route);
         }
+
+        (
+            WikiState.WikiTitle,
+            WikiState.WikiNamespace,
+            WikiState.WikiDomain
+        ) = PageTitle.Parse(Route);
+        WikiState.DefaultNamespace = string.IsNullOrEmpty(WikiState.WikiNamespace);
     }
 }

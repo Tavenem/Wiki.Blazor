@@ -101,10 +101,14 @@ namespace TavenemWiki {
                 }
 
                 const response = await fetch(`${link}/preview`);
-                const text = await response.text();
-                ref = ref || [];
-                ref.push({ link, text });
-                window.wikiblazor.displayPreview!(e, text, wiki);
+                if (response.ok) {
+                    const text = await response.text();
+                    if (text && text.length) {
+                        ref = ref || [];
+                        ref.push({ link, text });
+                        window.wikiblazor.displayPreview!(e, text, wiki);
+                    }
+                }
             }, 1500);
         }
 
