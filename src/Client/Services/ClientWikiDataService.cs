@@ -23,6 +23,7 @@ public class ClientWikiDataService(
     WikiDataService wikiDataService,
     ILoggerFactory loggerFactory,
     NavigationManager navigationManager,
+    IOfflineManager offlineManager,
     IServiceProvider serviceProvider,
     SnackbarService snackbarService,
     WikiBlazorOptions wikiBlazorClientOptions,
@@ -539,10 +540,9 @@ public class ClientWikiDataService(
 
         var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
         if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+            && !string.IsNullOrEmpty(wikiState.WikiDomain))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            isLocal = await offlineManager.IsOfflineDomainAsync(wikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -635,10 +635,9 @@ public class ClientWikiDataService(
     {
         var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
         if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+            && !string.IsNullOrEmpty(wikiState.WikiDomain))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            isLocal = await offlineManager.IsOfflineDomainAsync(wikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -732,10 +731,9 @@ public class ClientWikiDataService(
     {
         var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
         if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+            && !string.IsNullOrEmpty(wikiState.WikiDomain))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            isLocal = await offlineManager.IsOfflineDomainAsync(wikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -839,10 +837,9 @@ public class ClientWikiDataService(
 
         var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
         if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+            && !string.IsNullOrEmpty(wikiState.WikiDomain))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            isLocal = await offlineManager.IsOfflineDomainAsync(wikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -954,10 +951,9 @@ public class ClientWikiDataService(
     {
         var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
         if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+            && !string.IsNullOrEmpty(wikiState.WikiDomain))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            isLocal = await offlineManager.IsOfflineDomainAsync(wikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;
@@ -1059,10 +1055,9 @@ public class ClientWikiDataService(
 
         var isLocal = string.IsNullOrEmpty(wikiBlazorClientOptions.WikiServerApiRoute);
         if (!isLocal
-            && !string.IsNullOrEmpty(wikiState.WikiDomain)
-            && wikiBlazorClientOptions.IsOfflineDomain is not null)
+            && !string.IsNullOrEmpty(wikiState.WikiDomain))
         {
-            isLocal = await wikiBlazorClientOptions.IsOfflineDomain.Invoke(wikiState.WikiDomain);
+            isLocal = await offlineManager.IsOfflineDomainAsync(wikiState.WikiDomain);
         }
         ClaimsPrincipal? user = null;
         AuthenticationState? state = null;

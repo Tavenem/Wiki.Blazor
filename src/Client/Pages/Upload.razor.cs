@@ -42,6 +42,8 @@ public partial class Upload
 
     private bool InsufficientSpace { get; set; }
 
+    [Inject, NotNull] private IOfflineManager? OfflineManager { get; set; }
+
     private bool IsInteractive { get; set; }
 
     [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
@@ -222,10 +224,9 @@ public partial class Upload
 
             var isLocal = string.IsNullOrEmpty(WikiBlazorClientOptions.WikiServerApiRoute);
             if (!isLocal
-                && !string.IsNullOrEmpty(WikiState.WikiDomain)
-                && WikiBlazorClientOptions.IsOfflineDomain is not null)
+                && !string.IsNullOrEmpty(WikiState.WikiDomain))
             {
-                isLocal = await WikiBlazorClientOptions.IsOfflineDomain.Invoke(WikiState.WikiDomain);
+                isLocal = await OfflineManager.IsOfflineDomainAsync(WikiState.WikiDomain);
             }
             if (!isLocal && HttpClient is not null)
             {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using System.Diagnostics.CodeAnalysis;
+using Tavenem.Wiki.Blazor.Client.Services;
 
 namespace Tavenem.Wiki.Blazor.Client.Pages;
 
@@ -34,7 +35,7 @@ public class ArticleView : ComponentBase
     /// </summary>
     [Parameter] public IWikiUser? User { get; set; }
 
-    [Inject, NotNull] private WikiBlazorOptions? WikiBlazorClientOptions { get; set; }
+    [Inject, NotNull] private IArticleRenderManager? ArticleRenderManager { get; set; }
 
     [Inject, NotNull] private WikiOptions? WikiOptions { get; set; }
 
@@ -53,10 +54,10 @@ public class ArticleView : ComponentBase
 
         if (!IsDiff && Page is not null)
         {
-            var frontMatterType = WikiBlazorClientOptions.GetArticleFrontMatter(Page);
+            var frontMatterType = ArticleRenderManager.GetArticleFrontMatter(Page);
             if (frontMatterType is not null)
             {
-                var frontMatterRenderMode = WikiBlazorClientOptions.GetArticleFrontMatterRenderMode(Page);
+                var frontMatterRenderMode = ArticleRenderManager.GetArticleFrontMatterRenderMode(Page);
                 builder.OpenComponent(4, frontMatterType);
                 builder.AddAttribute(5, nameof(WikiComponent.Page), Page);
                 builder.AddAttribute(6, nameof(WikiComponent.CanEdit), CanEdit);
@@ -76,10 +77,10 @@ public class ArticleView : ComponentBase
 
         if (!IsDiff && Page is not null)
         {
-            var endMatterType = WikiBlazorClientOptions.GetArticleFrontMatter(Page);
+            var endMatterType = ArticleRenderManager.GetArticleEndMatter(Page);
             if (endMatterType is not null)
             {
-                var endMatterRenderMode = WikiBlazorClientOptions.GetArticleFrontMatterRenderMode(Page);
+                var endMatterRenderMode = ArticleRenderManager.GetArticleEndMatterRenderMode(Page);
                 builder.OpenComponent(11, endMatterType);
                 builder.AddAttribute(12, nameof(WikiComponent.Page), Page);
                 builder.AddAttribute(13, nameof(WikiComponent.CanEdit), CanEdit);

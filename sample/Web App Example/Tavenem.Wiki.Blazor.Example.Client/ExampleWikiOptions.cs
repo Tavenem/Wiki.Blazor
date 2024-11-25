@@ -10,15 +10,6 @@ public static class ExampleWikiOptions
     {
         AppBar = typeof(TopAppBar),
         AppBarRenderMode = RenderMode.InteractiveWebAssembly,
-        ArticleFrontMatter = page => string.IsNullOrEmpty(page.Title.Namespace)
-            && string.IsNullOrEmpty(page.Title.Title)
-            ? typeof(MainFrontMatter)
-            : null,
-        ArticleFrontMatterRenderMode = page => string.IsNullOrEmpty(page.Title.Namespace)
-            && string.IsNullOrEmpty(page.Title.Title)
-            ? RenderMode.InteractiveWebAssembly
-            : null,
-        CanEditOffline = (_, _, _) => ValueTask.FromResult(true),
         ContactPageTitle = null,
         ContentsPageTitle = null,
         CopyrightPageTitle = null,

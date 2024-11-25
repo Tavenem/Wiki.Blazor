@@ -36,7 +36,6 @@ builder.Services.AddScoped<IWikiGroupManager>(services =>
 var wikiOptions = new WikiBlazorOptions()
 {
     AppBar = typeof(TopAppBar),
-    CanEditOffline = (_, _, _) => ValueTask.FromResult(true),
     ContactPageTitle = null,
     ContentsPageTitle = null,
     CopyrightPageTitle = null,
@@ -61,6 +60,8 @@ using (var response = await httpClient.GetAsync("archive.json"))
     }
 }
 
-builder.Services.AddWikiClient(wikiOptions);
+builder.Services.AddWikiClient(
+    wikiOptions,
+    config => config.ConfigureOfflineManager(typeof(CustomOfflineManager)));
 
 await builder.Build().RunAsync();

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Tavenem.DataStorage;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor.Example;
+using Tavenem.Wiki.Blazor.Example.Client.Services;
 using Tavenem.Wiki.Blazor.Example.Components;
 using Tavenem.Wiki.Blazor.Example.Services;
 
@@ -26,7 +27,12 @@ builder.Services.AddScoped<IDataStore>(_ => dataStore);
 
 builder.Services.AddWikiServer(
     ExampleWikiOptions.Instance,
-    options => options.ConfigureUserManager(typeof(DefaultUserManager)));
+    config =>
+    {
+        config.ConfigureArticleRenderManager(typeof(CustomArticleRenderManager));
+        config.ConfigureOfflineManager(typeof(CustomOfflineManager));
+        config.ConfigureUserManager(typeof(DefaultUserManager));
+    });
 
 var archiveText = File.ReadAllText(Path.Combine(builder.Environment.WebRootPath, "archive.json"));
 var archive = JsonSerializer.Deserialize<Archive>(archiveText, WikiArchiveJsonSerializerOptions.Instance);

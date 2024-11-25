@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Tavenem.Wiki.Blazor.Example;
+using Tavenem.Wiki.Blazor.Example.Client.Services;
 using Tavenem.Wiki.Blazor.Example.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -14,6 +15,12 @@ builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
     provider.GetRequiredService<CustomAuthenticationStateProvider>());
 
-builder.Services.AddWikiClient(ExampleWikiOptions.Instance);
+builder.Services.AddWikiClient(
+    ExampleWikiOptions.Instance,
+    config =>
+    {
+        config.ConfigureArticleRenderManager(typeof(CustomArticleRenderManager));
+        config.ConfigureOfflineManager(typeof(CustomOfflineManager));
+    });
 
 await builder.Build().RunAsync();
