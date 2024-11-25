@@ -1,15 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Text.Json.Serialization.Metadata;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor;
 using Tavenem.Wiki.Blazor.Client;
-using Tavenem.Wiki.Blazor.Client.Services;
-using Tavenem.Wiki.Blazor.Server.Authorization;
 using Tavenem.Wiki.Blazor.Server.Configuration;
-using Tavenem.Wiki.Blazor.Services;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -33,26 +28,10 @@ public static class ServiceExtensions
         this IServiceCollection services,
         WikiBlazorOptions? options = null)
     {
-        options ??= new();
-
-        InteractiveRenderSettings.InteractiveRenderMode = options.InteractiveRenderMode;
-
-        services.TryAddScoped<WikiOptions>(_ => options);
-
-        return services
-            .AddHttpContextAccessor()
-            .AddScoped<IFileManager, LocalFileManager>()
-            .AddScoped<IWikiGroupManager, WikiGroupManager>()
-            .AddScoped<IWikiUserManager, WikiUserManager>()
-            .AddSingleton<IAuthorizationHandler, WikiDefaultAuthorizationHandler>()
-            .AddSingleton<IAuthorizationHandler, WikiEditAuthorizationHandler>()
-            .AddScoped(_ => options)
-            .AddTavenemFramework()
-            .AddScoped<WikiState>()
-            .AddScoped<ClientWikiDataService>()
-            .AddScoped<WikiDataService>()
-            .AddMemoryCache()
-            .AddWikiJsonContext();
+        var configuredOptions = options is null
+            ? new()
+            : new WikiBlazorServerOptions(options);
+        return configuredOptions.Add(services);
     }
 
     /// <summary>

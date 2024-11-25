@@ -82,6 +82,10 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
      If both the server and the local data store are unavailable, the wiki will remain operational, but will show no content and will not allow any content to be added.
 
      No automatic synchronization occurs from the local data store to the server (for instance when an offline client reestablishes network connectivity). If your app model requires synchronization of offline content to a server, that logic must be implemented separately.
+
+    When providing a configuration function (rather than a preconfigured options instance) the following additional properties are available:
+    - `ArticleRenderManager`: an instance of `IArticleRenderManager`. The overloads of `ConfigureArticleRenderManager` also allow configuring this from dependency injection. If omitted, an instance of the default `ArticleRenderManager` will be used, which always returns `null` for all members.
+    - `OfflineManager`: an instance of `IOfflineManager`. The overloads of `ConfigureOfflineManager` also allow configuring this from dependency injection. If omitted, an instance of the default `OfflineManager` will be used, which always returns `false` for all members.
 1. Add a page with the following content to your client:
    ```csharp
    @page "/wiki/{*route}"

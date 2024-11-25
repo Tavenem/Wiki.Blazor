@@ -1,4 +1,5 @@
 ﻿using Tavenem.Wiki.Blazor.Client;
+using Tavenem.Wiki.Blazor.Client.Configuration;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +17,13 @@ public static class ServiceExtensions
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
-        WikiBlazorOptions? options = null) => (options ?? new()).Add(services);
+        WikiBlazorOptions? options = null)
+    {
+        var configuredOptions = options is null
+            ? new()
+            : new WikiBlazorClientOptions(options);
+        return configuredOptions.Add(services);
+    }
 
     /// <summary>
     /// Add the required services for <c>Tavenem.Wiki.Blazor</c>.
@@ -28,10 +35,11 @@ public static class ServiceExtensions
     public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
         WikiBlazorOptions options,
-        Action<WikiBlazorOptions> config)
+        Action<WikiBlazorClientOptions> config)
     {
-        config.Invoke(options);
-        return services.AddWikiClient(options);
+        var configuredOptions = new WikiBlazorClientOptions(options);
+        config.Invoke(configuredOptions);
+        return services.AddWikiClient(configuredOptions);
     }
 
     /// <summary>
@@ -42,5 +50,10 @@ public static class ServiceExtensions
     /// <returns>The <see cref="IServiceCollection"/> instance.</returns>
     public static IServiceCollection AddWikiClient(
         this IServiceCollection services,
-        Action<WikiBlazorOptions> config) => services.AddWikiClient(new(), config);
+        Action<WikiBlazorClientOptions> config)
+    {
+        var options = new WikiBlazorClientOptions();
+        config.Invoke(options);
+        return options.Add(services);
+    }
 }

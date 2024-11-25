@@ -9,50 +9,6 @@ using Tavenem.Wiki.Blazor.Client.Services;
 namespace Tavenem.Wiki.Blazor.Client;
 
 /// <summary>
-/// Gets the type of a component for a given wiki page.
-/// </summary>
-/// <param name="page">The page for which to get a component type.</param>
-/// <returns>The type of a component.</returns>
-[return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public delegate Type? GetArticleComponent(Page page);
-
-/// <summary>
-/// Gets the render mode of a component for a given wiki page.
-/// </summary>
-/// <param name="page">The page for which to get a component's render mode.</param>
-/// <returns>
-/// The render mode of a component, or <see langword="null"/> for static rendering.
-/// </returns>
-public delegate IComponentRenderMode? GetArticleRenderMode(Page page);
-
-/// <summary>
-/// Determines whether the given content may be edited locally.
-/// </summary>
-/// <param name="title">The title of the content to be edited.</param>
-/// <param name="wikiNamespace">The namespace of the content to be edited.</param>
-/// <param name="domain">The domain of the content to be edited (if any).</param>
-/// <returns>
-/// <see langword="true"/> if the content can be edited locally; otherwise <see langword="false"/>.
-/// </returns>
-/// <remarks>
-/// Locally means in the local <see cref="IDataStore"/> instance, rather than via the <see
-/// cref="WikiBlazorOptions.WikiServerApiRoute"/>.
-/// </remarks>
-public delegate ValueTask<bool> CanEditOfflineFunc(string title, string wikiNamespace, string? domain);
-
-/// <summary>
-/// A function which determines whether the given domain should always be retrieved from the local
-/// <see cref="IDataStore"/>, and never from the server.
-/// </summary>
-/// <param name="domain">A wiki domain name.</param>
-/// <returns>
-/// <see langword="true"/> if the content should always be retrieved from the local <see
-/// cref="IDataStore"/>; <see langword="false"/> if the content should be retrieved from the server
-/// when possible.
-/// </returns>
-public delegate ValueTask<bool> IsOfflineDomainFunc(string domain);
-
-/// <summary>
 /// Various customization and configuration options for the wiki system.
 /// </summary>
 public class WikiBlazorOptions : WikiOptions
@@ -83,37 +39,6 @@ public class WikiBlazorOptions : WikiOptions
     /// The link template to be used for the Blazor wiki system.
     /// </summary>
     public const string DefaultLinkTemplate = "onmousemove=\"wikiblazor.showPreview(event, '{LINK}');\" onmouseleave=\"wikiblazor.hidePreview();\"";
-
-    /// <summary>
-    /// A function which gets the type of a component which should be displayed after the content of
-    /// the given wiki article (before the category list).
-    /// </summary>
-    public GetArticleComponent? ArticleEndMatter { get; set; }
-
-    /// <summary>
-    /// A function which gets the render mode of the component indicated by <see cref="ArticleEndMatter"/>.
-    /// </summary>
-    public GetArticleRenderMode? ArticleEndMatterRenderMode { get; set; }
-
-    /// <summary>
-    /// A function which gets the type of a component which should be displayed before the content
-    /// of the given wiki article (after the subtitle).
-    /// </summary>
-    public GetArticleComponent? ArticleFrontMatter { get; set; }
-
-    /// <summary>
-    /// A function which gets the render mode of the component indicated by <see cref="ArticleFrontMatter"/>.
-    /// </summary>
-    public GetArticleRenderMode? ArticleFrontMatterRenderMode { get; set; }
-
-    /// <summary>
-    /// Can be set to a function which determines whether content may be edited locally.
-    /// </summary>
-    /// <remarks>
-    /// If this function is not defined, no content may be edited locally (i.e. local content may
-    /// only be viewed).
-    /// </remarks>
-    public CanEditOfflineFunc? CanEditOffline { get; set; }
 
     /// <summary>
     /// <para>
@@ -217,12 +142,6 @@ public class WikiBlazorOptions : WikiOptions
     public IComponentRenderMode? InteractiveRenderMode { get; set; } = RenderMode.InteractiveWebAssembly;
 
     /// <summary>
-    /// A function which determines whether the given domain should always be retrieved from the
-    /// local <see cref="IDataStore"/>, and never from the <see cref="WikiServerApiRoute"/>.
-    /// </summary>
-    public IsOfflineDomainFunc? IsOfflineDomain { get; set; }
-
-    /// <summary>
     /// <para>
     /// The relative path to the site's login page.
     /// </para>
@@ -306,6 +225,9 @@ public class WikiBlazorOptions : WikiOptions
     {
         InteractiveRenderSettings.InteractiveRenderMode = InteractiveRenderMode;
 
+        services.TryAddScoped<IOfflineManager, OfflineManager>();
+        services.TryAddScoped<IArticleRenderManager, ArticleRenderManager>();
+
         services.TryAddScoped<WikiOptions>(_ => this);
         services.AddScoped(_ => this);
 
@@ -315,102 +237,4 @@ public class WikiBlazorOptions : WikiOptions
             .AddScoped<ClientWikiDataService>()
             .AddScoped<WikiDataService>();
     }
-
-    /// <summary>
-    /// Gets the type of a component which should be displayed after the content of the given wiki
-    /// article (before the category list).
-    /// </summary>
-    /// <param name="article">A wiki article.</param>
-    /// <returns>
-    /// A component instance (or <see langword="null"/>).
-    /// </returns>
-    /// <remarks>
-    /// The following parameters will be supplied to the component, if they exist:
-    /// <list type="bullet">
-    /// <listheader>
-    /// <term>Name</term>
-    /// <description>Value</description>
-    /// </listheader>
-    /// <item>
-    /// <term>Article</term>
-    /// <description>
-    /// The currently displayed <see cref="Article"/> (may be <see langword="null"/>).
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <term>CanEdit</term>
-    /// <description>
-    /// A boolean indicating whether the current user has permission to edit the displayed <see
-    /// cref="Article"/>. Note that this may be <see langword="true"/> even if the article or the
-    /// user are <see langword="null"/>.
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <term>User</term>
-    /// <description>
-    /// The current <see cref="IWikiUser"/> (may be <see langword="null"/>).
-    /// </description>
-    /// </item>
-    /// </list>
-    /// </remarks>
-    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public Type? GetArticleEndMatter(Page article) => ArticleEndMatter?.Invoke(article);
-
-    /// <summary>
-    /// Gets the render mode of the component indicated by <see cref="ArticleEndMatter"/>.
-    /// </summary>
-    /// <param name="article">A wiki article.</param>
-    /// <returns>
-    /// The render mode of a component, or <see langword="null"/> for static rendering.
-    /// </returns>
-    public IComponentRenderMode? GetArticleEndMatterRenderMode(Page article) => ArticleEndMatterRenderMode?.Invoke(article);
-
-    /// <summary>
-    /// Gets the type of a component which should be displayed before the content of the given wiki
-    /// article (after the subtitle).
-    /// </summary>
-    /// <param name="article">A wiki article.</param>
-    /// <returns>
-    /// A component instance (or <see langword="null"/>).
-    /// </returns>
-    /// <remarks>
-    /// The following parameters will be supplied to the component, if they exist:
-    /// <list type="bullet">
-    /// <listheader>
-    /// <term>Name</term>
-    /// <description>Value</description>
-    /// </listheader>
-    /// <item>
-    /// <term>Article</term>
-    /// <description>
-    /// The currently displayed <see cref="Article"/> (may be <see langword="null"/>).
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <term>CanEdit</term>
-    /// <description>
-    /// A boolean indicating whether the current user has permission to edit the displayed <see
-    /// cref="Article"/>. Note that this may be <see langword="true"/> even if the article or the
-    /// user are <see langword="null"/>.
-    /// </description>
-    /// </item>
-    /// <item>
-    /// <term>User</term>
-    /// <description>
-    /// The current <see cref="IWikiUser"/> (may be <see langword="null"/>).
-    /// </description>
-    /// </item>
-    /// </list>
-    /// </remarks>
-    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    public Type? GetArticleFrontMatter(Page article) => ArticleFrontMatter?.Invoke(article);
-
-    /// <summary>
-    /// Gets the render mode of the component indicated by <see cref="ArticleFrontMatter"/>.
-    /// </summary>
-    /// <param name="article">A wiki article.</param>
-    /// <returns>
-    /// The render mode of a component, or <see langword="null"/> for static rendering.
-    /// </returns>
-    public IComponentRenderMode? GetArticleFrontMatterRenderMode(Page article) => ArticleFrontMatterRenderMode?.Invoke(article);
 }

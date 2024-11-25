@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.11.0-preview
+### Added
+- `IArticleRenderManager` and `ArticleRenderManager` to handle custom layout and rendering of wiki articles
+- `IOfflineManager` and `OfflineManager` to control offline editing capabilities
+### Removed
+- `WikiBlazorOptions.ArticleEndMatter` (replaced by `IArticleRenderManager`)
+- `WikiBlazorOptions.ArticleEndMatterRenderMode` (replaced by `IArticleRenderManager`)
+- `WikiBlazorOptions.ArticleFrontMatter` (replaced by `IArticleRenderManager`)
+- `WikiBlazorOptions.ArticleFrontMatterRenderMode` (replaced by `IArticleRenderManager`)
+- `WikiBlazorOptions.CanEditOffline` (replaced by `IOfflineManager`)
+- `WikiBlazorOptions.IsOfflineDomain` (replaced by `IOfflineManager`)
+
+## 0.10.2-preview
+### Updated
+- Update dependencies
+
 ## 0.10.1-preview
 ### Fixed
 - Preview popups

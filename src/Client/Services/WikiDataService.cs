@@ -34,6 +34,8 @@ public class WikiDataService(
     private readonly IDataStore? _dataStore = serviceProvider.GetService<IDataStore>();
     private readonly IWikiGroupManager? _groupManager = serviceProvider.GetService<IWikiGroupManager>();
     private readonly ILogger _logger = loggerFactory.CreateLogger("Wiki");
+    private readonly IPageManager? _pageManager = serviceProvider.GetService<IPageManager>();
+    private readonly IPermissionManager? _permissionManager = serviceProvider.GetService<IPermissionManager>();
     private readonly IWikiUserManager? _userManager = serviceProvider.GetService<IWikiUserManager>();
 
     /// <summary>
@@ -95,6 +97,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             request.OriginalTitle ?? request.Title,
             wikiUser,
             true);
@@ -190,6 +193,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             wikiUser,
             request.Title,
             request.Markdown,
@@ -202,6 +206,7 @@ public class WikiDataService(
             allAllowedViewerGroups,
             null,
             request.OriginalTitle,
+            _pageManager,
             _cache);
         if (!success)
         {
@@ -215,6 +220,7 @@ public class WikiDataService(
                 wikiOptions,
                 _userManager,
                 _groupManager,
+                _permissionManager,
                 wikiUser,
                 result.Title,
                 null,
@@ -227,6 +233,7 @@ public class WikiDataService(
                 allAllowedViewerGroups,
                 request.Title,
                 null,
+                _pageManager,
                 _cache);
             if (!redirectSuccess)
             {
@@ -299,11 +306,14 @@ public class WikiDataService(
         if (hasDomain)
         {
             var domainPermission = WikiPermission.None;
-            if (wikiOptions.GetDomainPermission is not null)
+            if (_permissionManager is not null)
             {
-                domainPermission = await wikiOptions
-                    .GetDomainPermission
-                    .Invoke(wikiUser.Id, domain!);
+                var managerDomainPermission = await _permissionManager
+                    .GetDomainPermissionAsync(wikiUser.Id, domain!);
+                if (managerDomainPermission.HasValue)
+                {
+                    domainPermission = managerDomainPermission.Value;
+                }
             }
             if (wikiUser.AllowedViewDomains?.Contains(domain!) == true)
             {
@@ -351,6 +361,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser);
         if (!response.Permission.HasFlag(WikiPermission.Read))
@@ -386,6 +397,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser);
         if ((result.Permission & WikiPermission.ReadWrite) != WikiPermission.ReadWrite)
@@ -436,6 +448,7 @@ public class WikiDataService(
         var result = await _dataStore.GetGroupPageAsync(
             wikiOptions,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser);
         if (!result.Permission.HasFlag(WikiPermission.Read))
@@ -473,6 +486,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             request,
             wikiUser);
         if (result is null)
@@ -565,6 +579,7 @@ public class WikiDataService(
                 wikiOptions,
                 _userManager,
                 _groupManager,
+                _permissionManager,
                 title,
                 firstTime,
                 secondTime,
@@ -576,6 +591,7 @@ public class WikiDataService(
                 wikiOptions,
                 _userManager,
                 _groupManager,
+                _permissionManager,
                 title,
                 wikiUser,
                 noRedirect,
@@ -587,6 +603,7 @@ public class WikiDataService(
                 wikiOptions,
                 _userManager,
                 _groupManager,
+                _permissionManager,
                 title,
                 wikiUser,
                 noRedirect);
@@ -638,6 +655,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser);
         if (!result.Exists
@@ -680,6 +698,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser,
             noRedirect);
@@ -774,6 +793,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser);
         if (!result.Permission.HasFlag(WikiPermission.Read))
@@ -995,6 +1015,7 @@ public class WikiDataService(
                 wikiOptions,
                 _userManager,
                 _groupManager,
+                _permissionManager,
                 title,
                 wikiUser);
             if (!result.Permission.HasFlag(WikiPermission.Read))
@@ -1130,6 +1151,7 @@ public class WikiDataService(
                 var permission = await _dataStore.GetPermissionAsync(
                     wikiOptions,
                     _groupManager,
+                    _permissionManager,
                     page,
                     wikiUser);
                 if ((permission & RequiredPermissions) != RequiredPermissions)
@@ -1139,7 +1161,7 @@ public class WikiDataService(
             }
         }
 
-        await archive.RestoreAsync(_dataStore, wikiOptions, wikiUser.Id, null, _cache);
+        await archive.RestoreAsync(_dataStore, wikiOptions, wikiUser.Id, null, _pageManager, _cache);
     }
 
     /// <summary>
@@ -1234,6 +1256,7 @@ public class WikiDataService(
             await _dataStore.SearchWikiAsync(
                 wikiOptions,
                 _groupManager,
+                _permissionManager,
                 request,
                 wikiUser,
                 _cache),
@@ -1382,6 +1405,7 @@ public class WikiDataService(
             wikiOptions,
             _userManager,
             _groupManager,
+            _permissionManager,
             title,
             wikiUser,
             true);
@@ -1492,6 +1516,7 @@ public class WikiDataService(
                 wikiOptions,
                 _userManager,
                 _groupManager,
+                _permissionManager,
                 options.OriginalTitle.Value,
                 wikiUser,
                 true);
@@ -1565,6 +1590,7 @@ public class WikiDataService(
                     allAllowedEditorGroups,
                     allAllowedViewerGroups,
                     options.LeaveRedirect ? title : null,
+                    _pageManager,
                     _cache);
             }
             catch (Exception ex)
@@ -1621,6 +1647,7 @@ public class WikiDataService(
                     allAllowedEditorGroups,
                     allAllowedViewerGroups,
                     null,
+                    _pageManager,
                     _cache);
             }
             catch (Exception ex)
@@ -1654,6 +1681,7 @@ public class WikiDataService(
                     allAllowedEditorGroups,
                     allAllowedViewerGroups,
                     null,
+                    _pageManager,
                     _cache);
             }
             catch (Exception ex)
