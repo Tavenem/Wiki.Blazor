@@ -44,6 +44,8 @@ public partial class EditView : WikiEditComponent
 
     private bool IsInteractive { get; set; }
 
+    private bool IsMain { get; set; }
+
     [Inject, NotNull] private NavigationManager? NavigationManager { get; set; }
 
     private bool NoOwner => !OwnerSelf && Owner.Count == 0;
@@ -58,10 +60,9 @@ public partial class EditView : WikiEditComponent
 
     [Inject, NotNull] private SnackbarService? SnackbarService { get; set; }
 
-    [MemberNotNullWhen(false, nameof(Title))]
     [MemberNotNullWhen(false, nameof(UserId))]
     private bool SubmitDisabled => string.IsNullOrEmpty(UserId)
-        || string.IsNullOrWhiteSpace(Title);
+        || (!IsMain && string.IsNullOrWhiteSpace(Title));
 
     private List<IWikiOwner> Viewers { get; set; } = [];
 
@@ -88,7 +89,78 @@ public partial class EditView : WikiEditComponent
                 Content = newArticle.MarkdownContent;
                 HtmlContent = new(newArticle.Html ?? string.Empty);
                 Title = newArticle.Title.ToString();
+                IsMain = newArticle.Title.Title is null;
                 IsScript = string.CompareOrdinal(newArticle.Title.Namespace, WikiOptions.ScriptNamespace) == 0;
+
+                if (newArticle.OwnerObject is null)
+                {
+                    Owner = newArticle.Owner is null
+                        ? []
+                        : [new WikiUser { Id = newArticle.Owner }];
+                }
+                else
+                {
+                    Owner = [newArticle.OwnerObject];
+                }
+                OwnerSelf = Owner.FirstOrDefault()?.Id == UserId;
+
+                if (newArticle.AllowedEditorObjects is null)
+                {
+                    Editors = newArticle
+                        .AllowedEditors?
+                        .Select(x => new WikiUser { Id = x })
+                        .Cast<IWikiOwner>()
+                        .ToList()
+                        ?? [];
+                }
+                else
+                {
+                    Editors = [.. newArticle.AllowedEditorObjects];
+                }
+                if (newArticle.AllowedEditorGroupObjects is null)
+                {
+                    if (newArticle.AllowedEditorGroups is not null)
+                    {
+                        Editors.AddRange(newArticle
+                            .AllowedEditorGroups
+                            .Select(x => new WikiGroup { Id = x }));
+                    }
+                }
+                else
+                {
+                    Editors.AddRange(newArticle.AllowedEditorGroupObjects);
+                }
+                EditorSelf = Editors.Count == 1
+                    && Editors[0].Id == UserId;
+
+                if (newArticle.AllowedViewerObjects is null)
+                {
+                    Viewers = newArticle
+                        .AllowedViewers?
+                        .Select(x => new WikiUser { Id = x })
+                        .Cast<IWikiOwner>()
+                        .ToList()
+                        ?? [];
+                }
+                else
+                {
+                    Viewers = [.. newArticle.AllowedViewerObjects];
+                }
+                if (newArticle.AllowedViewerGroupObjects is null)
+                {
+                    if (newArticle.AllowedViewerGroups is not null)
+                    {
+                        Viewers.AddRange(newArticle
+                            .AllowedViewerGroups
+                            .Select(x => new WikiGroup { Id = x }));
+                    }
+                }
+                else
+                {
+                    Viewers.AddRange(newArticle.AllowedViewerGroupObjects);
+                }
+                ViewerSelf = Viewers.Count == 1
+                    && Viewers[0].Id == UserId;
             }
         }
         return base.SetParametersAsync(parameters);

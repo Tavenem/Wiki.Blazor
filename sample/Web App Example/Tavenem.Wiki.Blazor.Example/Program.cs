@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.Text.Json;
 using Tavenem.DataStorage;
 using Tavenem.Wiki;
 using Tavenem.Wiki.Blazor.Example;
+using Tavenem.Wiki.Blazor.Example.Authentication;
 using Tavenem.Wiki.Blazor.Example.Client.Services;
 using Tavenem.Wiki.Blazor.Example.Components;
 using Tavenem.Wiki.Blazor.Example.Services;
@@ -10,6 +12,8 @@ using Tavenem.Wiki.Blazor.Example.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddAuthorization();
+builder.Services.AddAuthentication(options => options.DefaultScheme = DemoAuthenticationHandler.AuthenticationScheme)
+    .AddScheme<AuthenticationSchemeOptions, DemoAuthenticationHandler>(DemoAuthenticationHandler.AuthenticationScheme, null);
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider =>

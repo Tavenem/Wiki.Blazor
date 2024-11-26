@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.1-preview
+### Fixed
+- Editing permissions
+
 ## 0.11.0-preview
 ### Added
 - `IArticleRenderManager` and `ArticleRenderManager` to handle custom layout and rendering of wiki articles
