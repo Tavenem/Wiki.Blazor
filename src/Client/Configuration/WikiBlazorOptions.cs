@@ -87,28 +87,6 @@ public class WikiBlazorOptions : WikiOptions
     public int? CompactRoutePort { get; set; }
 
     /// <summary>
-    /// An optional data store which the client can access directly (i.e. without reaching the
-    /// server).
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// If the <see cref="WikiServerApiRoute"/> has also been defined, the client will try to reach
-    /// the server first for all wiki operations. If the server cannot be reached or the requested
-    /// content is unavailable at the server, the client will fall back to the local data store.
-    /// </para>
-    /// <para>
-    /// If both the server and the local data store are unavailable, the wiki will remain
-    /// operational, but will show no content and will not allow any content to be added.
-    /// </para>
-    /// <para>
-    /// No automatic synchronization occurs from the local data store to the server (for instance
-    /// when an offline client reestablishes network connectivity). If your app model requires
-    /// synchronization of offline content to a server, that logic must be implemented separately.
-    /// </para>
-    /// </remarks>
-    public virtual IDataStore? DataStore { get; set; }
-
-    /// <summary>
     /// <para>
     /// The minimum permission the user must have in order to create an archive of a domain.
     /// </para>

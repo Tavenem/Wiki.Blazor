@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.2-preview
+### Removed
+- Obsolete `DataStore` property on `WikiBlazorOptions`
+
 ## 0.11.1-preview
 ### Fixed
 - Editing permissions

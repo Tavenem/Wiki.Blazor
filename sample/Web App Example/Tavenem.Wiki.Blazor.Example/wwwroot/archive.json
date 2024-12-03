@@ -42,9 +42,6 @@
     {
       "$type": ":Page:Article:",
       "id": "995978eb-80da-4b2a-88c0-98173a839aa4",
-      "allowedEditors": [
-        "c6798a76-7831-4675-959b-2951566ef068"
-      ],
       "exists": true,
       "owner": "c6798a76-7831-4675-959b-2951566ef068",
       "title": {},
@@ -75,9 +72,6 @@
     {
       "$type": ":Page:Article:",
       "id": "d70e2bb6-7db0-42a2-8578-5bc7bdbb1f1a",
-      "allowedEditors": [
-        "c6798a76-7831-4675-959b-2951566ef068"
-      ],
       "exists": true,
       "owner": "c6798a76-7831-4675-959b-2951566ef068",
       "title": {
