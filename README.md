@@ -86,6 +86,8 @@ In order to use Tavenem.Wiki.Blazor, the following steps should be taken:
     When providing a configuration function (rather than a preconfigured options instance) the following additional properties are available:
     - `ArticleRenderManager`: an instance of `IArticleRenderManager`. The overloads of `ConfigureArticleRenderManager` also allow configuring this from dependency injection. If omitted, an instance of the default `ArticleRenderManager` will be used, which always returns `null` for all members.
     - `OfflineManager`: an instance of `IOfflineManager`. The overloads of `ConfigureOfflineManager` also allow configuring this from dependency injection. If omitted, an instance of the default `OfflineManager` will be used, which always returns `false` for all members.
+    - `PageManager`: an instance of `IPageManager`. The overloads of `ConfigurePageManager` also allow configuring this from dependency injection. If omitted, an instance of the default `PageManager` will be used, which performs no actions.
+    - `PermissionManager`: an instance of `IPermissionManager`. The overloads of `ConfigurePermissionManager` also allow configuring this from dependency injection. If omitted, an instance of the default `PermissionManager` will be used, which which always returns `null`.
 1. Add a page with the following content to your client:
    ```csharp
    @page "/wiki/{*route}"

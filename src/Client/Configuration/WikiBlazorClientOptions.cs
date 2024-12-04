@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics.CodeAnalysis;
 using Tavenem.Wiki.Blazor.Client.Services;
+using Tavenem.Wiki.Services;
 
 namespace Tavenem.Wiki.Blazor.Client.Configuration;
 
@@ -20,6 +21,18 @@ public class WikiBlazorClientOptions() : WikiBlazorOptions
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
     private Type? _offlineManagerType;
+
+    private IPageManager? _pageManager;
+    private Func<IServiceProvider, IPageManager>? _pageManagerConfig;
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+    private Type? _pageManagerType;
+
+    private IPermissionManager? _permissionManager;
+    private Func<IServiceProvider, IPermissionManager>? _permissionManagerConfig;
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+    private Type? _permissionManagerType;
 
     /// <summary>
     /// <para>
@@ -56,6 +69,44 @@ public class WikiBlazorClientOptions() : WikiBlazorOptions
             _offlineManager = value;
             _offlineManagerConfig = null;
             _offlineManagerType = null;
+        }
+    }
+
+    /// <summary>
+    /// <para>
+    /// Supply an instance of <see cref="IPageManager"/>.
+    /// </para>
+    /// <para>
+    /// May be omitted to use the default <see cref="Tavenem.Wiki.Services.PageManager"/>.
+    /// </para>
+    /// </summary>
+    public IPageManager? PageManager
+    {
+        get => _pageManager;
+        set
+        {
+            _pageManager = value;
+            _pageManagerConfig = null;
+            _pageManagerType = null;
+        }
+    }
+
+    /// <summary>
+    /// <para>
+    /// Supply an instance of <see cref="IPermissionManager"/>.
+    /// </para>
+    /// <para>
+    /// May be omitted to use the default <see cref="Tavenem.Wiki.Services.PermissionManager"/>.
+    /// </para>
+    /// </summary>
+    public IPermissionManager? PermissionManager
+    {
+        get => _permissionManager;
+        set
+        {
+            _permissionManager = value;
+            _permissionManagerConfig = null;
+            _permissionManagerType = null;
         }
     }
 
@@ -114,6 +165,8 @@ public class WikiBlazorClientOptions() : WikiBlazorOptions
     {
         AddArticleRenderManager(services);
         AddOfflineManager(services);
+        AddPageManager(services);
+        AddPermissionManager(services);
 
         return base.Add(services);
     }
@@ -180,6 +233,68 @@ public class WikiBlazorClientOptions() : WikiBlazorOptions
         _offlineManagerType = null;
     }
 
+    /// <summary>
+    /// <para>
+    /// Supply a type of <see cref="IPageManager"/>.
+    /// </para>
+    /// <para>
+    /// May be omitted to use the default <see cref="Tavenem.Wiki.Services.PageManager"/>.
+    /// </para>
+    /// </summary>
+    public void ConfigurePageManager(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type? type)
+    {
+        _pageManagerConfig = null;
+        _pageManager = null;
+        _pageManagerType = type;
+    }
+
+    /// <summary>
+    /// <para>
+    /// Supply a function which returns an instance of <see cref="IPageManager"/>.
+    /// </para>
+    /// <para>
+    /// May be omitted to use the default <see cref="Tavenem.Wiki.Services.PageManager"/>.
+    /// </para>
+    /// </summary>
+    public void ConfigurePageManager(Func<IServiceProvider, IPageManager> config)
+    {
+        _pageManagerConfig = config;
+        _pageManager = null;
+        _pageManagerType = null;
+    }
+
+    /// <summary>
+    /// <para>
+    /// Supply a type of <see cref="IPermissionManager"/>.
+    /// </para>
+    /// <para>
+    /// May be omitted to use the default <see cref="Tavenem.Wiki.Services.PermissionManager"/>.
+    /// </para>
+    /// </summary>
+    public void ConfigurePermissionManager(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] Type? type)
+    {
+        _permissionManagerConfig = null;
+        _permissionManager = null;
+        _permissionManagerType = type;
+    }
+
+    /// <summary>
+    /// <para>
+    /// Supply a function which returns an instance of <see cref="IPermissionManager"/>.
+    /// </para>
+    /// <para>
+    /// May be omitted to use the default <see cref="Tavenem.Wiki.Services.PermissionManager"/>.
+    /// </para>
+    /// </summary>
+    public void ConfigurePermissionManager(Func<IServiceProvider, IPermissionManager> config)
+    {
+        _permissionManagerConfig = config;
+        _permissionManager = null;
+        _permissionManagerType = null;
+    }
+
     private void AddArticleRenderManager(IServiceCollection services)
     {
         if (ArticleRenderManager is not null)
@@ -217,6 +332,46 @@ public class WikiBlazorClientOptions() : WikiBlazorOptions
         else
         {
             services.AddScoped<IOfflineManager, OfflineManager>();
+        }
+    }
+
+    private void AddPageManager(IServiceCollection services)
+    {
+        if (PageManager is not null)
+        {
+            services.AddScoped(_ => PageManager);
+        }
+        else if (_pageManagerConfig is not null)
+        {
+            services.AddScoped(_pageManagerConfig);
+        }
+        else if (_pageManagerType is not null)
+        {
+            services.AddScoped(typeof(IPageManager), _pageManagerType);
+        }
+        else
+        {
+            services.AddScoped<IPageManager, PageManager>();
+        }
+    }
+
+    private void AddPermissionManager(IServiceCollection services)
+    {
+        if (PermissionManager is not null)
+        {
+            services.AddScoped(_ => PermissionManager);
+        }
+        else if (_permissionManagerConfig is not null)
+        {
+            services.AddScoped(_permissionManagerConfig);
+        }
+        else if (_permissionManagerType is not null)
+        {
+            services.AddScoped(typeof(IPermissionManager), _permissionManagerType);
+        }
+        else
+        {
+            services.AddScoped<IPermissionManager, PermissionManager>();
         }
     }
 }

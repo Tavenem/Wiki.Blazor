@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.3-preview
+### Added
+- Wiki service configuration options
+
 ## 0.11.2-preview
 ### Removed
 - Obsolete `DataStore` property on `WikiBlazorOptions`

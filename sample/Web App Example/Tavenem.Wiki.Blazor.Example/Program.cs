@@ -8,6 +8,7 @@ using Tavenem.Wiki.Blazor.Example.Authentication;
 using Tavenem.Wiki.Blazor.Example.Client.Services;
 using Tavenem.Wiki.Blazor.Example.Components;
 using Tavenem.Wiki.Blazor.Example.Services;
+using Tavenem.Wiki.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

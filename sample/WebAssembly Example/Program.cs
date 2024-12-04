@@ -10,6 +10,7 @@ using Tavenem.Wiki.Blazor.Client;
 using Tavenem.Wiki.Blazor.Sample;
 using Tavenem.Wiki.Blazor.Sample.Services;
 using Tavenem.Wiki.Blazor.Sample.Shared;
+using Tavenem.Wiki.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");

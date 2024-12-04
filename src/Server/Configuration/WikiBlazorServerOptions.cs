@@ -4,6 +4,7 @@ using Tavenem.Wiki.Blazor.Client;
 using Tavenem.Wiki.Blazor.Client.Configuration;
 using Tavenem.Wiki.Blazor.Server.Authorization;
 using Tavenem.Wiki.Blazor.Services;
+using Tavenem.Wiki.Services;
 
 namespace Tavenem.Wiki.Blazor.Server.Configuration;
 
